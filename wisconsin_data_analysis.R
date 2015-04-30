@@ -1,12 +1,20 @@
 ##Wisconsin Data Exploration
 
-##############################################################################################3
-#Using the district-level average wage files for the teachers
+# Package setup & Convenient Functions ####
 setwd("/home/michael/Desktop/research/Wisconsin Bargaining")
 library(data.table)
-library(quantmod)
 library(cobs)
+library(doParallel)
+library(maptools)
+library(spdep)
+library(quantmod)
 
+# Convenient functions
+create_quantiles<-function(x,num,right=F,include.lowest=T,na.rm=T){
+  cut(x,breaks=quantile(x,probs=seq(0,1,by=1/num),na.rm=T),labels=1:num,right=right,include.lowest=include.lowest)
+}
+
+#Using the district-level average wage files for the teachers ####
 rm(list = ls(all = TRUE))
 
 years <- 1998:2012
@@ -74,106 +82,302 @@ abline(v=2011-79/365,col="red",lty=2,lwd=2)
 dev.copy(which=dev.list()["pdf"])
 dev.off(which=dev.list()["pdf"])
 
-#########################################################################
-#Now, using the teacher-level data files from here:
+#Analysis of Teacher-Level File ####
+#Teacher-level data found here:
 #http://lbstat.dpi.wi.gov/lbstat_newasr
 rm(list = ls(all = TRUE))
+
+## Data import ####
 
 #years are '95 to '13
 #read and do some data cleaning/uniforming
 for (tt in 1995:2014){
   dummy<-
-    setkey(fread(paste0(substr(tt,3,4),"staff.csv"),drop="filler",
-                 colClasses=fread(paste0(substr(tt,3,4),"dict.csv"))$V3
-                 )[,filler:=NULL][,filler:=NULL][,filler:=NULL][,filler:=NULL
-                   ][position_code==53&(agency_type %in% c("01","03","04","1","3","4")),
-                     ],id)
-
-  #eliminate duplicate observations of teachers who have multiple assignments--relevant variables (for now) are constant across observations
-  #**Not constant within teacher rows: SHOULD CHECK**
-  dummy<-setkey(dummy[!duplicated(id),][,count:=.N,by=.(first_name,last_name,birth_year)
-                                        ][count==1,],first_name,last_name,birth_year)
+    fread(paste0(substr(tt,3,4),"staff.csv"),
+          drop=which(scan(file=paste0(substr(tt,3,4),"staff.csv"),
+                          what="",sep=",",nlines=1,quiet=T)=="filler"),
+                 colClasses=fread(paste0(substr(tt,3,4),"dict.csv"))[,V3]
+                 )[position_code==53&(agency_type %in% c("01","03","04","1","3","4","49"))
+                     &!is.na(salary),][is.na(fringe),fringe:=0]
   
   if (!("nee" %in% names(dummy))){
-    dummy[,nee:=""]
     #For through 1999-2000, maiden names were stored in parentheses;
-    #  some spillover happened thereafter (through roughly 2003-04)
-    dummy[grepl("\\(",last_name),
-          nee:=regmatches(last_name,regexpr("(?<=\\().*?(?=\\)|$)",
-                                            last_name,perl=T))]
-    dummy[grepl("-",last_name),
-          nee:=regmatches(last_name,regexpr(".*(?=-)",
-                                            last_name,perl=T))]
+    #  some spillover happened thereafter (through roughly 2003-04)                                  
+    dummy[,nee:=ifelse(grepl("\\(",last_name),
+                       regmatches(last_name,regexpr("(?<=\\().*?(?=\\)|$)",last_name,perl=T)),
+                       ifelse(grepl("-",last_name),
+                              regmatches(last_name,regexpr(".*(?=-)",last_name,perl=T)),""))]
   }
   strings<-c("first_name","last_name","nee")
-  dummy[,(strings):=lapply(.SD,function(x){gsub(paste0("\\s+$|^\\s+|\\s+[a-z]\\.?\\s+|",
-                                                       "^[a-z]\\.?\\s+|\\s+[a-z]\\.?$|"),
-                                                "",tolower(gsub("[\\.,']"," ",x)))}),
+  dummy[,paste0(strings,"_clean"):=
+          lapply(.SD,function(x){gsub(paste0("\\s+$|^\\s+|\\s+[a-z]\\.?\\s+|",
+                                             "^[a-z]\\.?\\s+|\\s+[a-z]\\.?$|"),
+                                      "",tolower(gsub("[\\.,']"," ",x)))}),
         .SDcols=strings]
+  #If last name deleted hereby, can confuse 
+  # matching algorithm to match empty maiden name with ""
+  # So, use the placeholder "_" to denote deleted last name
+  dummy[last_name_clean=="",last_name_clean:="_"]
+  
+  #eliminate duplicate observations of teachers who have multiple assignments--
+  #  relevant variables (for now) are constant across observations
+  #**Not constant within teacher rows: SHOULD CHECK**
+  # Also, sidestep the issue of identifying which teacher is which when there
+  # are more than one teachers with the same first,last name and birth year
+  dummy<-setkey(dummy[!duplicated(id),
+                      ][,count:=.N,by=.(first_name_clean,last_name_clean,birth_year)
+                        ][count==1,],first_name_clean,last_name_clean,birth_year)
   
   #whether middle names are included is sometimes random; use as backup
-  dummy[,first_name2:=first_name]
-  dummy[grepl("\\s",first_name),
-        first_name2:=regmatches(first_name,
-                                regexpr(".*(?=\\s)",
-                                        first_name,perl=T))]
+  dummy[,first_name2:=ifelse(grepl("\\s",first_name_clean),
+                             regmatches(first_name_clean,
+                                        regexpr(".*(?=\\s)",first_name_clean,perl=T)),
+                             first_name_clean)]
   
-  dummy[,local_exp:=local_exp/10]
-  dummy[,total_exp:=total_exp/10]
+  #Be careful--2012 data stores experience differently
+  dummy[,local_exp:=if (tt==2011) local_exp else local_exp/10]
+  dummy[,total_exp:=if (tt==2011) total_exp else total_exp/10]
+  
+  #2012 also stores agency & school differently
+  dummy[,agency:=if (tt==2011) substr(paste0("000",agency),nchar(agency),nchar(agency)+3) else agency]
+  dummy[,school:=if (tt==2011) substr(paste0("000",school),nchar(school),nchar(school)+3) else school]
+  
+  #some later useful objects
+  dummy[,birth_year:=as.integer(birth_year)]
+  dummy[,total_exp_floor:=floor(total_exp)]
+  dummy[,age:=tt+1-birth_year]
+  dummy[,total_pay:=salary+fringe]
+  
+  #SHOULD TRY AND DELVE INTO THIS MORE LATER, but for now--delete any record of teachers working since before age 17
+  # Also delete teachers earning less than $15,000 and older than 40
+  # Also delete teachers with degrees besides bachelors and masters
+  # Also delete teachers with outside (0,30] years experience
+  # Also delete all CESAs
+  # Also delete any teacher with fringe pay > salary (probably typo--0.5% of teachers)
+  # Also delete one teacher w fringe < 0
+  dummy<-dummy[age-total_exp>17&salary>=15000&highest_degree %in% c("4","5")
+               &substr(agency,1,2)!="99"&salary>fringe&fringe>=0&total_exp_floor<=30
+               &total_exp_floor>0,]
   
   #create year dummy for appending data next
   dummy[,year:=tt+1]
   
   assign(paste("data",tt+1,sep="_"),dummy)
-}
-rm(tt,dummy,strings)
+}; rm(tt,dummy,strings)
 
-############################################################
-# MATCHING PROCESS: METICULOUSLY MATCH CONSECUTIVE YEARS-- #
-#    HAMMER OUT MATCHES AS MUCH ASS POSSIBLE               #
-#    BUILDING UP THE ID SYSTEM IN THE PROCESS              #
-############################################################
+## Dynamic teacher matching & Master data compilation ####
+
+#***********************************************************
+# MATCHING PROCESS: METICULOUSLY MATCH CONSECUTIVE YEARS-- *
+#    HAMMER OUT MATCHES AS MUCH ASS POSSIBLE               *
+#    BUILDING UP THE ID SYSTEM IN THE PROCESS              *
+#***********************************************************
 
 #Count all teachers in year 1
-data_1996[,teacher_id:=.I]
+data_1996[,teacher_id:=.I][,c("move_school","move_district","move",
+                              "mismatch_yob","mismatch_inits","mismatch_exp"):=NA
+                           ][,new_teacher:=as.integer(total_exp<2)][,married:=as.integer(nee_clean!="")]
 
+#More avenues for exploration:
+# * Mis-spelling/typos: e.g. ARYLS OELKE <-> ARLYS OELKE
+# * Switching maiden/married names: e.g. DONNA M BACKUS <-> DONNA M WAGNER BACKUS
+# * Maternity leaves (??)
+# * Indicator for certification (deg=4, t-1 -> deg=5, t)
+#Problems remaining:
+# * find "married" with common maiden name: e.g., JENNIFER DAVIS -> JENNIFER CASHIN DAVIS, JENNIFER SCHMUHL DAVIS
 match_on_names<-function(from,to){
-  #First match anyone who stayed in the same school
-  setkey(from,first_name,last_name,birth_year,agency,school)
-  setkey(to,first_name,last_name,birth_year,agency,school
-         )[from,teacher_id:=teacher_id]
-  #Loosen criteria--find within-district switchers
-  setkey(to,first_name,last_name,birth_year,agency
-         )[from[!(teacher_id %in% to$teacher_id),],teacher_id:=i.teacher_id]
-  #Loosen criteria--find district switchers
-  setkey(to,first_name,last_name,birth_year
-         )[from[!(teacher_id %in% to$teacher_id),],teacher_id:=i.teacher_id]
-  #Find anyone who appears to have gotten married
-  setkey(to,first_name,nee,birth_year
-         )[from[!(teacher_id %in% to$teacher_id),],teacher_id:=i.teacher_id]
-  #some people appear to be missing birth year only
-  setkey(from,first_name,last_name,agency)
-  setkey(to,first_name,last_name,agency
-         )[from[!(teacher_id %in% to$teacher_id),],teacher_id:=i.teacher_id]
-  setkey(from,first_name,nee,agency)
-  setkey(to,first_name,last_name,agency
-         )[from[!(teacher_id %in% to$teacher_id),],teacher_id:=i.teacher_id]
-  ##now match some stragglers with missing/included middle names & repeat above
-  setkey(from,first_name2,last_name,birth_year,agency)
-  setkey(to,first_name2,last_name,birth_year,agency
-         )[from[!(teacher_id %in% to$teacher_id),],teacher_id:=i.teacher_id]
-  setkey(to,first_name2,last_name,birth_year
-         )[from[!(teacher_id %in% to$teacher_id),],teacher_id:=i.teacher_id]
-  setkey(to,first_name2,nee,birth_year
-         )[from[!(teacher_id %in% to$teacher_id),],teacher_id:=i.teacher_id]
-  setkey(from,first_name2,last_name,agency)
-  setkey(to,first_name2,last_name,agency
-         )[from[!(teacher_id %in% to$teacher_id),],teacher_id:=i.teacher_id]
-  setkey(from,first_name2,last_name,agency)
-  setkey(to,first_name2,nee,agency
-         )[from[!(teacher_id %in% to$teacher_id),],teacher_id:=i.teacher_id]
-  #finally, give up and assign new ids to unmatched teachers
-  to[is.na(teacher_id),teacher_id:=.I+max(from$teacher_id)]
+  #1) First match anyone who stayed in the same school
+  #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
+  setkey(from,first_name_clean,last_name_clean,birth_year,agency,school)
+  setkey(to,first_name_clean,last_name_clean,birth_year,agency,school
+         )[from,
+           `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
+                move=0,married=0,mismatch_yob=0,mismatch_inits=0,
+                mismatch_exp=0,new_teacher=0)]
+  #2) Loosen criteria--find within-district switchers
+  #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY
+  setkey(to,first_name_clean,last_name_clean,birth_year,agency
+         )[from[!(teacher_id %in% to$teacher_id),],
+           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
+                move=1,married=0,mismatch_yob=0,mismatch_inits=0,
+                mismatch_exp=0,new_teacher=0)]
+  #3) Loosen criteria--find district switchers
+  #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR
+  setkey(to,first_name_clean,last_name_clean,birth_year
+         )[from[!(teacher_id %in% to$teacher_id),],
+           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
+                move=1,married=0,mismatch_yob=0,mismatch_inits=0,
+                mismatch_exp=0,new_teacher=0)]
+  #4) Find anyone who appears to have gotten married
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
+  setkey(to,first_name_clean,nee_clean,birth_year,agency,school
+         )[from[!(teacher_id %in% to$teacher_id),],
+           `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
+                move=0,married=1,mismatch_yob=0,mismatch_inits=0,
+                mismatch_exp=0,new_teacher=0)]
+  
+  #5) married and changed schools
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY
+  setkey(to,first_name_clean,nee_clean,birth_year,agency
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
+         move=1,married=1,mismatch_yob=0,mismatch_inits=0,
+         mismatch_exp=0,new_teacher=0)]
+  
+  #6) married and changed districts
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR
+  setkey(to,first_name_clean,nee_clean,birth_year
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
+         move=1,married=1,mismatch_yob=0,mismatch_inits=0,
+         mismatch_exp=0,new_teacher=0)]
+  #7) now match some stragglers with missing/included middle names & repeat above
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
+  setkey(from,first_name2,last_name_clean,birth_year,agency,school)
+  setkey(to,first_name2,last_name_clean,birth_year,agency,school
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
+         move=0,married=0,mismatch_yob=0,mismatch_inits=1,
+         mismatch_exp=0,new_teacher=0)]
+  #8) stripped first name + school switch
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY
+  setkey(to,first_name2,last_name_clean,birth_year,agency
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
+         move=1,married=0,mismatch_yob=0,mismatch_inits=1,
+         mismatch_exp=0,new_teacher=0)]
+  #9) stripped first name + district switch
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR
+  setkey(to,first_name2,last_name_clean,birth_year
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
+         move=1,married=0,mismatch_yob=0,mismatch_inits=1,
+         mismatch_exp=0,new_teacher=0)]
+  #10) stripped first name + married
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
+  setkey(to,first_name2,nee_clean,birth_year,agency,school
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
+         move=0,married=1,mismatch_yob=0,mismatch_inits=1,
+         mismatch_exp=0,new_teacher=0)]
+  #11) stripped first name, married, school switch
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
+  setkey(to,first_name2,nee_clean,birth_year,agency,school
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
+         move=1,married=1,mismatch_yob=0,mismatch_inits=1,
+         mismatch_exp=0,new_teacher=0)]
+  #12) stripped first name, married, district switch
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
+  setkey(to,first_name2,nee_clean,birth_year,agency,school
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
+         move=1,married=1,mismatch_yob=0,mismatch_inits=1,
+         mismatch_exp=0,new_teacher=0)]
+  #13) some people appear to be missing birth year only
+  #MATCH ON: FIRST NAME | LAST NAME | AGENCY | SCHOOL ID
+  setkey(from,first_name_clean,last_name_clean,agency,school)
+  setkey(to,first_name_clean,last_name_clean,agency,school
+         )[from[!(teacher_id %in% to$teacher_id),],
+           `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
+                move=0,married=0,mismatch_yob=1,mismatch_inits=0,
+                mismatch_exp=0,new_teacher=0)]
+  #14) among missing YOB-only folks, check school switching
+  #MATCH ON: FIRST NAME | LAST NAME | AGENCY
+  setkey(from,first_name_clean,last_name_clean,agency)
+  setkey(to,first_name_clean,last_name_clean,agency
+         )[from[!(teacher_id %in% to$teacher_id),],
+           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
+                move=1,married=0,mismatch_yob=1,mismatch_inits=0,
+                mismatch_exp=0,new_teacher=0)]
+  #15) among missing YOB-only folks, check marriage
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | AGENCY | SCHOOL ID
+  setkey(from,first_name_clean,nee_clean,agency,school)
+  setkey(to,first_name_clean,last_name_clean,agency,school
+         )[from[!(teacher_id %in% to$teacher_id),],
+           `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
+                move=0,married=1,mismatch_yob=1,mismatch_inits=0,
+                mismatch_exp=0,new_teacher=0)]
+  #16) among missing YOB-only folks, check marriage + school switch
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | AGENCY
+  setkey(from,first_name_clean,nee_clean,agency)
+  setkey(to,first_name_clean,last_name_clean,agency
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
+         move=1,married=1,mismatch_yob=1,mismatch_inits=0,
+         mismatch_exp=0,new_teacher=0)]
+  #17) among missing YOB-only folks, check stripped name
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | AGENCY | SCHOOL ID
+  setkey(from,first_name2,last_name_clean,agency,school)
+  setkey(to,first_name2,last_name_clean,agency,school
+         )[from[!(teacher_id %in% to$teacher_id),],
+           `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
+                move=0,married=0,mismatch_yob=1,mismatch_inits=1,
+                mismatch_exp=0,new_teacher=0)]
+  #18) among missing YOB-only folks, check stripped name + switch school
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | AGENCY
+  setkey(from,first_name2,last_name_clean,agency)
+  setkey(to,first_name2,last_name_clean,agency
+         )[from[!(teacher_id %in% to$teacher_id),],
+           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
+                move=1,married=0,mismatch_yob=1,mismatch_inits=1,
+                mismatch_exp=0,new_teacher=0)]
+  #19) among missing YOB-only folks, check stripped name + married
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | AGENCY | SCHOOL ID
+  setkey(from,first_name2,last_name_clean,agency,school)
+  setkey(to,first_name2,nee_clean,agency,school
+         )[from[!(teacher_id %in% to$teacher_id),],
+           `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
+                move=0,married=1,mismatch_yob=1,mismatch_inits=1,
+                mismatch_exp=0,new_teacher=0)]
+  #20) among missing YOB-only folks, check stripped name + married + switch school
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | AGENCY
+  setkey(from,first_name2,last_name_clean,agency,school)
+  setkey(to,first_name2,nee_clean,agency,school
+         )[from[!(teacher_id %in% to$teacher_id),],
+           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
+                move=1,married=1,mismatch_yob=1,mismatch_inits=1,
+                mismatch_exp=0,new_teacher=0)]
+  #21) among missing YOB-only folks, check if experience is within a year
+  #MATCH ON: FIRST NAME | LAST NAME | EXPERIENCE
+  setkey(from,first_name_clean,last_name_clean,total_exp)
+  setkey(to,first_name_clean,last_name_clean,total_exp
+         )[from[!(teacher_id %in% to$teacher_id),],
+           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
+                move=1,married=0,mismatch_yob=1,mismatch_inits=0,
+                mismatch_exp=1,new_teacher=0),roll=-1L]
+  #22) among missing YOB-only folks, check experience + marriage
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | EXPERIENCE
+  setkey(from,first_name_clean,last_name_clean,total_exp)
+  setkey(to,first_name_clean,nee_clean,total_exp
+         )[from[!(teacher_id %in% to$teacher_id),],
+           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
+                move=1,married=1,mismatch_yob=1,mismatch_inits=0,
+                mismatch_exp=1,new_teacher=0),roll=-1L]
+  #23) among missing YOB-only folks, check experience + first name mismatch
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | EXPERIENCE
+  setkey(from,first_name2,last_name_clean,total_exp)
+  setkey(to,first_name2,last_name_clean,total_exp
+         )[from[!(teacher_id %in% to$teacher_id),],
+           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
+                move=1,married=0,mismatch_yob=1,mismatch_inits=1,
+                mismatch_exp=1,new_teacher=0),roll=-1L]
+  #24) among missing YOB-only folks, check experience + first name mismatch + married
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | EXPERIENCE
+  setkey(from,first_name2,last_name_clean,total_exp)
+  setkey(to,first_name2,nee_clean,total_exp
+         )[from[!(teacher_id %in% to$teacher_id),],
+           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
+                move=1,married=1,mismatch_yob=1,mismatch_inits=1,
+                mismatch_exp=1,new_teacher=0),roll=-1L]
+                                  
+  #25) finally, give up and assign new ids to new (read: unmatched) teachers
+  to[is.na(teacher_id),`:=`(teacher_id=.I+max(from$teacher_id),move_school=0,move_district=0,
+                            move=0,married=0,mismatch_yob=0,mismatch_inits=0,
+                            mismatch_exp=0,new_teacher=1)]
+  #Now look forward from `from`--if we matched them, they didn't quit/retire
+  from[teacher_id %in% to$teacher_id   ,quit:=0]
+  from[!(teacher_id %in% to$teacher_id),quit:=1]
   to
 }
 
@@ -202,179 +406,283 @@ teacher_data<-
                  data_2001,data_2002,data_2003,data_2004,data_2005,
                  data_2006,data_2007,data_2008,data_2009,data_2010,
                  data_2011,data_2012,data_2013,data_2014,data_2015),
-            fill=T)
+            fill=T); rm(list=ls(pattern="data_"))
 
-teacher_data[,multiples:=.N,by=.(teacher_id,birth_year)]
+teacher_data[,multiples:=.N,by=.(teacher_id,year)]
+#Delete history for any multi-matched teachers (down to only a few at this point)
+teacher_data<-teacher_data[!(teacher_id %in% teacher_data[multiples!=1,teacher_id]),]
+setkey(teacher_data,teacher_id,year)
 
-rm(data_1996,data_1997,data_1998,data_1999,data_2000,
-   data_2001,data_2002,data_2003,data_2004,data_2005,
-   data_2006,data_2007,data_2008,data_2009,data_2010,
-   data_2011,data_2012,data_2013,data_2014,data_2015)
+#some full-sample variables:
+## did the teacher certify?
+teacher_data[,certified:=shift(highest_degree)[[1]]!=highest_degree,by=teacher_id]
+## how many years of data do we have for each teacher?
+teacher_data[,years_tracked:=year[.N]-year[1]+1,by=teacher_id]
+## useful to track first and last recorded year for each teacher
+teacher_data[,c("first_year","last_year"):=.(year[1],year[.N]),by=teacher_id]
+## is my trajectory for this teacher censored by the data's beginning or end?
+teacher_data[,paste0(c("left_","right_"),"censored"):=.(first_year==1996,last_year==2015),by=teacher_id]
+## add forward-looking indicators
+frwd_vars<-c(paste0("move",c("","_school","_district")),"married","quit","salary","fringe","total_pay","certified")
+teacher_data[,paste0(frwd_vars,"_next"):=shift(.SD,type="lead"),by=teacher_id,.SDcols=frwd_vars]
+teacher_data[,paste0(frwd_vars,"_pl5"):=shift(.SD,n=5L,type="lead"),by=teacher_id,.SDcols=frwd_vars]; rm(frwd_vars)
 
-teacher_data[,birth_year:=as.integer(birth_year)]
-teacher_data[,total_exp_floor:=floor(total_exp)]
-teacher_data[,age:=year-birth_year]
-teacher_data[,total_pay:=salary+fringe]
+## Pay Scale Interpolation ####
+cobs_extrap<-function(total_exp_floor,outcome,min_exp,max_exp,
+                      constraint="increase",print.mesg=F,nknots=8,
+                      keep.data=F,maxiter=150){
+  #these are passed as vectors
+  min_exp<-min_exp[1]
+  max_exp<-max_exp[1]
+  #get in-sample fit
+  in_sample<-predict(cobs(x=total_exp_floor,y=outcome,
+                          constraint=constraint,
+                          print.mesg=print.mesg,nknots=nknots,
+                          keep.data=keep.data,maxiter=maxiter),
+                     z=min_exp:max_exp)[,"fit"]
+  if (sum(abs(in_sample))<50){
+    in_sample<-rep(0,length(in_sample))
+  }
+  #append by linear extension below min_exp
+  fit<-c(if (min_exp==1) NULL else in_sample[1]-
+           ((min_exp-1):1)*(in_sample[2]-in_sample[1]),
+         in_sample,
+         #append by linear extension above max_exp
+         if (max_exp==30) NULL else in_sample[length(in_sample)]+
+           (1:(40-max_exp))*(in_sample[length(in_sample)]-
+                               in_sample[length(in_sample)-1]))
+  #Just force to 0 anything that wants to go negative
+  fit[fit<0]<-0
+  #Also put a ceiling on how high extrapolation can climb--
+  #From original fitted data, more than 99% of year-40 to year-20 ratios are below 45%
+  fit[fit>1.45*max(in_sample)]<-1.45*max(in_sample)
+  fit
+}
 
-#SHOULD TRY AND DELVE INTO THIS MORE LATER, but for now--delete any record of teachers working since before age 17
-teacher_data<-teacher_data[age-total_exp>17,]
+setkey(teacher_data,year,agency,highest_degree)
+teacher_data_sub<-teacher_data[,.(year,agency,highest_degree,total_exp_floor,salary,fringe)]
+#Can't interpolate if there are only 2 or 3 unique experience cells represented
+teacher_data_sub[,node_count:=length(unique(total_exp_floor)),by=.(year,agency,highest_degree)]
+#Nor if there are too few teachers
+teacher_data_sub[,teach_count:=.N,by=.(year,agency,highest_degree)]
+#Also troublesome when there is little variation in salaries like so:
+teacher_data_sub[,sal_scale_flag:=mean(abs(salary-mean(salary)))<50,by=.(year,agency,highest_degree)]
+teacher_data_sub[,sal_count_flag:=length(unique(salary))<5,by=.(year,agency,highest_degree)]
+teacher_data_sub[,fri_scale_flag:=mean(abs(salary-mean(fringe)))<50,by=.(year,agency,highest_degree)]
+teacher_data_sub[,fri_count_flag:=length(unique(fringe))<5,by=.(year,agency,highest_degree)]
 
-#What are the empirical salary scales?
-# Empirically, these change year-to-year,
-#  so find the average pay within each
-#  year x experience x degree cell at each district
-salary_scales<-teacher_data[highest_degree %in% c(4,5)&total_exp_floor<=40,
-                            .(salary=mean(salary,na.rm=T),
-                              fringe=mean(fringe,na.rm=T),
-                              total_pay=mean(total_pay)),
-                            by=.(year,agency,total_exp_floor,highest_degree)]
+teacher_data_sub<-
+  teacher_data_sub[node_count>=7&teach_count>=10
+                   &sal_scale_flag==0&sal_count_flag==0
+                   &fri_scale_flag==0&fri_count_flag==0,]
+teacher_data_sub<-teacher_data_sub[,.(year,agency,highest_degree,total_exp_floor,salary,fringe)]
+teacher_data_sub[,min_exp:=min(total_exp_floor),by=.(year,agency,highest_degree)]
+teacher_data_sub[,max_exp:=max(total_exp_floor),by=.(year,agency,highest_degree)]
+#Only send to the cores the necessary data--lots of copying
+cl <- makeCluster(detectCores()); 
+registerDoParallel(cl); 
+clusterExport(cl,c("teacher_data_sub"),envir=environment());
+clusterEvalQ(cl,library("data.table"));
+clusterEvalQ(cl,library("cobs"));
+salary_imp <- foreach(i = 1996:2015) %dopar% {
+  teacher_data_sub[.(i)][,.(total_exp_floor=1:30,
+                            salary=cobs_extrap(total_exp_floor,salary,min_exp,max_exp)),
+                         by=.(year,agency,highest_degree)]
+}
+salary_imp<-setkey(do.call("rbind",salary_imp),year,agency,highest_degree,total_exp_floor)
 
-#Now, impute the intermediate values for all districts with missing cells
-salary_scales_imputed<-
-  setkey(salary_scales,year,agency,highest_degree,total_exp_floor)[
-    data.table(year=rep(1996:2015,each=length(unique(salary_scales[,agency]))*2*41),
-               agency=rep(rep(unique(salary_scales$agency),each=2*41),times=20),
-               highest_degree=rep(rep(c("4","5"),each=41),
-                                  times=20*length(unique(salary_scales[,agency]))),
-               total_exp_floor=rep(0:40,times=20*length(unique(salary_scales[,agency]))*2),
-               key=c("year","agency","highest_degree","total_exp_floor"))
-    ][!is.na(salary),N:=.N,by=.(year,agency,highest_degree)
-      ][,N:=as.integer(max(0,max(N,na.rm=T))),by=.(year,agency,highest_degree)][N>=7,][,N:=NULL]
+fringe_imp <- foreach(i = 1996:2015) %dopar% {
+  teacher_data_sub[.(i)][,.(total_exp_floor=1:30,
+                            fringe=cobs_extrap(total_exp_floor,fringe,min_exp,max_exp)),
+                         by=.(year,agency,highest_degree)]
+}
+fringe_imp<-setkey(do.call("rbind",fringe_imp),year,agency,highest_degree,total_exp_floor)
+rm(teacher_data_sub)
+stopCluster(cl)
 
-salary_scales_imputed[!is.na(salary),min_exp:=min(total_exp_floor,na.rm=T),by=.(year,agency)]
-salary_scales_imputed[!is.na(salary),max_exp:=max(total_exp_floor,na.rm=T),by=.(year,agency)]
+salary_scales<-fringe_imp[salary_imp][,total_pay:=fringe+salary]
+rm(list=ls(pattern="imp"))
 
-###****THIS PROCESS IS VERY TIME-CONSUMING--RUNNING ABOUT 45000 LOCAL LINEAR REGRESSIONS****
-capture.output(salary_scales_imputed[,salary:=
-                                       predict(cobs(x=total_exp_floor,y=salary,
-                                                    constraint="increase"),z=0:40)[,"fit"],
-                                     by=.(year,agency,highest_degree)],file="/dev/null")
-capture.output(salary_scales_imputed[,fringe:=
-                                       predict(cobs(x=total_exp_floor,y=fringe,
-                                                    constraint="increase"),z=0:40)[,"fit"],
-                                     by=.(year,agency,highest_degree)],file="/dev/null")
-capture.output(salary_scales_imputed[,total_pay:=
-                                       predict(cobs(x=total_exp_floor,y=total_pay,
-                                                    constraint="increase"),z=0:40)[,"fit"],
-                                     by=.(year,agency,highest_degree)],file="/dev/null")
+#nominal future earnings at every point in the career
+discounted_earnings<-function(x,r=.05){
+  nm1<-length(x)-1
+  (sum(x/(1+r)^(0:nm1))-
+     c(0,cumsum(x/(1+r)^(0:nm1))[1:nm1]))*(1+r)^(0:nm1)
+}
+salary_scales[,total_pay_future:=discounted_earnings(total_pay),
+              by=.(year,agency,highest_degree)]
+##add to teacher data
+setkeyv(teacher_data,key(salary_scales))[salary_scales,total_pay_future:=total_pay_future]
 
-setkey(teacher_data,year,agency,total_exp_floor,highest_degree)
+#provide deflated wage data
+dollar_cols<-c("salary","fringe","total_pay")
+getSymbols("CPIAUCSL",src='FRED')
+infl<-data.table(year=1996:2015,
+                 index=CPIAUCSL[seq(from=as.Date('1995-10-01'),
+                                    by='years',length.out=21)]/
+                   as.numeric(CPIAUCSL['1995-10-01']),key="year")
+teacher_data[infl,index:=index.CPIAUCSL]
+teacher_data[,paste0(dollar_cols,"_real"):=lapply(.SD,function(x){x/teacher_data$index}),.SDcols=dollar_cols][,index:=NULL]
+salary_scales[infl,index:=index.CPIAUCSL]
+salary_scales[,paste0(dollar_cols,"_real"):=lapply(.SD,function(x){x/salary_scales$index}),.SDcols=dollar_cols][,index:=NULL]
+rm(infl,dollar_cols)
 
-#YSED : Year, School, Experience, Degree
+write.csv(salary_scales,"wisconsin_salary_scales_imputed.csv",row.names=F)
+salary_scales<-setkey(fread("wisconsin_salary_scales_imputed.csv"),year,agency,highest_degree,total_exp_floor)
 
-teacher_data[,n_ysed:=.N,by=list(year,agency,total_exp_floor,highest_degree)]
-teacher_data[,avg_pay_ysed:=mean(salary,na.rm=T),by=list(year,agency,total_exp_floor,highest_degree)]
-teacher_data[,agency_name:=tolower(gsub("^\\s+|\\s+$", "", agency_name))]
+## Spatial Data ####
 
-salary_tables<-teacher_data[,mean(salary,na.rm=T),by=list(year,agency,total_exp_floor,highest_degree)]
-salary_tables<-teacher_data[,mean(fringe,na.rm=T),by=list(year,agency,total_exp_floor,highest_degree)][salary_tables]
-salary_tables<-teacher_data[,mean(total_pay,na.rm=T),by=list(year,agency,total_exp_floor,highest_degree)][salary_tables]
+wi_districts_elem_shp<-
+  readShapeSpatial("/media/data_drive/gis_data/WI/wisconsin_elementary_districts_statewide.shp")
+wi_districts_scdy_shp<-
+  readShapeSpatial("/media/data_drive/gis_data/WI/wisconsin_secondary_districts_statewide.shp")
 
-setnames(salary_tables,c("year","agency","total_exp_floor","highest_degree","total_pay","fringe","salary"))
+elem_nbhd<-nb2mat(poly2nb(wi_districts_elem_shp,row.names=wi_districts_elem_shp$GEOID10),style="B")
+colnames(elem_nbhd)<-rownames(elem_nbhd)
+
+scdy_nbhd<-nb2mat(poly2nb(wi_districts_scdy_shp,row.names=wi_districts_scdy_shp$GEOID10),style="B")
+colnames(scdy_nbhd)<-rownames(scdy_nbhd)
+
+### Need NCES Common Core Data to map polygon IDs to Agency ID
+#### 2011-12 data (all but 9 districts)
+ccd_id<-setnames(fread("/media/data_drive/common_core/district/universe_11_12_1a.txt",
+                       select=c("LEAID","STID"),colClasses="character"
+                       )[substr(LEAID,1,2)=="55",],c("leaid","agency"))
+#### Add remaining 9 districts via CCD data in 1995-96
+ccd_id<-
+  setkey(rbindlist(list(
+  ccd_id,setnames(data.table(read.fwf(
+    "/media/data_drive/common_core/district/universe_95_96_1a.txt",
+    widths=c(7,4)))[substr(V1,1,2)=="55",][V2 %in% teacher_data[!(agency %in% ccd_id$agency),
+                                                                unique(agency)],],c("leaid","agency")))),leaid)
+
+####Exclude districts not found in shapefile
+elem_nbhd<-elem_nbhd[intersect(rownames(elem_nbhd),ccd_id$leaid),intersect(rownames(elem_nbhd),ccd_id$leaid)]
+scdy_nbhd<-scdy_nbhd[intersect(rownames(scdy_nbhd),ccd_id$leaid),intersect(rownames(scdy_nbhd),ccd_id$leaid)]
+####Rename rows from CCD LEA ID to Agency ID
+rownames(elem_nbhd)<-colnames(elem_nbhd)<-ccd_id[.(colnames(elem_nbhd)),agency]
+rownames(scdy_nbhd)<-colnames(scdy_nbhd)<-ccd_id[.(colnames(scdy_nbhd)),agency]
+#***TURNS OUT ELEMENTARY AND SECONDARY ARE IDENTICAL--GET TO SIDESTEP THIS ISSUE FOR NOW***
+
+####Get local average wages and local experience-dependent average discounted future pay
+area_average<-function(pay_type="total_pay",aagency,yyear,hhighest_degree,ttotal_exp_floor=NULL){
+  salary_scales[.(yyear[1],names(which(elem_nbhd[aagency[1],]!=0)),hhighest_degree[1],ttotal_exp_floor[1]),
+                mean(get(pay_type),na.rm=T)]
+}
+setkey(teacher_data,agency)
+teacher_data[.(rownames(elem_nbhd)),
+             total_pay_loc_avg:=area_average("total_pay",agency,year,highest_degree),
+             by=.(agency,year,highest_degree)]
+
+#Grouping by agency, year, degree AND experience adds a lot to computation--paralellize by experience.
+cl <- makeCluster(detectCores()); 
+registerDoParallel(cl);
+teacher_data_sub<-teacher_data[,.(agency,total_pay_future,year,highest_degree,total_exp_floor)]
+clusterExport(cl,c("teacher_data_sub"),envir=environment());
+clusterEvalQ(cl,library("data.table"));
+tpf <- foreach(i = 1:30) %dopar% {
+  teacher_data_sub[total_exp_floor==i,][.(rownames(elem_nbhd)),
+      total_pay_loc_val:=area_average("total_pay_future",agency,year,highest_degree,total_exp_floor),
+      by=.(agency,year,highest_degree,total_exp_floor)]
+}
+stopCluster(cl)
+rm(teacher_data_sub,cl)
+tpf<-setkey(do.call("rbind",tpf),year,agency,highest_degree,total_exp_floor)
+setkey(teacher_data,year,agency,highest_degree,total_exp_floor)[tpf,total_pay_loc_val:=total_pay_loc_val]
+rm(tpf)
+
+teacher_data[,potential_earnings:=total_pay_loc_val-total_pay_future]
+
+# Finally, some data analysis ####
+
+plot_given<-function(yr,ag,hd){
+  ag<-as.character(ag)
+  hd<-as.character(hd)
+  salary_scales[.(yr,ag,hd),plot(total_exp_floor,salary,type="l",col="black",lwd=3,xlab="Experience",ylab="$",
+                                 ylim=range(salary_scales[.(yr,ag,hd),c("salary","total_pay"),with=F],
+                                            teacher_data[.(yr,ag,hd),c("salary","total_pay"),with=F]))]
+  salary_scales[.(yr,ag,hd),lines(total_exp_floor,total_pay,col="red",lwd=3)]
+  teacher_data[.(yr,ag,hd),points(total_exp_floor,salary,col="black")]
+  teacher_data[.(yr,ag,hd),points(total_exp_floor,total_pay,col="red",pch=3)]
+}
 
 #plotting the salary schedules for the 5 most populous agencies over the first 30 years
 postscript('wisconsin_salary_tables_imputed_05_big5_base.ps')
 par(mfrow=c(1,2))
-plot(1:25,salary_tables[agency=="3619"&year==2005&highest_degree==4,]$salary[1:25],ylim=c(25000,70000),yaxt="n",
-     main="Imputed Salary Schedules (BA)\n5 Biggest WI Districts, 2004-05",xlab="Total Experience",ylab="$")
-lines(1:25,salary_tables[agency=="3269"&year==2005&highest_degree==4,]$salary[1:25],type="p",col="red")
-lines(1:25,salary_tables[agency=="4620"&year==2005&highest_degree==4,]$salary[1:25],type="p",col="blue")
-lines(1:25,salary_tables[agency=="2793"&year==2005&highest_degree==4,]$salary[1:25],type="p",col="green")
-lines(1:25,salary_tables[agency=="2289"&year==2005&highest_degree==4,]$salary[1:25],type="p",col="purple")
-
-lines(lowess(1:25,salary_tables[agency=="3619"&year==2005&highest_degree==4,]$salary[1:25]),type="l",col="black")
-lines(lowess(1:25,salary_tables[agency=="3269"&year==2005&highest_degree==4,]$salary[1:25]),type="l",col="red")
-lines(lowess(1:25,salary_tables[agency=="4620"&year==2005&highest_degree==4,]$salary[1:25]),type="l",col="blue")
-lines(lowess(1:25,salary_tables[agency=="2793"&year==2005&highest_degree==4,]$salary[1:25]),type="l",col="green")
-lines(lowess(1:25,salary_tables[agency=="2289"&year==2005&highest_degree==4,]$salary[1:25]),type="l",col="purple")
-axis(2,at=seq(30000,70000,by=10000))
+matplot(1:40,dcast.data.table(salary_scales[.(2005,c("3619","3269","4620","2793","2289"),"4"),
+                               !c("fringe","total_pay"),with=F],
+                 total_exp_floor~agency,value.var="salary")[,!"total_exp_floor",with=F],
+        xlab="Experience",ylab="$",main="Imputed Salary Schedules (BA)\n5 Biggest WI Districts, 2004-05",
+        lty=1,type="l",col=c("black","red","blue","green","purple"),lwd=3)
 legend("bottomright",legend=c("Milwaukee","Madison","Racine","Kenosha","Green Bay"),
-       col=c("black","red","blue","green","purple"),pch="o")
+       col=c("black","red","blue","green","purple"),lty=1,lwd=3)
 
-plot(1:25,salary_tables[agency=="3619"&year==2005&highest_degree==5,]$salary[1:25],ylim=c(25000,70000),yaxt="n",
-     main="Imputed Salary Schedules (MA)\n5 Biggest WI Districts, 2004-05",xlab="Total Experience",ylab="$")
-lines(1:25,salary_tables[agency=="3269"&year==2005&highest_degree==5,]$salary[1:25],type="p",col="red")
-lines(1:25,salary_tables[agency=="4620"&year==2005&highest_degree==5,]$salary[1:25],type="p",col="blue")
-lines(1:25,salary_tables[agency=="2793"&year==2005&highest_degree==5,]$salary[1:25],type="p",col="green")
-lines(1:25,salary_tables[agency=="2289"&year==2005&highest_degree==5,]$salary[1:25],type="p",col="purple")
-
-lines(lowess(1:25,salary_tables[agency=="3619"&year==2005&highest_degree==5,]$salary[1:25]),type="l",col="black")
-lines(lowess(1:25,salary_tables[agency=="3269"&year==2005&highest_degree==5,]$salary[1:25]),type="l",col="red")
-lines(lowess(1:25,salary_tables[agency=="4620"&year==2005&highest_degree==5,]$salary[1:25]),type="l",col="blue")
-lines(lowess(1:25,salary_tables[agency=="2793"&year==2005&highest_degree==5,]$salary[1:25]),type="l",col="green")
-lines(lowess(1:25,salary_tables[agency=="2289"&year==2005&highest_degree==5,]$salary[1:25]),type="l",col="purple")
-axis(2,at=seq(30000,70000,by=10000))
+matplot(1:40,dcast.data.table(salary_scales[.(2005,c("3619","3269","4620","2793","2289"),"5"),
+                                            !c("fringe","total_pay"),with=F],
+                              total_exp_floor~agency,value.var="salary")[,!"total_exp_floor",with=F],
+        xlab="Experience",ylab="$",main="Imputed Salary Schedules (MA)\n5 Biggest WI Districts, 2004-05",
+        lty=1,type="l",col=c("black","red","blue","green","purple"),lwd=3)
 legend("bottomright",legend=c("Milwaukee","Madison","Racine","Kenosha","Green Bay"),
-       col=c("black","red","blue","green","purple"),pch="o")
+       col=c("black","red","blue","green","purple"),lty=1,lwd=3)
 dev.off()
 
 postscript('wisconsin_salary_tables_imputed_05_big5_total.ps')
 par(mfrow=c(1,2))
-plot(1:25,salary_tables[agency=="3619"&year==2005&highest_degree==4,]$total_pay[1:25],ylim=c(25000,100000),yaxt="n",
-     main="Imputed Total Pay Schedules (BA)\n5 Biggest WI Districts, 2004-05",xlab="Total Experience",ylab="$")
-lines(1:25,salary_tables[agency=="3269"&year==2005&highest_degree==4,]$total_pay[1:25],type="p",col="red")
-lines(1:25,salary_tables[agency=="4620"&year==2005&highest_degree==4,]$total_pay[1:25],type="p",col="blue")
-lines(1:25,salary_tables[agency=="2793"&year==2005&highest_degree==4,]$total_pay[1:25],type="p",col="green")
-lines(1:25,salary_tables[agency=="2289"&year==2005&highest_degree==4,]$total_pay[1:25],type="p",col="purple")
-
-lines(lowess(1:25,salary_tables[agency=="3619"&year==2005&highest_degree==4,]$total_pay[1:25]),type="l",col="black")
-lines(lowess(1:25,salary_tables[agency=="3269"&year==2005&highest_degree==4,]$total_pay[1:25]),type="l",col="red")
-lines(lowess(1:25,salary_tables[agency=="4620"&year==2005&highest_degree==4,]$total_pay[1:25]),type="l",col="blue")
-lines(lowess(1:25,salary_tables[agency=="2793"&year==2005&highest_degree==4,]$total_pay[1:25]),type="l",col="green")
-lines(lowess(1:25,salary_tables[agency=="2289"&year==2005&highest_degree==4,]$total_pay[1:25]),type="l",col="purple")
-axis(2,at=seq(30000,100000,by=10000),labels=seq(30000,100000,by=10000),las=2)
+matplot(1:40,dcast.data.table(salary_scales[.(2005,c("3619","3269","4620","2793","2289"),"4"),
+                                            !c("fringe","salary"),with=F],
+                              total_exp_floor~agency,value.var="total_pay")[,!"total_exp_floor",with=F],
+        xlab="Experience",ylab="$",main="Imputed Total Pay Schedules (BA)\n5 Biggest WI Districts, 2004-05",
+        lty=1,type="l",col=c("black","red","blue","green","purple"),lwd=3)
 legend("bottomright",legend=c("Milwaukee","Madison","Racine","Kenosha","Green Bay"),
-       col=c("black","red","blue","green","purple"),pch="o")
+       col=c("black","red","blue","green","purple"),lty=1,lwd=3)
 
-plot(1:25,salary_tables[agency=="3619"&year==2005&highest_degree==5,]$total_pay[1:25],ylim=c(25000,100000),yaxt="n",
-     main="Imputed Salary Schedules (MA)\n5 Biggest WI Districts, 2004-05",xlab="Total Experience",ylab="$")
-lines(1:25,salary_tables[agency=="3269"&year==2005&highest_degree==5,]$total_pay[1:25],type="p",col="red")
-lines(1:25,salary_tables[agency=="4620"&year==2005&highest_degree==5,]$total_pay[1:25],type="p",col="blue")
-lines(1:25,salary_tables[agency=="2793"&year==2005&highest_degree==5,]$total_pay[1:25],type="p",col="green")
-lines(1:25,salary_tables[agency=="2289"&year==2005&highest_degree==5,]$total_pay[1:25],type="p",col="purple")
-
-lines(lowess(1:25,salary_tables[agency=="3619"&year==2005&highest_degree==5,]$total_pay[1:25]),type="l",col="black")
-lines(lowess(1:25,salary_tables[agency=="3269"&year==2005&highest_degree==5,]$total_pay[1:25]),type="l",col="red")
-lines(lowess(1:25,salary_tables[agency=="4620"&year==2005&highest_degree==5,]$total_pay[1:25]),type="l",col="blue")
-lines(lowess(1:25,salary_tables[agency=="2793"&year==2005&highest_degree==5,]$total_pay[1:25]),type="l",col="green")
-lines(lowess(1:25,salary_tables[agency=="2289"&year==2005&highest_degree==5,]$total_pay[1:25]),type="l",col="purple")
-axis(2,at=seq(30000,100000,by=10000),labels=seq(30000,100000,by=10000),las=2)
+matplot(1:40,dcast.data.table(salary_scales[.(2005,c("3619","3269","4620","2793","2289"),"5"),
+                                            !c("fringe","salary"),with=F],
+                              total_exp_floor~agency,value.var="total_pay")[,!"total_exp_floor",with=F],
+        xlab="Experience",ylab="$",main="Imputed Total Pay Schedules (MA)\n5 Biggest WI Districts, 2004-05",
+        lty=1,type="l",col=c("black","red","blue","green","purple"),lwd=3)
 legend("bottomright",legend=c("Milwaukee","Madison","Racine","Kenosha","Green Bay"),
-       col=c("black","red","blue","green","purple"),pch="o")
+       col=c("black","red","blue","green","purple"),lty=1,lwd=3)
 dev.off()
 
 #now make some summary plots
 ##teacher wages, teacher experience, and proportion of 1st-year teachers
 postscript('wage_exp_series_avg_1996-2015.ps')
 par(mfrow=c(2,2))
-getSymbols("CPIAUCSL",src='FRED')
-infl_oct1<-CPIAUCSL[c(seq(from=as.Date('1995-10-01'),by='years',length.out=21),as.Date('2014-08-01'))]/as.numeric(CPIAUCSL['1995-10-01'])
-avg_wage<-teacher_data[,mean(salary,na.rm=T),by=year]$V1
-plot(1996:2015,avg_wage,ylim=c(min(avg_wage),max(max(avg_wage),max(avg_wage[1]*infl_oct1))),
-     type="l",xlab="Year",ylab="Nominal Wage",xaxt="n",main="Average Nominal Wage Among WI Teachers",lwd=3)
-lines(1996:2015,avg_wage[1]*infl_oct1,type="l",lwd=1,col="gray")
+teacher_data[,.(mean(salary),mean(salary_real)),by=year
+             ][,matplot(year,cbind(V1,V2),type="l",xlab="Year",ylab="Nominal Wage",
+                        main="Average Nominal Wage Among WI Teachers",lwd=3,lty=1,
+                        col=c("gray","black"),xaxt="n")]
 abline(v=2012-79/365,col=2,lty=2) #wages measured 3rd Friday of September (the 16th in 2011),
                                   #which came 79 days after the enactment of Act 10 in Wisconsin.
-legend("topleft",c("Nominal Wage","PV of 1995-6 Wage"),col=c("black","gray"),lty=1,lwd=c(3,1))
+legend("topleft",c("Nominal Wage","Real Wage"),col=c("gray","black"),lty=1,lwd=3,bty="n")
 axis(1,at=seq(1996,2015,by=2))
-avg_exp<-teacher_data[,mean(total_exp,na.rm=T),by=year]$V1
-plot(1996:2015,avg_exp,ylim=range(avg_exp),lwd=3,
-     type='l',xlab="Year",ylab="Experience",xaxt="n",main="Average Total Experience Among WI Teachers")
+
+teacher_data[,.(mean(total_exp),median(total_exp)),by=year
+             ][,matplot(year,cbind(V1,V2),lwd=3,type="l",xlab="Year",
+                        ylab="Experience",xaxt="n",lty=1,col=c("black","green"),
+                        main="Total Experience Among WI Teachers")]
+legend("topright",c("Average","Median"),col=c("black","green"),lty=1,lwd=3,bty="n")
 abline(v=2012-79/365,col=2,lty=2)
 axis(1,at=seq(1996,2015,by=2))
-pct_new_teach<-teacher_data[,mean(total_exp<=1,na.rm=T),by=year]$V1
-plot(1996:2015,pct_new_teach,ylim=range(pct_new_teach),type='l',lwd=3,
-     xlab="Year",ylab="Percentage",xaxt="n",main="Prevalence of New Teachers")
+
+teacher_data[,.(100*mean(total_exp<=1),100*mean(total_exp<=5)),by=year
+             ][,matplot(year,cbind(V1,V2),type="l",lwd=3,xlab="Year",
+                        col=c("black","green"),ylab="Percentage",lty=1,
+                        xaxt="n",main="Prevalence of New Teachers")]
+legend("left",c("<=1 Year","<=5 Years"),col=c("black","green"),lty=1,lwd=3,bty="n")
 abline(v=2012-79/365,col=2,lty=2)
 axis(1,at=seq(1996,2015,by=2))
-plot(1996:2015,teacher_data[,mean(highest_degree==4,na.rm=T),by=year]$V1,lwd=3,
-     ylim=c(0.3,0.7),type='l',xlab="Year",ylab="Percentage",xaxt="n",main="Degree Holdings of Teachers")
-lines(1996:2015,teacher_data[,mean(highest_degree==5,na.rm=T),by=year]$V1,col="green",lwd=3)
+
+teacher_data[,.(100*mean(highest_degree==4),100*mean(highest_degree==5)),by=year
+             ][,matplot(year,cbind(V1,V2),type="l",lwd=3,xlab="Year",col=c("black","green"),
+                        lty=1,ylab="Percentage",xaxt="n",main="Degree Holdings of Teachers")]
 abline(v=2012-79/365,col=2,lty=2)
 axis(1,at=seq(1996,2015,by=2))
-legend(2007.5,.7,c("BA","MA"),col=c('black','green'),lty=1,lwd=3,bty="n")
+legend("left",c("BA","MA"),col=c("black","green"),lty=1,lwd=3,bty="n")
 dev.off()
 
+#****\/ STILL NEEDS TO BE MODERNIZED \/***************
 ##student data: ACT scores, AP scores, HS completion, and WSAS
 act<-fread("act_data_summary.csv")[2,seq(4,14,by=2),with=F]
 ap_n<-fread("ap_data_summary.csv")[38,1:7,with=F]
@@ -415,8 +723,6 @@ dev.off()
 ##########################################################################
 #Convert huge WSAS results files to digestible summary statistics by year
 #Also ACT score, AP scores, and HS completion data
-setwd("/home/michael/Dropbox/Third year/Merlo/")
-library(data.table)
 
 rm(list = ls(all = TRUE))
 ##WSAS first

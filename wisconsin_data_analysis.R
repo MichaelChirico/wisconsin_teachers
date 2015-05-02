@@ -8,10 +8,44 @@ library(doParallel)
 library(maptools)
 library(spdep)
 library(quantmod)
+library(xtable)
 
-# Convenient functions
+# Convenient functions ####
 create_quantiles<-function(x,num,right=F,include.lowest=T,na.rm=T){
   cut(x,breaks=quantile(x,probs=seq(0,1,by=1/num),na.rm=T),labels=1:num,right=right,include.lowest=include.lowest)
+}
+
+prop.table2<-function(...,exclude=if(useNA=="no")c(NA,NaN),useNA=c("no","ifany", "always"),
+                      dnn=list.names(...),deparse.level=1,margin=NULL,pct=F,ndig=NULL){
+  list.names <- function(...) {
+    l <- as.list(substitute(list(...)))[-1L]
+    nm <- names(l)
+    fixup <- if (is.null(nm)) 
+      seq_along(l)
+    else nm == ""
+    dep <- vapply(l[fixup], function(x) switch(deparse.level + 
+                                                 1, "", if (is.symbol(x)) as.character(x) else "", 
+                                               deparse(x, nlines = 1)[1L]), "")
+    if (is.null(nm)) 
+      dep
+    else {
+      nm[fixup] <- dep
+      nm
+    }
+  }
+  if (!missing(exclude) && is.null(exclude)) 
+    useNA <- "always"
+  useNA <- match.arg(useNA)
+  ttable<-prop.table(table(...,exclude=exclude,useNA=useNA,dnn=dnn,deparse.level=1),margin=margin)
+  if (pct) round(100*ttable,ndig) else ttable
+}
+
+ntostring<-function(n,digits=2){
+  paste0(ifelse(log10(n)<digits-1,
+                substr(n+10^digits,2,digits+1),
+                ifelse(log10(n)>=digits,
+                       substr(n,nchar(n)-digits+1,nchar(n)),
+                       n)))
 }
 
 #Using the district-level average wage files for the teachers ####
@@ -151,12 +185,13 @@ for (tt in 1995:2014){
   #SHOULD TRY AND DELVE INTO THIS MORE LATER, but for now--delete any record of teachers working since before age 17
   # Also delete teachers earning less than $15,000 and older than 40
   # Also delete teachers with degrees besides bachelors and masters
-  # Also delete teachers with outside (0,30] years experience
+  # Also delete teachers with outside (0,31] years experience
+  #      (later restrict to <=30, but need to record retirement first)
   # Also delete all CESAs
   # Also delete any teacher with fringe pay > salary (probably typo--0.5% of teachers)
   # Also delete one teacher w fringe < 0
   dummy<-dummy[age-total_exp>17&salary>=15000&highest_degree %in% c("4","5")
-               &substr(agency,1,2)!="99"&salary>fringe&fringe>=0&total_exp_floor<=30
+               &substr(agency,1,2)!="99"&salary>fringe&fringe>=0&total_exp_floor<=31
                &total_exp_floor>0,]
   
   #create year dummy for appending data next
@@ -406,7 +441,7 @@ teacher_data<-
                  data_2001,data_2002,data_2003,data_2004,data_2005,
                  data_2006,data_2007,data_2008,data_2009,data_2010,
                  data_2011,data_2012,data_2013,data_2014,data_2015),
-            fill=T); rm(list=ls(pattern="data_"))
+            fill=T)[total_exp_floor<=30,]; rm(list=ls(pattern="data_"))
 
 teacher_data[,multiples:=.N,by=.(teacher_id,year)]
 #Delete history for any multi-matched teachers (down to only a few at this point)
@@ -414,16 +449,22 @@ teacher_data<-teacher_data[!(teacher_id %in% teacher_data[multiples!=1,teacher_i
 setkey(teacher_data,teacher_id,year)
 
 #some full-sample variables:
+## identify the "earliest" years for each teacher
+##  (could help identify returners)
+teacher_data[,is_first_year:=year==year[1],by=teacher_id]
+## count number of job-to-job transitions per teacher
+teacher_data[,count_moves:=sum(move),by=teacher_id]
 ## did the teacher certify?
 teacher_data[,certified:=shift(highest_degree)[[1]]!=highest_degree,by=teacher_id]
 ## how many years of data do we have for each teacher?
-teacher_data[,years_tracked:=year[.N]-year[1]+1,by=teacher_id]
+teacher_data[,years_tracked:=.N,by=teacher_id]
 ## useful to track first and last recorded year for each teacher
 teacher_data[,c("first_year","last_year"):=.(year[1],year[.N]),by=teacher_id]
 ## is my trajectory for this teacher censored by the data's beginning or end?
 teacher_data[,paste0(c("left_","right_"),"censored"):=.(first_year==1996,last_year==2015),by=teacher_id]
 ## add forward-looking indicators
-frwd_vars<-c(paste0("move",c("","_school","_district")),"married","quit","salary","fringe","total_pay","certified")
+frwd_vars<-c(paste0("move",c("","_school","_district")),"married","quit",
+             "salary","fringe","total_pay","certified","agency")
 teacher_data[,paste0(frwd_vars,"_next"):=shift(.SD,type="lead"),by=teacher_id,.SDcols=frwd_vars]
 teacher_data[,paste0(frwd_vars,"_pl5"):=shift(.SD,n=5L,type="lead"),by=teacher_id,.SDcols=frwd_vars]; rm(frwd_vars)
 
@@ -593,57 +634,272 @@ rm(tpf)
 
 teacher_data[,potential_earnings:=total_pay_loc_val-total_pay_future]
 
+## District Demographic Data ####
+### Common Core of Data
+### ***SHOULD EXPAND TO OTHER YEARS BY AGGREGATING SCHOOL-LEVEL FILES***
+ccd_11<-fread("/media/data_drive/common_core/district/universe_10_11_2a.txt",
+              select=c("FIPST","STID","ULOCAL","HISP","BLACK","MEMBER"),
+              colClasses=list(character=c("FIPST","STID"),
+                              factor="ULOCAL",
+                              integer=c("HISP","BLACK","MEMBER")))[FIPST=="55",][,FIPST:=NULL][,year:=2011]
+ccd_12<-fread("/media/data_drive/common_core/district/universe_11_12_1a.txt",
+              select=c("FIPST","STID","ULOCAL","HISP","BLACK","MEMBER"),
+              colClasses=list(character=c("FIPST","STID"),
+                              factor="ULOCAL",
+                              integer=c("HISP","BLACK","MEMBER")))[FIPST=="55",][,FIPST:=NULL][,year:=2012]
+ccd_13<-fread("/media/data_drive/common_core/district/universe_12_13_1a.txt",
+              select=c("FIPST","STID","ULOCAL","HISP","BLACK","MEMBER"),
+              colClasses=list(character=c("FIPST","STID"),
+                              factor="ULOCAL",
+                              integer=c("HISP","BLACK","MEMBER")))[FIPST=="55",][,FIPST:=NULL][,year:=2013]
+
+ccd<-setnames(setkey(rbindlist(list(ccd_11,ccd_12,ccd_13)),year,STID),
+              c("stid","ulocal","n_students","n_hispanic","n_black","year"))[n_students>0,]; rm(list=ls(pattern="ccd_"))
+
+#Eliminate schools not present all 3 years
+ccd<-ccd[!stid %in% ccd[,.N,by=stid][N<3,stid],]
+
+ccd[,pct_hispanic:=n_hispanic/n_students]
+ccd[,pct_black:=n_black/n_students]
+ccd[,urbanicity:=ifelse(substr(ulocal,1,1)=="1","City",
+                        ifelse(substr(ulocal,1,1)=="2","Suburb",
+                               ifelse(substr(ulocal,1,1)=="3","Town","Rural")))]
+
+setkey(teacher_data,year,agency)[ccd,`:=`(pct_hispanic=pct_hispanic,
+                                          pct_black=pct_black,
+                                          urbanicity=urbanicity)]
+
+setkey(teacher_data,year,agency_next)[ccd,`:=`(pct_hispanic_next=i.pct_hispanic,
+                                               pct_black_next=i.pct_black,
+                                               urbanicity_next=i.urbanicity)]
+
+###School Testing Data
+
+####WSAS Wisconsin Student Assessment System
+####WKCE Wisconsin Knowledge and Concepts Examination
+####  Only use mathematics scores for now
+wsas_data<-setkey(setnames(
+  rbindlist(lapply(paste(ntostring(5:13),ntostring(6:14),sep="-"),
+                   function(x){fread(paste0("/media/data_drive/wisconsin/",
+                                            "wsas_current_20",x,".csv"),na.strings="*"
+                   )[GRADE_GROUP=="[All]"&DISTRICT_CODE!="0000"&
+                       !TEST_RESULT %in% c("*","No WSAS")
+                     &TEST_GROUP=="WKCE"&GROUP_BY=="All Students"
+                     &TEST_SUBJECT=="Mathematics"
+                     &TEST_RESULT_CODE %in% c(3,4),
+                     ][,.(year=substr(x,4,5),
+                          pct_proficient=sum(as.numeric(PERCENT_OF_GROUP))),
+                       by=DISTRICT_CODE][,pct_prof_pctl:=ecdf(pct_proficient)(pct_proficient)]})),
+  "DISTRICT_CODE","stid"),year,stid)
+
+####Now ACT scores
+#### Only look at Math for now
+act_data<-setkey(setnames(
+  rbindlist(lapply(paste(ntostring(7:12),ntostring(8:13),sep="-"),
+                   function(x){fread(paste0("/media/data_drive/wisconsin/",
+                                            "act_certified_20",x,".csv"),na.strings="*"
+                   )[GRADE_GROUP=="[All]"&DISTRICT_CODE!="0000"&TEST_RESULT!="*"
+                     &GROUP_BY=="All Students"&TEST_RESULT=="College ready"
+                     &TEST_SUBJECT=="Mathematics",
+                     ][,.(DISTRICT_CODE,year=substr(x,4,5),
+                          pct_college_ready=
+                            as.numeric(STUDENT_COUNT)/
+                            as.numeric(GROUP_COUNT))
+                       ][,pct_coll_ready_pctl:=ecdf(pct_college_ready)(pct_college_ready)]})),
+  "DISTRICT_CODE","stid"),year,stid)
+
+####Now AP scores
+#### only look at Calc AB for now
+ap_data<-setkey(setnames(
+  rbindlist(lapply(paste(ntostring(6:12),ntostring(7:13),sep="-"),
+                   function(x){fread(paste0("/media/data_drive/wisconsin/",
+                                            "ap_certified_20",x,".csv"),na.strings="*"
+                   )[DISTRICT_CODE!="0000"&TEST_SUBJECT=="Calculus AB"
+                     &GROUP_BY=="All Students"&GRADE_GROUP=="[All]"&
+                       !is.na(PERCENT_3_OR_ABOVE),
+                     ][,.(DISTRICT_CODE,year=substr(tt,4,5),PERCENT_3_OR_ABOVE)
+                       ][,pct_3_or_above_pctl:=ecdf(PERCENT_3_OR_ABOVE)(PERCENT_3_OR_ABOVE)]})),
+  c("DISTRICT_CODE","PERCENT_3_OR_ABOVE"),c("stid","pct_3_or_above")),year,stid)
+
+####Finally HS completion
+#### Only look at regular completion for now
+#### Details on differences: http://lbstat.dpi.wi.gov/lbstat_datahsc
+dropout_data<-setkey(setnames(
+  rbindlist(lapply(paste(ntostring(9:12),ntostring(10:13),sep="-"),
+                   function(x){fread(paste("/media/data_drive/wisconsin/",
+                                           "hs_completion_certified_20",tt,".csv",sep=""),na.strings="*"
+                   )[GRADE_GROUP=="[All]"&DISTRICT_CODE!="0000"&GROUP_BY=="All Students"
+                     &COMPLETION_STATUS=="Completed - Regular"&!is.na(STUDENT_COUNT),
+                     ][,.(DISTRICT_CODE,year=substr(x,4,5),
+                          pct_dropout=1-as.numeric(STUDENT_COUNT)/as.numeric(COHORT_COUNT))
+                       ][,pct_grad_pctl:=ecdf(pct_dropout)(pct_dropout)]})),
+  "DISTRICT_CODE","stid"),year,stid)
+
 # Finally, some data analysis ####
 
-plot_given<-function(yr,ag,hd){
-  ag<-as.character(ag)
-  hd<-as.character(hd)
-  salary_scales[.(yr,ag,hd),plot(total_exp_floor,salary,type="l",col="black",lwd=3,xlab="Experience",ylab="$",
-                                 ylim=range(salary_scales[.(yr,ag,hd),c("salary","total_pay"),with=F],
-                                            teacher_data[.(yr,ag,hd),c("salary","total_pay"),with=F]))]
-  salary_scales[.(yr,ag,hd),lines(total_exp_floor,total_pay,col="red",lwd=3)]
-  teacher_data[.(yr,ag,hd),points(total_exp_floor,salary,col="black")]
-  teacher_data[.(yr,ag,hd),points(total_exp_floor,total_pay,col="red",pch=3)]
-}
+#Compare my turnover data to results in Texas from Hanushek, Kain, O'Brien and Rivkin
+print(xtable(matrix(unlist(cbind(
+  c("Wisconsin","1 year",
+    paste(c("2-3","4-6","7-11","12-21",">21"),"years"),
+    "Texas","1 year",
+    paste(c("2-3","4-6","7-11","12-21",">21"),"years")),
+  rbind(as.data.table(rbind(rep(NA,4))),
+        teacher_data[.(unique(year),"3619"),.(move_school,move_district,quit,
+                        exp_cut=cut(total_exp_floor,
+                                    breaks=c(1,2,4,7,12,22,31),
+                                    include.lowest=T,
+                                    labels=c("1","2-3","4-6","7-11",
+                                             "12-21",">21"),right=F))
+                     ][,.(round(100*mean(!quit&!move_school,na.rm=T),1),
+                          round(100*mean(move_school&!move_district,na.rm=T),1),
+                          round(100*mean(move_district,na.rm=T),1),
+                          round(100*mean(quit,na.rm=T),1)),by=exp_cut
+                       ][,!"exp_cut",with=F],
+        as.data.table(rbind(rep(NA,4),
+                            #Numbers from Table A1
+                            c(70.4,11.5,4.0,14.0),
+                            c(70.8,11.2,5.0,13.0),
+                            c(77.0,10.4,5.4,7.2),
+                            c(79.7,10.6,4.3,5.4),
+                            c(86.2,8.3,2.0,3.5),
+                            c(86.5,5.7,0.7,7.2)))))),ncol=5,
+  dimnames=list(rep("",14),
+                c("Teacher Experience","No Move",
+                  "Change Campus","Change District",
+                  "Exit Public Schools"))),
+  caption="Teacher Transitions by Teacher Experience, WI and TX",
+  label="table:exp_comp_wi_tx",
+  align="lp{1.8cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.8cm}"),
+  include.rownames=F,hline.after=c(-1,0,7,14))
+
+#Comparing Turnover matrix by urbanicity to that in HKR '04 (JHR)
+teacher_data[move_district_next==1,prop.table2(urbanicity,urbanicity_next,margin=1,pct=T,ndig=1)]
+
+#Evolution of Turnover by Experience Across Time
+graphics.off()
+dev.new()
+pdf("wisconsin_turnover_stats_by_5ennial.pdf")
+dev.set(which=dev.list()["RStudioGD"])
+##By District
+layout(mat=matrix(c(1,3,5,2,4,5),nrow=3),heights=c(.4,.4,.2))
+par(oma=c(0,0,3,0))
+par(mar=c(0,4.1,4.1,2.1))
+matplot(1:30,dcast.data.table(
+  teacher_data[,.(total_exp_floor,move_district,
+                  cut(year,breaks=c(1996,2001,2006,2011,2016),
+                      include.lowest=T,
+                      labels=c("96-00","01-05","06-10","11-15"),right=F))
+               ][,mean(move_district,na.rm=T),by=.(total_exp_floor,V3)],
+  total_exp_floor~V3,value.var="V1")[,!"total_exp_floor",with=F],
+        ylab="% Changing Districts",xaxt="n",main="Change Districts",
+        type="l",lty=1,lwd=3,col=c("black","blue","red","green"))
+
+##By School
+par(mar=c(0,4.1,4.1,2.1))
+matplot(1:30,dcast.data.table(
+  teacher_data[,.(total_exp_floor,move_school&!move_district,
+                  cut(year,breaks=c(1996,2001,2006,2011,2016),
+                      include.lowest=T,
+                      labels=c("96-00","01-05","06-10","11-15"),right=F))
+               ][,mean(V2,na.rm=T),by=.(total_exp_floor,V3)],
+  total_exp_floor~V3,value.var="V1")[,!"total_exp_floor",with=F],
+  ylab="% Changing Schools",xaxt="n",main="Change Schools",
+  type="l",lty=1,lwd=3,col=c("black","blue","red","green"))
+
+##Quit rates
+par(mar=c(5.1,4.1,0,2.1))
+matplot(1:30,dcast.data.table(
+  teacher_data[,.(total_exp_floor,quit,
+                  cut(year,breaks=c(1996,2001,2006,2011,2016),
+                      include.lowest=T,
+                      labels=c("96-00","01-05","06-10","11-15"),right=F))
+               ][,mean(quit,na.rm=T),by=.(total_exp_floor,V3)],
+  total_exp_floor~V3,value.var="V1")[,!"total_exp_floor",with=F],
+  xlab="Experience",ylab="% Leaving WI",
+  main="\n Leaving WI Public Schools",
+  type="l",lty=1,lwd=3,col=c("black","blue","red","green"))
+
+##Degree Holdings
+par(mar=c(5.1,4.1,0,2.1))
+matplot(1:30,dcast.data.table(
+  teacher_data[year!=1996,.(total_exp_floor,highest_degree,
+                  cut(year,breaks=c(1996,2001,2006,2011,2016),
+                      include.lowest=T,
+                      labels=c("96-00","01-05","06-10","11-15"),right=F))
+               ][,.(mean(highest_degree=="4",na.rm=T),
+                    mean(highest_degree=="5",na.rm=T)),by=.(total_exp_floor,V3)],
+  total_exp_floor~V3,value.var=c("V1","V2"))[,!"total_exp_floor",with=F],
+  xlab="Experience",ylab="% Holding",
+  main="\n Degree Holdings",
+  type="l",lty=c(rep(1,4),rep(2,4)),lwd=3,col=rep(c("black","blue","red","green"),2))
+legend("left",legend=c("MA","BA"),lty=c(2,1),lwd=3,bty="n",cex=.5)
+
+par(mar=c(0,0,0,0))
+plot(1,type="n",axes=F,xlab="",ylab="")
+legend("top",legend=c("96-00","01-05","06-10","11-15"),lty=1,lwd=2,
+       col=c("black","blue","red","green"),horiz=T,inset=0)
+mtext("WI Turnover Moments",side=3,line=-1.5,outer=T)
+dev.copy(which=dev.list()["pdf"])
+dev.off(which=dev.list()["pdf"])
+
 
 #plotting the salary schedules for the 5 most populous agencies over the first 30 years
-postscript('wisconsin_salary_tables_imputed_05_big5_base.ps')
-par(mfrow=c(1,2))
-matplot(1:40,dcast.data.table(salary_scales[.(2005,c("3619","3269","4620","2793","2289"),"4"),
-                               !c("fringe","total_pay"),with=F],
-                 total_exp_floor~agency,value.var="salary")[,!"total_exp_floor",with=F],
-        xlab="Experience",ylab="$",main="Imputed Salary Schedules (BA)\n5 Biggest WI Districts, 2004-05",
-        lty=1,type="l",col=c("black","red","blue","green","purple"),lwd=3)
-legend("bottomright",legend=c("Milwaukee","Madison","Racine","Kenosha","Green Bay"),
+biggest_5<-sort(teacher_data[.(2015,unique(agency)),.N,by=agency][order(N)][(.N-4):.N,agency])
+biggest_5_names<-c("Green Bay","Kenosha","Madison","Milwaukee","Racine")
+rng<-salary_scales[.(2015,rep(biggest_5,2),rep(c("4","5"),5)),range(range(total_pay),range(salary))]
+graphics.off()
+dev.new()
+pdf("wisconsin_salary_tables_imputed_15_big5_ba.pdf")
+dev.set(which=dev.list()["RStudioGD"])
+matplot(1:30,dcast.data.table(salary_scales[.(2015,biggest_5,"4"),
+                               c("agency","total_exp_floor","salary","total_pay"),with=F],
+                 total_exp_floor~agency,value.var=c("salary","total_pay"))[,!"total_exp_floor",with=F],
+        xlab="Experience",ylab="$",main="BA",ylim=rng,
+        lty=c(rep(1,5),rep(2,5)),type="l",col=rep(c("black","red","blue","green","purple"),2),lwd=3)
+legend("topleft",legend=biggest_5_names,bty="n",cex=.6,
        col=c("black","red","blue","green","purple"),lty=1,lwd=3)
+legend("bottomright",legend=c("Total Pay","Base Pay"),cex=.6,
+       lty=c(1,2),lwd=3,col="black",bty="n")
+dev.copy(which=dev.list()["pdf"])
+dev.off(which=dev.list()["pdf"])
 
-matplot(1:40,dcast.data.table(salary_scales[.(2005,c("3619","3269","4620","2793","2289"),"5"),
-                                            !c("fringe","total_pay"),with=F],
-                              total_exp_floor~agency,value.var="salary")[,!"total_exp_floor",with=F],
-        xlab="Experience",ylab="$",main="Imputed Salary Schedules (MA)\n5 Biggest WI Districts, 2004-05",
-        lty=1,type="l",col=c("black","red","blue","green","purple"),lwd=3)
-legend("bottomright",legend=c("Milwaukee","Madison","Racine","Kenosha","Green Bay"),
+graphics.off()
+dev.new()
+pdf("wisconsin_salary_tables_imputed_15_big5_ma.pdf")
+dev.set(which=dev.list()["RStudioGD"])
+matplot(1:30,dcast.data.table(salary_scales[.(2015,biggest_5,"5"),
+                                            c("agency","total_exp_floor","salary","total_pay"),with=F],
+                              total_exp_floor~agency,value.var=c("salary","total_pay"))[,!"total_exp_floor",with=F],
+        xlab="Experience",ylab="$",main="MA",ylim=rng,
+        lty=c(rep(1,5),rep(2,5)),type="l",col=rep(c("black","red","blue","green","purple"),2),lwd=3)
+legend("topleft",legend=biggest_5_names,bty="n",cex=.6,
        col=c("black","red","blue","green","purple"),lty=1,lwd=3)
-dev.off()
+legend("bottomright",legend=c("Total Pay","Base Pay"),cex=.6,
+       lty=c(1,2),lwd=3,col="black",bty="n")
+dev.copy(which=dev.list()["pdf"])
+dev.off(which=dev.list()["pdf"])
 
-postscript('wisconsin_salary_tables_imputed_05_big5_total.ps')
-par(mfrow=c(1,2))
-matplot(1:40,dcast.data.table(salary_scales[.(2005,c("3619","3269","4620","2793","2289"),"4"),
-                                            !c("fringe","salary"),with=F],
-                              total_exp_floor~agency,value.var="total_pay")[,!"total_exp_floor",with=F],
-        xlab="Experience",ylab="$",main="Imputed Total Pay Schedules (BA)\n5 Biggest WI Districts, 2004-05",
-        lty=1,type="l",col=c("black","red","blue","green","purple"),lwd=3)
-legend("bottomright",legend=c("Milwaukee","Madison","Racine","Kenosha","Green Bay"),
-       col=c("black","red","blue","green","purple"),lty=1,lwd=3)
+# Contrast with a sparsely-populated district (say 20 teachers)
+# code to find one: teacher_data[max_exp<30&min_exp>1,.N,by=.(year,agency,highest_degree)][N==20,]
+# Current example: (2015,"5960","4")
+lims<-range(range(teacher_data[.(2015,"5960","4"),.(salary,total_pay)]),
+            range(salary_scales[.(2015,"5960","4"),.(salary,total_pay)]))
+matplot(1:30,salary_scales[.(2015,"5960","4"),.(salary,total_pay)],
+        xlab="Experience",ylab="$",type="l",lty=1,lwd=3,ylim=lims,
+        main="Salary and Total Pay \n Kickapoo, WI, 2015, BA")
+teacher_data[.(2015,"5960","4"),points(total_exp_floor,salary,col="black")]
+teacher_data[.(2015,"5960","4"),points(total_exp_floor,total_pay,col="red")]
 
-matplot(1:40,dcast.data.table(salary_scales[.(2005,c("3619","3269","4620","2793","2289"),"5"),
-                                            !c("fringe","salary"),with=F],
-                              total_exp_floor~agency,value.var="total_pay")[,!"total_exp_floor",with=F],
-        xlab="Experience",ylab="$",main="Imputed Total Pay Schedules (MA)\n5 Biggest WI Districts, 2004-05",
-        lty=1,type="l",col=c("black","red","blue","green","purple"),lwd=3)
-legend("bottomright",legend=c("Milwaukee","Madison","Racine","Kenosha","Green Bay"),
-       col=c("black","red","blue","green","purple"),lty=1,lwd=3)
-dev.off()
+#How do wages change surrounding a move?
+# (use only one-time switchers for now--SHOULD CHANGE THIS)
+one_time_movers<-
+  teacher_data[count_moves==1,
+               ][,move_year_no:=which(move==1),
+                 by=teacher_id][move_year_no>=9&move_year_no<=(years_tracked-8),
+                                ][,year_rel:=year-year[move_year_no],by=teacher_id
+                                  ][year_rel %in% -8:8,]
+
+one_time_movers[,mean(total_pay),by=year_rel][order(year_rel)][,plot(year_rel,V1)]
 
 #now make some summary plots
 ##teacher wages, teacher experience, and proportion of 1st-year teachers
@@ -681,121 +937,3 @@ abline(v=2012-79/365,col=2,lty=2)
 axis(1,at=seq(1996,2015,by=2))
 legend("left",c("BA","MA"),col=c("black","green"),lty=1,lwd=3,bty="n")
 dev.off()
-
-#****\/ STILL NEEDS TO BE MODERNIZED \/***************
-##student data: ACT scores, AP scores, HS completion, and WSAS
-act<-fread("act_data_summary.csv")[2,seq(4,14,by=2),with=F]
-ap_n<-fread("ap_data_summary.csv")[38,1:7,with=F]
-ap<-fread("ap_data_summary.csv")[38,8:14,with=F]/ap_n # % students with 3 or above on all AP exams
-ap_calc_ab_n<-fread("ap_data_summary.csv")[3,1:7,with=F]
-ap_calc_ab<-fread("ap_data_summary.csv")[3,8:14,with=F]/ap_n # % students with 3 or above on AP CALC AB
-hs<-fread("hs_completion_data_summary.csv")
-hs_4yr<-colSums(hs[c(1,4,7),seq(4,10,by=2),with=F])/hs[1,seq(3,9,by=2),with=F] #4-year graduation rate
-hs_5yr<-colSums(hs[c(2,5,8),seq(4,10,by=2),with=F])/hs[2,seq(3,9,by=2),with=F] #5-year graduation rate
-wsas_math_adv_prof<-colSums(fread("wsas_data_summary.csv")[c(5,8),seq(4,20,by=2),with=F]) #Advanced or Proficient rate on state exam
-wsas_math_adv<-fread("wsas_data_summary.csv")[5,seq(4,20,by=2),with=F] #Advanced rate on state exam
-
-postscript('student_outcomes_state_level.ps')
-par(mfrow=c(2,2))
-plot(cbind(2006,2014),c(0,100),type='n',xlab="Year",ylab="% Students",xaxt="n",main="WSAS (State Exam) Score Performance")
-axis(1,at=seq(1996,2014,by=2))
-lines(cbind(2006:2014,wsas_math_adv_prof),col=1)
-lines(cbind(2006:2014,wsas_math_adv),col=3)
-legend(2006,100,c("Advanced or Proficient","Advanced"),col=c('black','green'),lty=1,bty="n")
-abline(v=2012-79/365,col=2,lty=2)
-plot(cbind(2006,2014),c(0.8,1),type='n',xlab="Year",ylab="% Students",xaxt="n",main="Percent of Students Graduating")
-axis(1,at=seq(1996,2014,by=2))
-lines(cbind(2010:2013,t(hs_4yr)),col=1)
-lines(cbind(2010:2013,t(hs_5yr)),col=3)
-legend(2006,1,c("4-year rate","5-year rate"),col=c('black','green'),lty=1,bty="n")
-abline(v=2012-79/365,col=2,lty=2)
-plot(cbind(2006,2014),range(act),type='n',xlab="Year",ylab="ACT Score",xaxt="n",main="Average ACT Score, WI")
-axis(1,at=seq(1996,2014,by=2))
-lines(cbind(2008:2013,t(act)))
-abline(v=2012-79/365,col=2,lty=2)
-plot(cbind(2006,2014),c(0,1),type='n',xlab="Year",ylab="% Students",xaxt="n",main="Percent of Students Achieving 3 \nor Above on AP Exams")
-axis(1,at=seq(1996,2014,by=2))
-lines(cbind(2007:2013,t(ap)),col=1)
-lines(cbind(2007:2013,t(ap_calc_ab)),col=3)
-legend(2008,.6,c("All exams","Calculus AB"),col=c('black','green'),lty=1,bty="n")
-abline(v=2012-79/365,col=2,lty=2)
-dev.off()
-##########################################################################
-#Convert huge WSAS results files to digestible summary statistics by year
-#Also ACT score, AP scores, and HS completion data
-
-rm(list = ls(all = TRUE))
-##WSAS first
-years<-paste(substr(as.character(105:113),2,3),substr(as.character(106:114),2,3),sep="-")
-
-for (tt in 1:length(years)){
-  data<-fread(paste("wsas_current_20",years[tt],".csv",sep=""))
-  data<-data[data$GRADE_GROUP=="[All]"&data$DISTRICT_NAME=="[Statewide]"&data$TEST_RESULT!="No WSAS"&data$TEST_GROUP=="WKCE"&data$GROUP_BY=="All Students",]
-  data<-data[,c("TEST_SUBJECT","TEST_RESULT","STUDENT_COUNT","PERCENT_OF_GROUP"),with=F]
-  setkey(data,TEST_SUBJECT,TEST_RESULT)
-  setnames(data,c("STUDENT_COUNT","PERCENT_OF_GROUP"),c(paste(c("student_count","percent_of_group"),substr(years[tt],4,5),sep="_")))
-  assign(paste("data_",substr(years[tt],4,5),sep=""),data)
-}
-rm(data)
-
-wsas_data_summary<-data_06[data_07][data_08][data_09][data_10][data_11][data_12][data_13][data_14]
-setnames(wsas_data_summary,key(wsas_data_summary),tolower(key(wsas_data_summary)))
-write.csv(wsas_data_summary,file="wsas_data_summary.csv",row.names=F,quote=F)
-
-rm(list = ls(all = TRUE))
-##Now ACT scores
-years<-paste(substr(as.character(107:112),2,3),substr(as.character(108:113),2,3),sep="-")
-
-for (tt in 1:length(years)){
-  data<-fread(paste("act_certified_20",years[tt],".csv",sep=""))
-  data<-data[data$GRADE_GROUP=="[All]"&data$DISTRICT_NAME=="[Statewide]"&data$TEST_RESULT!="*"&data$GROUP_BY=="All Students",]
-  data<-data[,c("TEST_SUBJECT","TEST_RESULT","STUDENT_COUNT","AVERAGE_SCORE"),with=F]
-  setkey(data,TEST_SUBJECT,TEST_RESULT)
-  setnames(data,c("STUDENT_COUNT","AVERAGE_SCORE"),c(paste(c("student_count","average_score"),substr(years[tt],4,5),sep="_")))
-  assign(paste("data_",substr(years[tt],4,5),sep=""),data)
-}
-rm(data)
-
-act_data_summary<-data_08[data_09][data_10][data_11][data_12][data_13]
-setnames(act_data_summary,key(act_data_summary),tolower(key(act_data_summary)))
-write.csv(act_data_summary,file="act_data_summary.csv",row.names=F,quote=F)
-
-rm(list = ls(all = TRUE))
-##Now AP scores
-years<-paste(substr(as.character(106:112),2,3),substr(as.character(107:113),2,3),sep="-")
-
-for (tt in 1:length(years)){
-  data<-fread(paste("ap_certified_20",years[tt],".csv",sep=""))
-  data<-data[data$GRADE_GROUP=="[All]"&data$DISTRICT_NAME=="[Statewide]"&data$GROUP_BY=="All Students",]
-  data<-data[,c("TEST_SUBJECT","STUDENTS_TESTED","EXAM_COUNT","EXAMS_3_OR_ABOVE"),with=F]
-  data$EXAMS_3_OR_ABOVE<-as.numeric(data$EXAMS_3_OR_ABOVE) #privacy laws prevent disclosure when few enough students sit; eliminate asterisks
-  setkey(data,TEST_SUBJECT)
-  setnames(data,c("STUDENTS_TESTED","EXAM_COUNT","EXAMS_3_OR_ABOVE"),
-                c(paste(tolower(c("STUDENTS_TESTED","EXAM_COUNT","EXAMS_3_OR_ABOVE")),substr(years[tt],4,5),sep="_")))
-  assign(paste("data_",substr(years[tt],4,5),sep=""),data)
-}
-rm(data)
-
-ap_data_summary<-data_07[data_08][data_09][data_10][data_11][data_12][data_13]
-ap_data_summary<-data_07[data_13][data_09][data_10][data_11][data_12][data_08] #'08 data encompasses the most exams
-setnames(ap_data_summary,key(ap_data_summary),tolower(key(ap_data_summary)))
-setcolorder(ap_data_summary,sort(names(ap_data_summary)))
-write.csv(ap_data_summary,file="ap_data_summary.csv",row.names=F,quote=F)
-
-rm(list = ls(all = TRUE))
-##Finally HS completion
-years<-paste(substr(as.character(109:112),2,3),substr(as.character(110:113),2,3),sep="-")
-
-for (tt in 1:length(years)){
-  data<-fread(paste("hs_completion_certified_20",years[tt],".csv",sep=""))
-  data<-data[data$GRADE_GROUP=="[All]"&data$DISTRICT_NAME=="[Statewide]"&data$GROUP_BY=="All Students",]
-  data<-data[,c("COMPLETION_STATUS","COHORT_COUNT","TIMEFRAME","STUDENT_COUNT"),with=F]
-  setkey(data,COMPLETION_STATUS,TIMEFRAME)
-  setnames(data,c("COHORT_COUNT","STUDENT_COUNT"),c(paste(c("cohort_count","student_count"),substr(years[tt],4,5),sep="_")))
-  assign(paste("data_",substr(years[tt],4,5),sep=""),data)
-}
-rm(data)
-
-hs_completion_data_summary<-data_10[data_11][data_12][data_13] #'08 data encompasses the most exams
-setnames(hs_completion_data_summary,key(hs_completion_data_summary),tolower(key(hs_completion_data_summary)))
-write.csv(hs_completion_data_summary,file="hs_completion_data_summary.csv",row.names=F,quote=F)

@@ -1,6 +1,7 @@
 ##Wisconsin Data Exploration
 
 # Package setup & Convenient Functions ####
+rm(list=ls(all=T))
 setwd("/home/michael/Desktop/research/Wisconsin Bargaining")
 library(data.table)
 library(cobs)
@@ -9,6 +10,9 @@ library(maptools)
 library(spdep)
 library(quantmod)
 library(xtable)
+library(xlsx)
+library(nnet)
+library(texreg)
 
 # Convenient functions ####
 create_quantiles<-function(x,num,right=F,include.lowest=T,na.rm=T){
@@ -48,91 +52,54 @@ ntostring<-function(n,digits=2){
                        n)))
 }
 
-#Using the district-level average wage files for the teachers ####
-rm(list = ls(all = TRUE))
+# Using the district-level average wage files for the teachers ####
 
-years <- 1998:2012
 ##Data is from fall, but I prefer to think of an academic year as its spring year, so add one
-
-for (tt in years){
-  data<-setnames(
-    setnames(setkey(
-      fread(paste("salaries_by_district_wi_",
-                  ifelse((tt%%100)<10,paste0("0",tt%%100),
-                         tt%%100),".csv",sep=""))[,Year:=NULL],
-      dist_no),paste(c("district","dist_no","city_code","cesa",
-                       "pos_code","position","low_salary","high_salary","avg_salary",
-                       "avg_fringe","avg_exp_local","avg_exp_total"),tt+1,sep="_")),
-    paste0("dist_no_",tt+1),"dist_no")
-  print(data[is.na(as.numeric(get(paste0("avg_fringe_",tt+1)))),])
-  to_numeric<-paste(c("low_salary","high_salary","avg_salary","avg_fringe"),tt+1,sep="_")
-  data[,(to_numeric):=lapply(.SD,as.numeric),.SDcols=to_numeric]
-  assign(paste("data",tt+1,sep="_"),data)
-}
-rm(data)
-
-data_2014<-setnames(
-  setnames(setkey(
-    fread("salaries_by_district_wi_13.csv")[,YEAR:=NULL],dist_no),
-    paste(c("district","dist_no","city_code","cesa",
-            "pos_code","position","low_salary","high_salary","avg_salary",
-            "avg_fringe","avg_exp_local","avg_exp_total"),2014,sep="_")),
-  "dist_no_2014","dist_no")
-
-#merge data by district number
-##**Need to be more careful about which districts are dropped**
-##  (set of districts not stable across time)
-data<-Reduce(merge,list(data_1999,data_2000,data_2001,data_2002,
-                        data_2003,data_2004,data_2005,data_2006,
-                        data_2007,data_2008,data_2009,data_2010,
-                        data_2011,data_2012,data_2013,data_2014))
-setcolorder(data,sort(names(data)))
-
-write.csv(data,"salaries_by_district_wi.csv",row.names=F,quote=F)
+to_numeric<-c("low_salary","high_salary","avg_salary","avg_fringe")
+agg_salary_data<-setkey(setnames(
+  rbindlist(lapply(1998:2013,
+                   function(x){fread(paste0("/media/data_drive/wisconsin/",
+                                            "salaries_by_district_wi_",substr(x,3,4),".csv")
+                   )[,year:=x+1]}),fill=T)[,Year:=NULL],
+  c("district","dist_no","city_code","cesa",
+    "pos_code","position","low_salary","high_salary","avg_salary",
+    "avg_fringe","avg_exp_local","avg_exp_total","year")),dist_no
+)[,(to_numeric):=lapply(.SD,as.numeric),.SDcols=to_numeric]
 
 #plot the three series, including a line demarcating the implementation of Act 10
 graphics.off()
 dev.new()
 pdf("wage_series_unweighted_all_dist.pdf")
 dev.set(which=dev.list()["RStudioGD"])
-plot(cbind(1998,2013),range(data[,colMeans(as.matrix(.SD),na.rm=T),
-                                 .SDcols=c(paste0("avg_salary_",1999:2014),
-                                           paste0("high_salary_",1999:2014),
-                                           paste0("low_salary_",1999:2014))]),
-     type='n',xlab="Year",ylab="Nominal Wage",xaxt="n",
-     main="Low, Average, and High Salaries \n In Wisconsin Across Time")
+matplot(1998:2013,agg_salary_data[,lapply(.SD,mean,na.rm=T),by=year,
+                                  .SDcols=c("avg_salary","high_salary","low_salary")
+                                  ][,!"year",with=F],
+        type="l",col=c("blue","black","black"),lty=c(1,2,2),lwd=c(4,3,3),
+        xaxt="n",xlab="Year",ylab="Nominal Wage")
 axis(1,at=seq(1998,2014,by=2))
-lines(1998:2013,data[,colMeans(as.matrix(.SD),na.rm=T),
-                     .SDcols=paste0("low_salary_",1999:2014)],
-      col="black",lty=2,lwd=3)
-lines(1998:2013,data[,colMeans(as.matrix(.SD),na.rm=T),
-                     .SDcols=paste0("avg_salary_",1999:2014)],
-      col="blue",lty=1,lwd=4)
-lines(1998:2013,data[,colMeans(as.matrix(.SD),na.rm=T),
-                     .SDcols=paste0("high_salary_",1999:2014)],
-      col="black",lty=2,lwd=3)
 #wages measured 3rd Friday of September (the 16th in 2011), which came 79 days after the enactment of Act 10 in Wisconsin.
 abline(v=2011-79/365,col="red",lty=2,lwd=2)
 dev.copy(which=dev.list()["pdf"])
 dev.off(which=dev.list()["pdf"])
 
-#Analysis of Teacher-Level File ####
+# Analysis of Teacher-Level File ####
 #Teacher-level data found here:
 #http://lbstat.dpi.wi.gov/lbstat_newasr
-rm(list = ls(all = TRUE))
+rm(agg_salary_data,to_numeric)
 
 ## Data import ####
 
-#years are '95 to '13
 #read and do some data cleaning/uniforming
 for (tt in 1995:2014){
   dummy<-
-    fread(paste0(substr(tt,3,4),"staff.csv"),
-          drop=which(scan(file=paste0(substr(tt,3,4),"staff.csv"),
+    fread(paste0("/media/data_drive/wisconsin/",substr(tt,3,4),"staff.csv"),
+          drop=which(scan(file=paste0("/media/data_drive/wisconsin/",
+                                      substr(tt,3,4),"staff.csv"),
                           what="",sep=",",nlines=1,quiet=T)=="filler"),
-                 colClasses=fread(paste0(substr(tt,3,4),"dict.csv"))[,V3]
-                 )[position_code==53&(agency_type %in% c("01","03","04","1","3","4","49"))
-                     &!is.na(salary),][is.na(fringe),fringe:=0]
+          colClasses=fread(paste0("/media/data_drive/wisconsin/",
+                                  substr(tt,3,4),"dict.csv"))[,V3]
+    )[position_code==53&(agency_type %in% c("01","03","04","1","3","4","49"))
+      &!is.na(salary),][is.na(fringe),fringe:=0]
   
   if (!("nee" %in% names(dummy))){
     #For through 1999-2000, maiden names were stored in parentheses;
@@ -181,6 +148,12 @@ for (tt in 1995:2014){
   dummy[,total_exp_floor:=floor(total_exp)]
   dummy[,age:=tt+1-birth_year]
   dummy[,total_pay:=salary+fringe]
+  dummy[,black:=ethnicity=="B"]
+  dummy[,hispanic:=ethnicity=="H"]
+  dummy[,ethnicity_main:=
+          as.factor(ifelse(ethnicity=="B","Black",
+                           ifelse(ethnicity=="W","White",
+                                  ifelse(ethnicity=="H","Hispanic",NA))))]
   
   #SHOULD TRY AND DELVE INTO THIS MORE LATER, but for now--delete any record of teachers working since before age 17
   # Also delete teachers earning less than $15,000 and older than 40
@@ -225,31 +198,31 @@ match_on_names<-function(from,to){
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   setkey(from,first_name_clean,last_name_clean,birth_year,agency,school)
   setkey(to,first_name_clean,last_name_clean,birth_year,agency,school
-         )[from,
-           `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
-                move=0,married=0,mismatch_yob=0,mismatch_inits=0,
-                mismatch_exp=0,new_teacher=0)]
+  )[from,
+    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
+         move=0,married=0,mismatch_yob=0,mismatch_inits=0,
+         mismatch_exp=0,new_teacher=0)]
   #2) Loosen criteria--find within-district switchers
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY
   setkey(to,first_name_clean,last_name_clean,birth_year,agency
-         )[from[!(teacher_id %in% to$teacher_id),],
-           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
-                move=1,married=0,mismatch_yob=0,mismatch_inits=0,
-                mismatch_exp=0,new_teacher=0)]
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
+         move=1,married=0,mismatch_yob=0,mismatch_inits=0,
+         mismatch_exp=0,new_teacher=0)]
   #3) Loosen criteria--find district switchers
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR
   setkey(to,first_name_clean,last_name_clean,birth_year
-         )[from[!(teacher_id %in% to$teacher_id),],
-           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
-                move=1,married=0,mismatch_yob=0,mismatch_inits=0,
-                mismatch_exp=0,new_teacher=0)]
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
+         move=1,married=0,mismatch_yob=0,mismatch_inits=0,
+         mismatch_exp=0,new_teacher=0)]
   #4) Find anyone who appears to have gotten married
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   setkey(to,first_name_clean,nee_clean,birth_year,agency,school
-         )[from[!(teacher_id %in% to$teacher_id),],
-           `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
-                move=0,married=1,mismatch_yob=0,mismatch_inits=0,
-                mismatch_exp=0,new_teacher=0)]
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
+         move=0,married=1,mismatch_yob=0,mismatch_inits=0,
+         mismatch_exp=0,new_teacher=0)]
   
   #5) married and changed schools
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY
@@ -313,26 +286,26 @@ match_on_names<-function(from,to){
   #MATCH ON: FIRST NAME | LAST NAME | AGENCY | SCHOOL ID
   setkey(from,first_name_clean,last_name_clean,agency,school)
   setkey(to,first_name_clean,last_name_clean,agency,school
-         )[from[!(teacher_id %in% to$teacher_id),],
-           `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
-                move=0,married=0,mismatch_yob=1,mismatch_inits=0,
-                mismatch_exp=0,new_teacher=0)]
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
+         move=0,married=0,mismatch_yob=1,mismatch_inits=0,
+         mismatch_exp=0,new_teacher=0)]
   #14) among missing YOB-only folks, check school switching
   #MATCH ON: FIRST NAME | LAST NAME | AGENCY
   setkey(from,first_name_clean,last_name_clean,agency)
   setkey(to,first_name_clean,last_name_clean,agency
-         )[from[!(teacher_id %in% to$teacher_id),],
-           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
-                move=1,married=0,mismatch_yob=1,mismatch_inits=0,
-                mismatch_exp=0,new_teacher=0)]
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
+         move=1,married=0,mismatch_yob=1,mismatch_inits=0,
+         mismatch_exp=0,new_teacher=0)]
   #15) among missing YOB-only folks, check marriage
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | AGENCY | SCHOOL ID
   setkey(from,first_name_clean,nee_clean,agency,school)
   setkey(to,first_name_clean,last_name_clean,agency,school
-         )[from[!(teacher_id %in% to$teacher_id),],
-           `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
-                move=0,married=1,mismatch_yob=1,mismatch_inits=0,
-                mismatch_exp=0,new_teacher=0)]
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
+         move=0,married=1,mismatch_yob=1,mismatch_inits=0,
+         mismatch_exp=0,new_teacher=0)]
   #16) among missing YOB-only folks, check marriage + school switch
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | AGENCY
   setkey(from,first_name_clean,nee_clean,agency)
@@ -345,67 +318,67 @@ match_on_names<-function(from,to){
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | AGENCY | SCHOOL ID
   setkey(from,first_name2,last_name_clean,agency,school)
   setkey(to,first_name2,last_name_clean,agency,school
-         )[from[!(teacher_id %in% to$teacher_id),],
-           `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
-                move=0,married=0,mismatch_yob=1,mismatch_inits=1,
-                mismatch_exp=0,new_teacher=0)]
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
+         move=0,married=0,mismatch_yob=1,mismatch_inits=1,
+         mismatch_exp=0,new_teacher=0)]
   #18) among missing YOB-only folks, check stripped name + switch school
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | AGENCY
   setkey(from,first_name2,last_name_clean,agency)
   setkey(to,first_name2,last_name_clean,agency
-         )[from[!(teacher_id %in% to$teacher_id),],
-           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
-                move=1,married=0,mismatch_yob=1,mismatch_inits=1,
-                mismatch_exp=0,new_teacher=0)]
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
+         move=1,married=0,mismatch_yob=1,mismatch_inits=1,
+         mismatch_exp=0,new_teacher=0)]
   #19) among missing YOB-only folks, check stripped name + married
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | AGENCY | SCHOOL ID
   setkey(from,first_name2,last_name_clean,agency,school)
   setkey(to,first_name2,nee_clean,agency,school
-         )[from[!(teacher_id %in% to$teacher_id),],
-           `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
-                move=0,married=1,mismatch_yob=1,mismatch_inits=1,
-                mismatch_exp=0,new_teacher=0)]
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
+         move=0,married=1,mismatch_yob=1,mismatch_inits=1,
+         mismatch_exp=0,new_teacher=0)]
   #20) among missing YOB-only folks, check stripped name + married + switch school
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | AGENCY
   setkey(from,first_name2,last_name_clean,agency,school)
   setkey(to,first_name2,nee_clean,agency,school
-         )[from[!(teacher_id %in% to$teacher_id),],
-           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
-                move=1,married=1,mismatch_yob=1,mismatch_inits=1,
-                mismatch_exp=0,new_teacher=0)]
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
+         move=1,married=1,mismatch_yob=1,mismatch_inits=1,
+         mismatch_exp=0,new_teacher=0)]
   #21) among missing YOB-only folks, check if experience is within a year
   #MATCH ON: FIRST NAME | LAST NAME | EXPERIENCE
   setkey(from,first_name_clean,last_name_clean,total_exp)
   setkey(to,first_name_clean,last_name_clean,total_exp
-         )[from[!(teacher_id %in% to$teacher_id),],
-           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
-                move=1,married=0,mismatch_yob=1,mismatch_inits=0,
-                mismatch_exp=1,new_teacher=0),roll=-1L]
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
+         move=1,married=0,mismatch_yob=1,mismatch_inits=0,
+         mismatch_exp=1,new_teacher=0),roll=-1L]
   #22) among missing YOB-only folks, check experience + marriage
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | EXPERIENCE
   setkey(from,first_name_clean,last_name_clean,total_exp)
   setkey(to,first_name_clean,nee_clean,total_exp
-         )[from[!(teacher_id %in% to$teacher_id),],
-           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
-                move=1,married=1,mismatch_yob=1,mismatch_inits=0,
-                mismatch_exp=1,new_teacher=0),roll=-1L]
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
+         move=1,married=1,mismatch_yob=1,mismatch_inits=0,
+         mismatch_exp=1,new_teacher=0),roll=-1L]
   #23) among missing YOB-only folks, check experience + first name mismatch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | EXPERIENCE
   setkey(from,first_name2,last_name_clean,total_exp)
   setkey(to,first_name2,last_name_clean,total_exp
-         )[from[!(teacher_id %in% to$teacher_id),],
-           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
-                move=1,married=0,mismatch_yob=1,mismatch_inits=1,
-                mismatch_exp=1,new_teacher=0),roll=-1L]
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
+         move=1,married=0,mismatch_yob=1,mismatch_inits=1,
+         mismatch_exp=1,new_teacher=0),roll=-1L]
   #24) among missing YOB-only folks, check experience + first name mismatch + married
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | EXPERIENCE
   setkey(from,first_name2,last_name_clean,total_exp)
   setkey(to,first_name2,nee_clean,total_exp
-         )[from[!(teacher_id %in% to$teacher_id),],
-           `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
-                move=1,married=1,mismatch_yob=1,mismatch_inits=1,
-                mismatch_exp=1,new_teacher=0),roll=-1L]
-                                  
+  )[from[!(teacher_id %in% to$teacher_id),],
+    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
+         move=1,married=1,mismatch_yob=1,mismatch_inits=1,
+         mismatch_exp=1,new_teacher=0),roll=-1L]
+  
   #25) finally, give up and assign new ids to new (read: unmatched) teachers
   to[is.na(teacher_id),`:=`(teacher_id=.I+max(from$teacher_id),move_school=0,move_district=0,
                             move=0,married=0,mismatch_yob=0,mismatch_inits=0,
@@ -441,7 +414,12 @@ teacher_data<-
                  data_2001,data_2002,data_2003,data_2004,data_2005,
                  data_2006,data_2007,data_2008,data_2009,data_2010,
                  data_2011,data_2012,data_2013,data_2014,data_2015),
-            fill=T)[total_exp_floor<=30,]; rm(list=ls(pattern="data_"))
+            fill=T)[total_exp_floor<=30,][,move_type:=
+                                            as.factor(ifelse(
+                                              !move&!quit,"Stay",
+                                              ifelse(move_school&!move_district,"Switch Campus",
+                                                     ifelse(move_district,"Switch District","??"))))
+                                          ]; rm(list=ls(pattern="data_"))
 
 teacher_data[,multiples:=.N,by=.(teacher_id,year)]
 #Delete history for any multi-matched teachers (down to only a few at this point)
@@ -464,7 +442,7 @@ teacher_data[,c("first_year","last_year"):=.(year[1],year[.N]),by=teacher_id]
 teacher_data[,paste0(c("left_","right_"),"censored"):=.(first_year==1996,last_year==2015),by=teacher_id]
 ## add forward-looking indicators
 frwd_vars<-c(paste0("move",c("","_school","_district")),"married","quit",
-             "salary","fringe","total_pay","certified","agency")
+             "salary","fringe","total_pay","certified","agency","move_type")
 teacher_data[,paste0(frwd_vars,"_next"):=shift(.SD,type="lead"),by=teacher_id,.SDcols=frwd_vars]
 teacher_data[,paste0(frwd_vars,"_pl5"):=shift(.SD,n=5L,type="lead"),by=teacher_id,.SDcols=frwd_vars]; rm(frwd_vars)
 
@@ -544,6 +522,8 @@ stopCluster(cl)
 salary_scales<-fringe_imp[salary_imp][,total_pay:=fringe+salary]
 rm(list=ls(pattern="imp"))
 
+salary_scales<-salary_scales[!salary_scales[,.N,by=.(year,agency,highest_degree)][N>30,!"N",with=F],]
+
 #nominal future earnings at every point in the career
 discounted_earnings<-function(x,r=.05){
   nm1<-length(x)-1
@@ -555,6 +535,25 @@ salary_scales[,total_pay_future:=discounted_earnings(total_pay),
 ##add to teacher data
 setkeyv(teacher_data,key(salary_scales))[salary_scales,total_pay_future:=total_pay_future]
 
+#wage measures at next chosen district
+teacher_data[setkey(salary_scales[total_exp_floor==1,],year,agency,highest_degree),
+             `:=`(agency_base_salary=i.salary,
+                  agency_base_fringe=i.fringe,
+                  agency_base_total_pay=i.total_pay,
+                  agency_base_total_pay_future=i.total_pay_future)]
+
+setkey(teacher_data,year,agency_next,highest_degree
+       )[setkey(salary_scales[total_exp_floor==1,],year,agency,highest_degree),
+         `:=`(agency_next_base_salary=i.salary,
+              agency_next_base_fringe=i.fringe,
+              agency_next_base_total_pay=i.total_pay,
+              agency_next_base_total_pay_future=i.total_pay_future)]
+
+setkey(teacher_data,year,agency,highest_degree,total_exp_floor
+       )[setkey(salary_scales[,.(year,agency,highest_degree,exp=total_exp_floor-1,salary)],
+                year,agency,highest_degree,exp),
+         agency_salary_next:=i.salary]
+
 #provide deflated wage data
 dollar_cols<-c("salary","fringe","total_pay")
 getSymbols("CPIAUCSL",src='FRED')
@@ -562,7 +561,7 @@ infl<-data.table(year=1996:2015,
                  index=CPIAUCSL[seq(from=as.Date('1995-10-01'),
                                     by='years',length.out=21)]/
                    as.numeric(CPIAUCSL['1995-10-01']),key="year")
-teacher_data[infl,index:=index.CPIAUCSL]
+setkey(teacher_data,year,agency,highest_degree,total_exp_floor)[infl,index:=index.CPIAUCSL]
 teacher_data[,paste0(dollar_cols,"_real"):=lapply(.SD,function(x){x/teacher_data$index}),.SDcols=dollar_cols][,index:=NULL]
 salary_scales[infl,index:=index.CPIAUCSL]
 salary_scales[,paste0(dollar_cols,"_real"):=lapply(.SD,function(x){x/salary_scales$index}),.SDcols=dollar_cols][,index:=NULL]
@@ -588,14 +587,14 @@ colnames(scdy_nbhd)<-rownames(scdy_nbhd)
 #### 2011-12 data (all but 9 districts)
 ccd_id<-setnames(fread("/media/data_drive/common_core/district/universe_11_12_1a.txt",
                        select=c("LEAID","STID"),colClasses="character"
-                       )[substr(LEAID,1,2)=="55",],c("leaid","agency"))
+)[substr(LEAID,1,2)=="55",],c("leaid","agency"))
 #### Add remaining 9 districts via CCD data in 1995-96
 ccd_id<-
   setkey(rbindlist(list(
-  ccd_id,setnames(data.table(read.fwf(
-    "/media/data_drive/common_core/district/universe_95_96_1a.txt",
-    widths=c(7,4)))[substr(V1,1,2)=="55",][V2 %in% teacher_data[!(agency %in% ccd_id$agency),
-                                                                unique(agency)],],c("leaid","agency")))),leaid)
+    ccd_id,setnames(data.table(read.fwf(
+      "/media/data_drive/common_core/district/universe_95_96_1a.txt",
+      widths=c(7,4)))[substr(V1,1,2)=="55",][V2 %in% teacher_data[!(agency %in% ccd_id$agency),
+                                                                  unique(agency)],],c("leaid","agency")))),leaid)
 
 ####Exclude districts not found in shapefile
 elem_nbhd<-elem_nbhd[intersect(rownames(elem_nbhd),ccd_id$leaid),intersect(rownames(elem_nbhd),ccd_id$leaid)]
@@ -610,6 +609,7 @@ area_average<-function(pay_type="total_pay",aagency,yyear,hhighest_degree,ttotal
   salary_scales[.(yyear[1],names(which(elem_nbhd[aagency[1],]!=0)),hhighest_degree[1],ttotal_exp_floor[1]),
                 mean(get(pay_type),na.rm=T)]
 }
+
 setkey(teacher_data,agency)
 teacher_data[.(rownames(elem_nbhd)),
              total_pay_loc_avg:=area_average("total_pay",agency,year,highest_degree),
@@ -623,8 +623,8 @@ clusterExport(cl,c("teacher_data_sub"),envir=environment());
 clusterEvalQ(cl,library("data.table"));
 tpf <- foreach(i = 1:30) %dopar% {
   teacher_data_sub[total_exp_floor==i,][.(rownames(elem_nbhd)),
-      total_pay_loc_val:=area_average("total_pay_future",agency,year,highest_degree,total_exp_floor),
-      by=.(agency,year,highest_degree,total_exp_floor)]
+                                        total_pay_loc_val:=area_average("total_pay_future",agency,year,highest_degree,total_exp_floor),
+                                        by=.(agency,year,highest_degree,total_exp_floor)]
 }
 stopCluster(cl)
 rm(teacher_data_sub,cl)
@@ -637,24 +637,16 @@ teacher_data[,potential_earnings:=total_pay_loc_val-total_pay_future]
 ## District Demographic Data ####
 ### Common Core of Data
 ### ***SHOULD EXPAND TO OTHER YEARS BY AGGREGATING SCHOOL-LEVEL FILES***
-ccd_11<-fread("/media/data_drive/common_core/district/universe_10_11_2a.txt",
-              select=c("FIPST","STID","ULOCAL","HISP","BLACK","MEMBER"),
-              colClasses=list(character=c("FIPST","STID"),
-                              factor="ULOCAL",
-                              integer=c("HISP","BLACK","MEMBER")))[FIPST=="55",][,FIPST:=NULL][,year:=2011]
-ccd_12<-fread("/media/data_drive/common_core/district/universe_11_12_1a.txt",
-              select=c("FIPST","STID","ULOCAL","HISP","BLACK","MEMBER"),
-              colClasses=list(character=c("FIPST","STID"),
-                              factor="ULOCAL",
-                              integer=c("HISP","BLACK","MEMBER")))[FIPST=="55",][,FIPST:=NULL][,year:=2012]
-ccd_13<-fread("/media/data_drive/common_core/district/universe_12_13_1a.txt",
-              select=c("FIPST","STID","ULOCAL","HISP","BLACK","MEMBER"),
-              colClasses=list(character=c("FIPST","STID"),
-                              factor="ULOCAL",
-                              integer=c("HISP","BLACK","MEMBER")))[FIPST=="55",][,FIPST:=NULL][,year:=2013]
-
-ccd<-setnames(setkey(rbindlist(list(ccd_11,ccd_12,ccd_13)),year,STID),
-              c("stid","ulocal","n_students","n_hispanic","n_black","year"))[n_students>0,]; rm(list=ls(pattern="ccd_"))
+ccd<-setkey(setnames(
+  rbindlist(lapply(c("10_11_2a","11_12_1a","12_13_1a"),
+                   function(x){fread(paste0("/media/data_drive/common_core/",
+                                            "district/universe_",x,".txt"),
+                                     select=c("FIPST","STID","ULOCAL","HISP","BLACK","MEMBER"),
+                                     colClasses=list(character=c("FIPST","STID"),
+                                                     factor="ULOCAL",
+                                                     integer=c("HISP","BLACK","MEMBER"))
+                   )[FIPST=="55",][,FIPST:=NULL][,year:=2000+as.numeric(substr(x,4,5))]})),
+  c("stid","ulocal","n_students","n_hispanic","n_black","year")),year,stid)[n_students>0,]
 
 #Eliminate schools not present all 3 years
 ccd<-ccd[!stid %in% ccd[,.N,by=stid][N<3,stid],]
@@ -665,9 +657,9 @@ ccd[,urbanicity:=ifelse(substr(ulocal,1,1)=="1","City",
                         ifelse(substr(ulocal,1,1)=="2","Suburb",
                                ifelse(substr(ulocal,1,1)=="3","Town","Rural")))]
 
-setkey(teacher_data,year,agency)[ccd,`:=`(pct_hispanic=pct_hispanic,
-                                          pct_black=pct_black,
-                                          urbanicity=urbanicity)]
+setkey(teacher_data,year,agency)[ccd,`:=`(pct_hispanic=i.pct_hispanic,
+                                          pct_black=i.pct_black,
+                                          urbanicity=i.urbanicity)]
 
 setkey(teacher_data,year,agency_next)[ccd,`:=`(pct_hispanic_next=i.pct_hispanic,
                                                pct_black_next=i.pct_black,
@@ -677,49 +669,76 @@ setkey(teacher_data,year,agency_next)[ccd,`:=`(pct_hispanic_next=i.pct_hispanic,
 
 ####WSAS Wisconsin Student Assessment System
 ####WKCE Wisconsin Knowledge and Concepts Examination
-####  Only use mathematics scores for now
+#### via: http://oea.dpi.wi.gov/assessment/data/WKCE/proficiency
+#### Only use mathematics scores for now
 wsas_data<-setkey(setnames(
   rbindlist(lapply(paste(ntostring(5:13),ntostring(6:14),sep="-"),
                    function(x){fread(paste0("/media/data_drive/wisconsin/",
-                                            "wsas_current_20",x,".csv"),na.strings="*"
+                                            "wsas_certified_20",x,".csv"),na.strings="*"
                    )[GRADE_GROUP=="[All]"&DISTRICT_CODE!="0000"&
                        !TEST_RESULT %in% c("*","No WSAS")
                      &TEST_GROUP=="WKCE"&GROUP_BY=="All Students"
                      &TEST_SUBJECT=="Mathematics"
                      &TEST_RESULT_CODE %in% c(3,4),
-                     ][,.(year=substr(x,4,5),
-                          pct_proficient=sum(as.numeric(PERCENT_OF_GROUP))),
-                       by=DISTRICT_CODE][,pct_prof_pctl:=ecdf(pct_proficient)(pct_proficient)]})),
+                     ][,.(year=2000+as.numeric(substr(x,4,5)),
+                          pct_prof_wsas=sum(as.numeric(PERCENT_OF_GROUP))),
+                       by=DISTRICT_CODE][,pct_prof_wsas_pctl:=ecdf(pct_prof_wsas)(pct_prof_wsas)]})),
   "DISTRICT_CODE","stid"),year,stid)
 
+setkey(teacher_data,year,agency
+)[wsas_data,`:=`(pct_prof_wsas=i.pct_prof_wsas,
+                 pct_prof_wsas_pctl=i.pct_prof_wsas_pctl)]
+
+setkey(teacher_data,year,agency_next
+)[wsas_data,`:=`(pct_prof_wsas_next=i.pct_prof_wsas,
+                 pct_prof_wsas_pctl_next=i.pct_prof_wsas_pctl)]
+
 ####Now ACT scores
+#### via: http://wise.dpi.wi.gov/wisedash_downloadfiles
 #### Only look at Math for now
 act_data<-setkey(setnames(
-  rbindlist(lapply(paste(ntostring(7:12),ntostring(8:13),sep="-"),
+  rbindlist(lapply(paste(ntostring(7:13),ntostring(8:14),sep="-"),
                    function(x){fread(paste0("/media/data_drive/wisconsin/",
                                             "act_certified_20",x,".csv"),na.strings="*"
                    )[GRADE_GROUP=="[All]"&DISTRICT_CODE!="0000"&TEST_RESULT!="*"
                      &GROUP_BY=="All Students"&TEST_RESULT=="College ready"
                      &TEST_SUBJECT=="Mathematics",
-                     ][,.(DISTRICT_CODE,year=substr(x,4,5),
+                     ][,.(DISTRICT_CODE,year=2000+as.numeric(substr(x,4,5)),
                           pct_college_ready=
                             as.numeric(STUDENT_COUNT)/
                             as.numeric(GROUP_COUNT))
                        ][,pct_coll_ready_pctl:=ecdf(pct_college_ready)(pct_college_ready)]})),
   "DISTRICT_CODE","stid"),year,stid)
 
+setkey(teacher_data,year,agency
+)[act_data,`:=`(pct_college_ready=i.pct_college_ready,
+                pct_coll_ready_pctl=i.pct_coll_ready_pctl)]
+
+setkey(teacher_data,year,agency_next
+)[act_data,`:=`(pct_college_ready_next=i.pct_college_ready,
+                pct_coll_ready_pctl_next=i.pct_coll_ready_pctl)]
+
 ####Now AP scores
 #### only look at Calc AB for now
 ap_data<-setkey(setnames(
-  rbindlist(lapply(paste(ntostring(6:12),ntostring(7:13),sep="-"),
+  rbindlist(lapply(paste(ntostring(6:13),ntostring(7:14),sep="-"),
                    function(x){fread(paste0("/media/data_drive/wisconsin/",
                                             "ap_certified_20",x,".csv"),na.strings="*"
                    )[DISTRICT_CODE!="0000"&TEST_SUBJECT=="Calculus AB"
                      &GROUP_BY=="All Students"&GRADE_GROUP=="[All]"&
                        !is.na(PERCENT_3_OR_ABOVE),
-                     ][,.(DISTRICT_CODE,year=substr(tt,4,5),PERCENT_3_OR_ABOVE)
+                     ][,.(DISTRICT_CODE,year=2000+as.numeric(substr(x,4,5)),PERCENT_3_OR_ABOVE)
                        ][,pct_3_or_above_pctl:=ecdf(PERCENT_3_OR_ABOVE)(PERCENT_3_OR_ABOVE)]})),
   c("DISTRICT_CODE","PERCENT_3_OR_ABOVE"),c("stid","pct_3_or_above")),year,stid)
+
+setkey(teacher_data,year,agency
+)[ap_data,`:=`(pct_3_or_above=i.pct_3_or_above,
+               pct_3_or_above_pctl=i.pct_3_or_above_pctl)]
+
+
+setkey(teacher_data,year,agency_next
+)[ap_data,`:=`(pct_3_or_above_next=i.pct_3_or_above,
+               pct_3_or_above_pctl_next=i.pct_3_or_above_pctl)]
 
 ####Finally HS completion
 #### Only look at regular completion for now
@@ -727,15 +746,46 @@ ap_data<-setkey(setnames(
 dropout_data<-setkey(setnames(
   rbindlist(lapply(paste(ntostring(9:12),ntostring(10:13),sep="-"),
                    function(x){fread(paste("/media/data_drive/wisconsin/",
-                                           "hs_completion_certified_20",tt,".csv",sep=""),na.strings="*"
+                                           "hs_completion_certified_20",x,".csv",sep=""),na.strings="*"
                    )[GRADE_GROUP=="[All]"&DISTRICT_CODE!="0000"&GROUP_BY=="All Students"
                      &COMPLETION_STATUS=="Completed - Regular"&!is.na(STUDENT_COUNT),
-                     ][,.(DISTRICT_CODE,year=substr(x,4,5),
+                     ][,.(DISTRICT_CODE,year=2000+as.numeric(substr(x,4,5)),
                           pct_dropout=1-as.numeric(STUDENT_COUNT)/as.numeric(COHORT_COUNT))
-                       ][,pct_grad_pctl:=ecdf(pct_dropout)(pct_dropout)]})),
+                       ][,pct_dropout_pctl:=ecdf(pct_dropout)(pct_dropout)]})),
   "DISTRICT_CODE","stid"),year,stid)
 
-# Finally, some data analysis ####
+
+setkey(teacher_data,year,agency
+)[dropout_data,`:=`(pct_dropout=i.pct_dropout,
+                    pct_dropout_pctl=i.pct_dropout_pctl)]
+
+setkey(teacher_data,year,agency_next
+)[dropout_data,`:=`(pct_dropout_next=i.pct_dropout,
+                    pct_dropout_pctl_next=i.pct_dropout_pctl)]
+
+### District-level economic data
+###  via: http://nces.ed.gov/programs/edge/tables.aspx?ds=acs&y=2012
+###   (All School Districts by State)
+hh_income_data<-setkey(setkey(setnames(fread(
+  paste0("/media/data_drive/wisconsin/",
+         "wisconsin_median_income_by_district_08_12.csv"),
+  select=c("GeoId","Estimate"),
+  colClasses=list(character="GeoId",numeric="Estimate")),
+  c("leaid","median_income_12"))[,leaid:=substr(leaid,8,14)],
+  leaid)[ccd_id,agency:=as.character(i.agency)
+         ][!is.na(median_income_12)&!is.na(agency),
+           ][,leaid:=NULL][,med_income_pctl:=ecdf(median_income_12)(median_income_12)],
+  agency)
+
+setkey(teacher_data,agency
+       )[hh_income_data,`:=`(median_income=i.median_income_12,
+                             med_income_pctl=i.med_income_pctl)]
+
+setkey(teacher_data,agency_next
+       )[hh_income_data,`:=`(median_income_next=i.median_income_12,
+                             med_income_pctl_next=i.med_income_pctl)]
+
+## Finally, some data analysis ####
 
 #Compare my turnover data to results in Texas from Hanushek, Kain, O'Brien and Rivkin
 print(xtable(matrix(unlist(cbind(
@@ -745,11 +795,11 @@ print(xtable(matrix(unlist(cbind(
     paste(c("2-3","4-6","7-11","12-21",">21"),"years")),
   rbind(as.data.table(rbind(rep(NA,4))),
         teacher_data[.(unique(year),"3619"),.(move_school,move_district,quit,
-                        exp_cut=cut(total_exp_floor,
-                                    breaks=c(1,2,4,7,12,22,31),
-                                    include.lowest=T,
-                                    labels=c("1","2-3","4-6","7-11",
-                                             "12-21",">21"),right=F))
+                                              exp_cut=cut(total_exp_floor,
+                                                          breaks=c(1,2,4,7,12,22,31),
+                                                          include.lowest=T,
+                                                          labels=c("1","2-3","4-6","7-11",
+                                                                   "12-21",">21"),right=F))
                      ][,.(round(100*mean(!quit&!move_school,na.rm=T),1),
                           round(100*mean(move_school&!move_district,na.rm=T),1),
                           round(100*mean(move_district,na.rm=T),1),
@@ -772,8 +822,76 @@ print(xtable(matrix(unlist(cbind(
   align="lp{1.8cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.8cm}"),
   include.rownames=F,hline.after=c(-1,0,7,14))
 
-#Comparing Turnover matrix by urbanicity to that in HKR '04 (JHR)
+#Comparing Turnover matrix by urbanicity to that in HKR '04 (JHR) Table 2
 teacher_data[move_district_next==1,prop.table2(urbanicity,urbanicity_next,margin=1,pct=T,ndig=1)]
+
+salary_comparison<-
+  teacher_data[move_district_next==1,
+               prop.table2(create_quantiles(agency_salary_next,5),
+                           create_quantiles(salary_next,5),margin=1,pct=T,ndig=1)]
+rownames(salary_comparison)<-paste0("Q",1:5)
+colnames(salary_comparison)<-paste0("Q",1:5)
+cat(capture.output(xtable(salary_comparison)),sep="\n\n")
+
+#Comparing Multinomial Logit of HKR '04 (JHR) Table 9
+mnl<-lapply(list(exp_1_3=1:3,exp_4_6=4:6,exp_7_11=7:11,exp_12_30=12:30),
+            function(x){multinom(move_type~log(agency_base_salary)*relevel(as.factor(gender),ref="M")+pct_prof_wsas_pctl+
+                                   med_income_pctl+pct_black*relevel(ethnicity_main,ref="White")+
+                                   pct_hispanic*relevel(ethnicity_main,ref="White"),
+                                 data=teacher_data[agency_base_salary>0&total_exp_floor %in% x,])})
+
+###***SHOULD TRY AND USE A TEXREG SOLUTION... EVENTUALLY...****
+outc<-teacher_data[,setdiff(levels(move_type),"Stay")]
+
+coef.tables<-lapply(outc,function(x){
+  sapply(names(mnl),function(y){coef(mnl[[y]])[x,]})})
+
+se.tables<-lapply(outc,function(x){sapply(names(mnl),function(y){summary(mnl[[y]])$standard.errors[x,]})})
+
+out_table_1<-matrix(NA,nrow=2*nrow(coef.tables[[1]]),ncol=length(names(mnl)))
+out_table_1[seq(1,2*nrow(coef.tables[[1]]),2),]<-round(coef.tables[[1]],2)
+out_table_1[seq(2,2*nrow(coef.tables[[1]]),2),]<-
+  paste0("(",round(se.tables[[1]],2),")")
+rownames(out_table_1)<-
+  paste0(rep(c("x_Intercept","(Log) Base Salary",
+               "x_Female","%-ile of WSAS Proficiency",
+               "%-ile of Median Income","Percent Black",
+               "x_Black Teacher","x_Hispanic Teacher",
+               "Percent Hispanic",
+               "(Log) Base Salary * Female",
+               "Black * Percent Black",
+               "Hispanic * Percent Black",
+               "Black * Percent Hispanic",
+               "Hispanic * Percent Hispanic"),each=2),
+         c(""," (SE)"))
+colnames(out_table_1)<-names(mnl)
+xtable(out_table_1)
+
+x<-2*c(1,6,2,3,4,5,7,9,8,10)-1
+order<-c()
+order[seq(1,2*length(x),2)]<-x; order[seq(2,2*length(x),2)]<-x+1
+out_table_1<-out_table_1[!grepl("x_",rownames(out_table_1)),][order,]
+print(xtable(out_table_1),scalebox=.6)
+
+out_table_2<-matrix(NA,nrow=2*nrow(coef.tables[[2]]),ncol=length(names(mnl)))
+out_table_2[seq(1,2*nrow(coef.tables[[2]]),2),]<-round(coef.tables[[2]],2)
+out_table_2[seq(2,2*nrow(coef.tables[[2]]),2),]<-
+  paste0("(",round(se.tables[[2]],2),")")
+rownames(out_table_2)<-
+  paste0(rep(c("x_Intercept","(Log) Base Salary",
+               "x_Female","%-ile of WSAS Proficiency",
+               "%-ile of Median Income","Percent Black",
+               "x_Black Teacher","x_Hispanic Teacher",
+               "Percent Hispanic",
+               "(Log) Base Salary * Female",
+               "Black * Percent Black",
+               "Hispanic * Percent Black",
+               "Black * Percent Hispanic",
+               "Hispanic * Percent Hispanic"),each=2),
+         c(""," (SE)"))
+colnames(out_table_2)<-names(mnl)
+out_table_2<-out_table_2[!grepl("x_",rownames(out_table_2)),][order,]
+print(xtable(out_table_2),scalebox=.6)
 
 #Evolution of Turnover by Experience Across Time
 graphics.off()
@@ -791,8 +909,8 @@ matplot(1:30,dcast.data.table(
                       labels=c("96-00","01-05","06-10","11-15"),right=F))
                ][,mean(move_district,na.rm=T),by=.(total_exp_floor,V3)],
   total_exp_floor~V3,value.var="V1")[,!"total_exp_floor",with=F],
-        ylab="% Changing Districts",xaxt="n",main="Change Districts",
-        type="l",lty=1,lwd=3,col=c("black","blue","red","green"))
+  ylab="% Changing Districts",xaxt="n",main="Change Districts",
+  type="l",lty=1,lwd=3,col=c("black","blue","red","green"))
 
 ##By School
 par(mar=c(0,4.1,4.1,2.1))
@@ -823,9 +941,9 @@ matplot(1:30,dcast.data.table(
 par(mar=c(5.1,4.1,0,2.1))
 matplot(1:30,dcast.data.table(
   teacher_data[year!=1996,.(total_exp_floor,highest_degree,
-                  cut(year,breaks=c(1996,2001,2006,2011,2016),
-                      include.lowest=T,
-                      labels=c("96-00","01-05","06-10","11-15"),right=F))
+                            cut(year,breaks=c(1996,2001,2006,2011,2016),
+                                include.lowest=T,
+                                labels=c("96-00","01-05","06-10","11-15"),right=F))
                ][,.(mean(highest_degree=="4",na.rm=T),
                     mean(highest_degree=="5",na.rm=T)),by=.(total_exp_floor,V3)],
   total_exp_floor~V3,value.var=c("V1","V2"))[,!"total_exp_floor",with=F],
@@ -852,8 +970,8 @@ dev.new()
 pdf("wisconsin_salary_tables_imputed_15_big5_ba.pdf")
 dev.set(which=dev.list()["RStudioGD"])
 matplot(1:30,dcast.data.table(salary_scales[.(2015,biggest_5,"4"),
-                               c("agency","total_exp_floor","salary","total_pay"),with=F],
-                 total_exp_floor~agency,value.var=c("salary","total_pay"))[,!"total_exp_floor",with=F],
+                                            c("agency","total_exp_floor","salary","total_pay"),with=F],
+                              total_exp_floor~agency,value.var=c("salary","total_pay"))[,!"total_exp_floor",with=F],
         xlab="Experience",ylab="$",main="BA",ylim=rng,
         lty=c(rep(1,5),rep(2,5)),type="l",col=rep(c("black","red","blue","green","purple"),2),lwd=3)
 legend("topleft",legend=biggest_5_names,bty="n",cex=.6,
@@ -910,7 +1028,7 @@ teacher_data[,.(mean(salary),mean(salary_real)),by=year
                         main="Average Nominal Wage Among WI Teachers",lwd=3,lty=1,
                         col=c("gray","black"),xaxt="n")]
 abline(v=2012-79/365,col=2,lty=2) #wages measured 3rd Friday of September (the 16th in 2011),
-                                  #which came 79 days after the enactment of Act 10 in Wisconsin.
+#which came 79 days after the enactment of Act 10 in Wisconsin.
 legend("topleft",c("Nominal Wage","Real Wage"),col=c("gray","black"),lty=1,lwd=3,bty="n")
 axis(1,at=seq(1996,2015,by=2))
 

@@ -20,7 +20,7 @@ create_quantiles<-function(x,num,right=F,include.lowest=T,na.rm=T){
 }
 
 prop.table2<-function(...,exclude=if(useNA=="no")c(NA,NaN),useNA=c("no","ifany", "always"),
-                      dnn=list.names(...),deparse.level=1,margin=NULL,pct=F,ndig=NULL){
+                      dnn=list.names(...),deparse.level=1,margin=NULL,pct=F,ndig=1){
   list.names <- function(...) {
     l <- as.list(substitute(list(...)))[-1L]
     nm <- names(l)
@@ -150,6 +150,7 @@ for (tt in 1995:2014){
   dummy[,total_pay:=salary+fringe]
   dummy[,black:=ethnicity=="B"]
   dummy[,hispanic:=ethnicity=="H"]
+  dummy[,white:=ethnicity=="W"]
   dummy[,ethnicity_main:=
           as.factor(ifelse(ethnicity=="B","Black",
                            ifelse(ethnicity=="W","White",
@@ -440,11 +441,6 @@ teacher_data[,years_tracked:=.N,by=teacher_id]
 teacher_data[,c("first_year","last_year"):=.(year[1],year[.N]),by=teacher_id]
 ## is my trajectory for this teacher censored by the data's beginning or end?
 teacher_data[,paste0(c("left_","right_"),"censored"):=.(first_year==1996,last_year==2015),by=teacher_id]
-## add forward-looking indicators
-frwd_vars<-c(paste0("move",c("","_school","_district")),"married","quit",
-             "salary","fringe","total_pay","certified","agency","move_type")
-teacher_data[,paste0(frwd_vars,"_next"):=shift(.SD,type="lead"),by=teacher_id,.SDcols=frwd_vars]
-teacher_data[,paste0(frwd_vars,"_pl5"):=shift(.SD,n=5L,type="lead"),by=teacher_id,.SDcols=frwd_vars]; rm(frwd_vars)
 
 ## Pay Scale Interpolation ####
 cobs_extrap<-function(total_exp_floor,outcome,min_exp,max_exp,
@@ -522,6 +518,7 @@ stopCluster(cl)
 salary_scales<-fringe_imp[salary_imp][,total_pay:=fringe+salary]
 rm(list=ls(pattern="imp"))
 
+#***SOME DISTRICTS STRANGELY HAVE TOO MANY INTERP VALUES--INVESTIGATE***
 salary_scales<-salary_scales[!salary_scales[,.N,by=.(year,agency,highest_degree)][N>30,!"N",with=F],]
 
 #nominal future earnings at every point in the career
@@ -535,13 +532,20 @@ salary_scales[,total_pay_future:=discounted_earnings(total_pay),
 ##add to teacher data
 setkeyv(teacher_data,key(salary_scales))[salary_scales,total_pay_future:=total_pay_future]
 
-#wage measures at next chosen district
+## add forward-looking indicators
+frwd_vars<-c(paste0("move",c("","_school","_district")),"married","quit",
+             "salary","fringe","total_pay","total_pay_future","certified","agency","move_type")
+teacher_data[,paste0(frwd_vars,"_next"):=shift(.SD,type="lead"),by=teacher_id,.SDcols=frwd_vars]
+teacher_data[,paste0(frwd_vars,"_pl5"):=shift(.SD,n=5L,type="lead"),by=teacher_id,.SDcols=frwd_vars]; rm(frwd_vars)
+
+#base wage measures in current district
 teacher_data[setkey(salary_scales[total_exp_floor==1,],year,agency,highest_degree),
              `:=`(agency_base_salary=i.salary,
                   agency_base_fringe=i.fringe,
                   agency_base_total_pay=i.total_pay,
                   agency_base_total_pay_future=i.total_pay_future)]
 
+#base wage measures at next chosen district
 setkey(teacher_data,year,agency_next,highest_degree
        )[setkey(salary_scales[total_exp_floor==1,],year,agency,highest_degree),
          `:=`(agency_next_base_salary=i.salary,
@@ -549,10 +553,15 @@ setkey(teacher_data,year,agency_next,highest_degree
               agency_next_base_total_pay=i.total_pay,
               agency_next_base_total_pay_future=i.total_pay_future)]
 
+#subsequent wage measures at subsequent district
 setkey(teacher_data,year,agency,highest_degree,total_exp_floor
-       )[setkey(salary_scales[,.(year,agency,highest_degree,exp=total_exp_floor-1,salary)],
+       )[setkey(salary_scales[,.(year,agency,highest_degree,exp=total_exp_floor-1,
+                                 salary,fringe,total_pay,total_pay_future)],
                 year,agency,highest_degree,exp),
-         agency_salary_next:=i.salary]
+         `:=`(agency_salary_next=i.salary,
+              agency_fringe_next=i.fringe,
+              agency_total_pay_next=i.total_pay,
+              agency_total_pay_future_next=i.total_pay_future)]
 
 #provide deflated wage data
 dollar_cols<-c("salary","fringe","total_pay")
@@ -651,18 +660,24 @@ ccd<-setkey(setnames(
 #Eliminate schools not present all 3 years
 ccd<-ccd[!stid %in% ccd[,.N,by=stid][N<3,stid],]
 
-ccd[,pct_hispanic:=n_hispanic/n_students]
-ccd[,pct_black:=n_black/n_students]
+ccd[,pct_hispanic:=n_hispanic/n_students
+    ][,pct_hispanic_pctl:=ecdf(pct_hispanic)(pct_hispanic)]
+ccd[,pct_black:=n_black/n_students
+    ][,pct_black_pctl:=ecdf(pct_black)(pct_black)]
 ccd[,urbanicity:=ifelse(substr(ulocal,1,1)=="1","City",
                         ifelse(substr(ulocal,1,1)=="2","Suburb",
                                ifelse(substr(ulocal,1,1)=="3","Town","Rural")))]
 
 setkey(teacher_data,year,agency)[ccd,`:=`(pct_hispanic=i.pct_hispanic,
+                                          pct_hispanic_pctl=i.pct_hispanic_pctl,
                                           pct_black=i.pct_black,
+                                          pct_black_pctl=i.pct_black_pctl,
                                           urbanicity=i.urbanicity)]
 
 setkey(teacher_data,year,agency_next)[ccd,`:=`(pct_hispanic_next=i.pct_hispanic,
+                                               pct_hispanic_pctl_next=i.pct_hispanic_pctl,
                                                pct_black_next=i.pct_black,
+                                               pct_black_pctl_next=i.pct_black_pctl,
                                                urbanicity_next=i.urbanicity)]
 
 ###School Testing Data
@@ -785,10 +800,19 @@ setkey(teacher_data,agency_next
        )[hh_income_data,`:=`(median_income_next=i.median_income_12,
                              med_income_pctl_next=i.med_income_pctl)]
 
-## Finally, some data analysis ####
+## Reduced Form Analysis: Tables ####
+
+#Plain one-way tables of # Career moves
+t1<-teacher_data[,sum(move&!move_district),by=teacher_id][,prop.table2(V1,pct=T)]
+t2<-teacher_data[,sum(move_district),by=teacher_id][,prop.table2(V1,pct=T)]
+t1[setdiff(names(t2),names(t1))]=NA
+t2[setdiff(names(t1),names(t2))]=NA
+t<-rbind(t1,t2)[,paste0(0:6)]
+rownames(t)<-c("Move School","Move District")
+cat(capture.output(xtable(t,digits=1)),sep="\n\n")
 
 #Compare my turnover data to results in Texas from Hanushek, Kain, O'Brien and Rivkin
-print(xtable(matrix(unlist(cbind(
+cat(capture.output(print(xtable(matrix(unlist(cbind(
   c("Wisconsin","1 year",
     paste(c("2-3","4-6","7-11","12-21",">21"),"years"),
     "Texas","1 year",
@@ -820,11 +844,12 @@ print(xtable(matrix(unlist(cbind(
   caption="Teacher Transitions by Teacher Experience, WI and TX",
   label="table:exp_comp_wi_tx",
   align="lp{1.8cm}p{1.5cm}p{1.5cm}p{1.5cm}p{1.8cm}"),
-  include.rownames=F,hline.after=c(-1,0,7,14))
+  include.rownames=F,hline.after=c(-1,0,7,14),scalebox=.8)),sep="\n\n")
 
 #Comparing Turnover matrix by urbanicity to that in HKR '04 (JHR) Table 2
 teacher_data[move_district_next==1,prop.table2(urbanicity,urbanicity_next,margin=1,pct=T,ndig=1)]
 
+#Comparing Turnover matrix by received vs. would-be salary & total pay
 salary_comparison<-
   teacher_data[move_district_next==1,
                prop.table2(create_quantiles(agency_salary_next,5),
@@ -833,65 +858,84 @@ rownames(salary_comparison)<-paste0("Q",1:5)
 colnames(salary_comparison)<-paste0("Q",1:5)
 cat(capture.output(xtable(salary_comparison)),sep="\n\n")
 
-#Comparing Multinomial Logit of HKR '04 (JHR) Table 9
-mnl<-lapply(list(exp_1_3=1:3,exp_4_6=4:6,exp_7_11=7:11,exp_12_30=12:30),
-            function(x){multinom(move_type~log(agency_base_salary)*relevel(as.factor(gender),ref="M")+pct_prof_wsas_pctl+
-                                   med_income_pctl+pct_black*relevel(ethnicity_main,ref="White")+
-                                   pct_hispanic*relevel(ethnicity_main,ref="White"),
-                                 data=teacher_data[agency_base_salary>0&total_exp_floor %in% x,])})
+total_pay_comparison<-
+  teacher_data[move_district_next==1,
+               prop.table2(create_quantiles(agency_total_pay_next,5),
+                           create_quantiles(total_pay_next,5),margin=1,pct=T,ndig=1)]
+rownames(total_pay_comparison)<-paste0("Q",1:5)
+colnames(total_pay_comparison)<-paste0("Q",1:5)
+cat(capture.output(xtable(total_pay_comparison)),sep="\n\n")
 
-###***SHOULD TRY AND USE A TEXREG SOLUTION... EVENTUALLY...****
-outc<-teacher_data[,setdiff(levels(move_type),"Stay")]
+total_pay_future_comparison<-
+  teacher_data[move_district_next==1,
+               prop.table2(create_quantiles(agency_total_pay_future_next,5),
+                           create_quantiles(total_pay_future_next,5),margin=1,pct=T,ndig=1)]
+rownames(total_pay_future_comparison)<-paste0("Q",1:5)
+colnames(total_pay_future_comparison)<-paste0("Q",1:5)
+cat(capture.output(xtable(total_pay_future_comparison)),sep="\n\n")
 
-coef.tables<-lapply(outc,function(x){
-  sapply(names(mnl),function(y){coef(mnl[[y]])[x,]})})
+#Descriptive Statistics on Teachers
+t<-unlist(teacher_data[,.(round(100*mean(gender=="F"),1),
+                          round(100*mean(black),1),
+                          round(100*mean(white),1),
+                          round(100*mean(hispanic),1),
+                          round(100*mean(highest_degree=="5"),1),
+                          round(mean(local_exp),1),
+                          round(mean(total_exp),1),
+                          round(mean(age),1),round(mean(salary)),
+                          round(mean(total_pay)),round(mean(years_tracked),1))])
+cat(capture.output(print(xtable(cbind(
+  c("% Female","% Black","% White","% Hispanic","% w/ Master's",NA),c(t[1:5],NA),
+  c("Avg Local Experience","Avg Total Experience","Avg Age",
+    "Avg Salary","Avg Total Pay","Avg Years Tracked"),c(t[6:11]))),
+  include.rownames=F,include.colnames=F)),sep="\n\n")
 
-se.tables<-lapply(outc,function(x){sapply(names(mnl),function(y){summary(mnl[[y]])$standard.errors[x,]})})
+#Simple LPM of moving district
+reg_dist_wo_fut<-
+  lm(move_district_next~I((salary_next-agency_salary_next)/1e5)+
+       I((total_pay_next-agency_total_pay_next)/1e5)+
+       ethnicity_main+I(pct_black_pctl_next-pct_black_pctl)+
+       I(pct_hispanic_pctl_next-pct_hispanic_pctl)+
+       highest_degree+total_exp_floor+urbanicity+as.factor(year),
+     data=teacher_data)
+reg_dist_w_fut<-
+  lm(move_district_next~I((salary_next-agency_salary_next)/1e5)+
+       I((total_pay_next-agency_total_pay_next)/1e5)+
+       I((total_pay_future_next-agency_total_pay_future_next)/1e6)+
+       ethnicity_main+I(pct_black_pctl_next-pct_black_pctl)+
+       I(pct_hispanic_pctl_next-pct_hispanic_pctl)+
+       highest_degree+total_exp_floor+urbanicity+as.factor(year),
+     data=teacher_data)
+reg_sch_wo_fut<-
+  lm(I(move_school&!move_district_next)~
+       I((salary_next-agency_salary_next)/1e4)+
+       I((total_pay_next-agency_total_pay_next)/1e4)+
+       ethnicity_main+I(pct_black_pctl_next-pct_black_pctl)+
+       I(pct_hispanic_pctl_next-pct_hispanic_pctl)+
+       highest_degree+total_exp_floor+urbanicity+as.factor(year),
+     data=teacher_data)
+reg_sch_w_fut<-
+  lm(I(move_school&!move_district_next)~
+       I((salary_next-agency_salary_next)/1e4)+
+       I((total_pay_next-agency_total_pay_next)/1e4)+
+       I((total_pay_future_next-agency_total_pay_future_next)/1e6)+
+       ethnicity_main+I(pct_black_pctl_next-pct_black_pctl)+
+       I(pct_hispanic_pctl_next-pct_hispanic_pctl)+
+       highest_degree+total_exp_floor+urbanicity+as.factor(year),
+     data=teacher_data)
 
-out_table_1<-matrix(NA,nrow=2*nrow(coef.tables[[1]]),ncol=length(names(mnl)))
-out_table_1[seq(1,2*nrow(coef.tables[[1]]),2),]<-round(coef.tables[[1]],2)
-out_table_1[seq(2,2*nrow(coef.tables[[1]]),2),]<-
-  paste0("(",round(se.tables[[1]],2),")")
-rownames(out_table_1)<-
-  paste0(rep(c("x_Intercept","(Log) Base Salary",
-               "x_Female","%-ile of WSAS Proficiency",
-               "%-ile of Median Income","Percent Black",
-               "x_Black Teacher","x_Hispanic Teacher",
-               "Percent Hispanic",
-               "(Log) Base Salary * Female",
-               "Black * Percent Black",
-               "Hispanic * Percent Black",
-               "Black * Percent Hispanic",
-               "Hispanic * Percent Hispanic"),each=2),
-         c(""," (SE)"))
-colnames(out_table_1)<-names(mnl)
-xtable(out_table_1)
+cat(capture.output(
+  texreg(list(reg_dist_wo_fut,reg_dist_w_fut,reg_sch_wo_fut,reg_sch_w_fut),
+         custom.model.names=c("District","District w/ CV","School","School w/ CV"),
+         custom.coef.names=c("xxxIntercept","$\\Delta$ Salary","$\\Delta$ Total Pay",
+                             "Hispanic","White","$\\Delta$ \\% Black",
+                             "$\\Delta$ \\% Hispanic","Master's","Experience",
+                             "Rural","Suburb","Town","xxx2012","xxx2013",
+                             "$\\Delta$ CV"),
+         omit.coef="xxx",scalebox=.8,digits=3)),sep="\n\n")
+  
 
-x<-2*c(1,6,2,3,4,5,7,9,8,10)-1
-order<-c()
-order[seq(1,2*length(x),2)]<-x; order[seq(2,2*length(x),2)]<-x+1
-out_table_1<-out_table_1[!grepl("x_",rownames(out_table_1)),][order,]
-print(xtable(out_table_1),scalebox=.6)
-
-out_table_2<-matrix(NA,nrow=2*nrow(coef.tables[[2]]),ncol=length(names(mnl)))
-out_table_2[seq(1,2*nrow(coef.tables[[2]]),2),]<-round(coef.tables[[2]],2)
-out_table_2[seq(2,2*nrow(coef.tables[[2]]),2),]<-
-  paste0("(",round(se.tables[[2]],2),")")
-rownames(out_table_2)<-
-  paste0(rep(c("x_Intercept","(Log) Base Salary",
-               "x_Female","%-ile of WSAS Proficiency",
-               "%-ile of Median Income","Percent Black",
-               "x_Black Teacher","x_Hispanic Teacher",
-               "Percent Hispanic",
-               "(Log) Base Salary * Female",
-               "Black * Percent Black",
-               "Hispanic * Percent Black",
-               "Black * Percent Hispanic",
-               "Hispanic * Percent Hispanic"),each=2),
-         c(""," (SE)"))
-colnames(out_table_2)<-names(mnl)
-out_table_2<-out_table_2[!grepl("x_",rownames(out_table_2)),][order,]
-print(xtable(out_table_2),scalebox=.6)
+# Reduced Form Analysis: Plots ####
 
 #Evolution of Turnover by Experience Across Time
 graphics.off()
@@ -960,6 +1004,20 @@ mtext("WI Turnover Moments",side=3,line=-1.5,outer=T)
 dev.copy(which=dev.list()["pdf"])
 dev.off(which=dev.list()["pdf"])
 
+# Total turnover by year
+graphics.off()
+dev.new()
+pdf("wisconsin_turnover_by_year.pdf")
+dev.set(which=dev.list()["RStudioGD"])
+matplot(1997:2015,teacher_data[year>1996,
+                               .(sum(move),sum(move&!move_district),
+                                 sum(move_district)),by=year][,!"year",with=F],
+        type="l",lty=1,lwd=3,xlab="Year",ylab="# Moves",
+        main="Number of Moves\nBy Year and Type")
+legend("topleft",legend=c("Total","School","District"),lwd=3,lty=1,
+       col=c("black","red","green"),cex=.7)
+dev.copy(which=dev.list()["pdf"])
+dev.off(which=dev.list()["pdf"])
 
 #plotting the salary schedules for the 5 most populous agencies over the first 30 years
 biggest_5<-sort(teacher_data[.(2015,unique(agency)),.N,by=agency][order(N)][(.N-4):.N,agency])

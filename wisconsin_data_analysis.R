@@ -1,4 +1,4 @@
-##Wisconsin Data Exploration
+#Wisconsin Data Exploration
 
 # Package setup & Convenient Functions ####
 rm(list=ls(all=T))
@@ -594,14 +594,14 @@ colnames(scdy_nbhd)<-rownames(scdy_nbhd)
 
 ### Need NCES Common Core Data to map polygon IDs to Agency ID
 #### 2011-12 data (all but 9 districts)
-ccd_id<-setnames(fread("/media/data_drive/common_core/district/universe_11_12_1a.txt",
+ccd_id<-setnames(fread("/media/data_drive/common_core/district/universe_2011_12_1a.txt",
                        select=c("LEAID","STID"),colClasses="character"
 )[substr(LEAID,1,2)=="55",],c("leaid","agency"))
 #### Add remaining 9 districts via CCD data in 1995-96
 ccd_id<-
   setkey(rbindlist(list(
     ccd_id,setnames(data.table(read.fwf(
-      "/media/data_drive/common_core/district/universe_95_96_1a.txt",
+      "/media/data_drive/common_core/district/universe_1995_96_1a.txt",
       widths=c(7,4)))[substr(V1,1,2)=="55",][V2 %in% teacher_data[!(agency %in% ccd_id$agency),
                                                                   unique(agency)],],c("leaid","agency")))),leaid)
 
@@ -647,18 +647,18 @@ teacher_data[,potential_earnings:=total_pay_loc_val-total_pay_future]
 ### Common Core of Data
 ### ***SHOULD EXPAND TO OTHER YEARS BY AGGREGATING SCHOOL-LEVEL FILES***
 ccd<-setkey(setnames(
-  rbindlist(lapply(c("10_11_2a","11_12_1a","12_13_1a"),
+  rbindlist(lapply(c("2010_11_2a","2011_12_1a","2012_13_1a"),
                    function(x){fread(paste0("/media/data_drive/common_core/",
                                             "district/universe_",x,".txt"),
                                      select=c("FIPST","STID","ULOCAL","HISP","BLACK","MEMBER"),
                                      colClasses=list(character=c("FIPST","STID"),
                                                      factor="ULOCAL",
                                                      integer=c("HISP","BLACK","MEMBER"))
-                   )[FIPST=="55",][,FIPST:=NULL][,year:=2000+as.numeric(substr(x,4,5))]})),
-  c("stid","ulocal","n_students","n_hispanic","n_black","year")),year,stid)[n_students>0,]
+                   )[FIPST=="55",][,FIPST:=NULL][,year:=2000+as.numeric(substr(x,6,7))]})),
+  c("agency","ulocal","n_students","n_hispanic","n_black","year")),year,agency)[n_students>0,]
 
 #Eliminate schools not present all 3 years
-ccd<-ccd[!stid %in% ccd[,.N,by=stid][N<3,stid],]
+ccd<-ccd[!agency %in% ccd[,.N,by=agency][N<3,agency],]
 
 ccd[,pct_hispanic:=n_hispanic/n_students
     ][,pct_hispanic_pctl:=ecdf(pct_hispanic)(pct_hispanic)]
@@ -800,7 +800,7 @@ setkey(teacher_data,agency_next
        )[hh_income_data,`:=`(median_income_next=i.median_income_12,
                              med_income_pctl_next=i.med_income_pctl)]
 
-## Reduced Form Analysis: Tables ####
+# Reduced Form Analysis: Tables ####
 
 #Plain one-way tables of # Career moves
 t1<-teacher_data[,sum(move&!move_district),by=teacher_id][,prop.table2(V1,pct=T)]
@@ -812,18 +812,20 @@ rownames(t)<-c("Move School","Move District")
 cat(capture.output(xtable(t,digits=1)),sep="\n\n")
 
 #Compare my turnover data to results in Texas from Hanushek, Kain, O'Brien and Rivkin
+setkey(teacher_data,year,agency,highest_degree,total_exp_floor)
 cat(capture.output(print(xtable(matrix(unlist(cbind(
   c("Wisconsin","1 year",
     paste(c("2-3","4-6","7-11","12-21",">21"),"years"),
     "Texas","1 year",
     paste(c("2-3","4-6","7-11","12-21",">21"),"years")),
   rbind(as.data.table(rbind(rep(NA,4))),
-        teacher_data[.(unique(year),"3619"),.(move_school,move_district,quit,
-                                              exp_cut=cut(total_exp_floor,
-                                                          breaks=c(1,2,4,7,12,22,31),
-                                                          include.lowest=T,
-                                                          labels=c("1","2-3","4-6","7-11",
-                                                                   "12-21",">21"),right=F))
+        teacher_data[.(unique(year),"3619"),
+                     .(move_school,move_district,quit,
+                       exp_cut=cut(total_exp_floor,
+                                   breaks=c(1,2,4,7,12,22,31),
+                                   include.lowest=T,
+                                   labels=c("1","2-3","4-6","7-11",
+                                            "12-21",">21"),right=F))
                      ][,.(round(100*mean(!quit&!move_school,na.rm=T),1),
                           round(100*mean(move_school&!move_district,na.rm=T),1),
                           round(100*mean(move_district,na.rm=T),1),
@@ -906,33 +908,23 @@ reg_dist_w_fut<-
        I(pct_hispanic_pctl_next-pct_hispanic_pctl)+
        highest_degree+total_exp_floor+urbanicity+as.factor(year),
      data=teacher_data)
-reg_sch_wo_fut<-
+reg_sch<-
   lm(I(move_school&!move_district_next)~
-       I((salary_next-agency_salary_next)/1e4)+
-       I((total_pay_next-agency_total_pay_next)/1e4)+
-       ethnicity_main+I(pct_black_pctl_next-pct_black_pctl)+
-       I(pct_hispanic_pctl_next-pct_hispanic_pctl)+
-       highest_degree+total_exp_floor+urbanicity+as.factor(year),
-     data=teacher_data)
-reg_sch_w_fut<-
-  lm(I(move_school&!move_district_next)~
-       I((salary_next-agency_salary_next)/1e4)+
-       I((total_pay_next-agency_total_pay_next)/1e4)+
-       I((total_pay_future_next-agency_total_pay_future_next)/1e6)+
        ethnicity_main+I(pct_black_pctl_next-pct_black_pctl)+
        I(pct_hispanic_pctl_next-pct_hispanic_pctl)+
        highest_degree+total_exp_floor+urbanicity+as.factor(year),
      data=teacher_data)
 
 cat(capture.output(
-  texreg(list(reg_dist_wo_fut,reg_dist_w_fut,reg_sch_wo_fut,reg_sch_w_fut),
-         custom.model.names=c("District","District w/ CV","School","School w/ CV"),
+  texreg(list(reg_dist_wo_fut,reg_dist_w_fut,reg_sch),
+         custom.model.names=c("District","District w/ FP","School"),
          custom.coef.names=c("xxxIntercept","$\\Delta$ Salary","$\\Delta$ Total Pay",
                              "Hispanic","White","$\\Delta$ \\% Black",
                              "$\\Delta$ \\% Hispanic","Master's","Experience",
                              "Rural","Suburb","Town","xxx2012","xxx2013",
-                             "$\\Delta$ CV"),
-         omit.coef="xxx",scalebox=.8,digits=3)),sep="\n\n")
+                             "$\\Delta$ Future Pay"),
+         omit.coef="xxx",scalebox=.55,digits=3,include.rmse=F,
+         caption=NULL,label=NULL)),sep="\n\n")
   
 
 # Reduced Form Analysis: Plots ####

@@ -87,9 +87,6 @@ full_data<-setkey(rbindlist(lapply(1995:2014,function(x){
                                 substr(x,3,4),"dict.csv"),select=3)$V3)}),fill=T
   )[,year:=as.integer(substr(year_session,1,4))+1][year<2004,area:=paste0("0",area)],id,year)
 full_data<-full_data[!.(unique(full_data[is.na(salary)|is.na(school)])[,.(id,year)])]
-full_data<-full_data[,N:=uniqueN(id),
-                     by=.(first_name,last_name,birth_year,
-                          year,agency,school)][N==1][,N:=NULL][is.na(fringe),fringe:=0]
 
 full_data[is.na(nee),nee:=
             ifelse(grepl("\\(",last_name),
@@ -103,6 +100,9 @@ full_data[,paste0(strings,"_clean"):=
                                                "^[a-z]\\.?\\s+|\\s+[a-z]\\.?$|"),
                                         "",tolower(gsub("[\\.,']"," ",x)))}),
           .SDcols=strings]; rm(strings)
+full_data<-full_data[,N:=uniqueN(id),
+                     by=.(first_name_clean,last_name_clean,birth_year,
+                          year,agency,school)][N==1][,N:=NULL][is.na(fringe),fringe:=0]
 
 full_data[,first_name2:=ifelse(grepl("\\s",first_name_clean),
                                regmatches(first_name_clean,
@@ -118,7 +118,7 @@ full_data[year!=2012,(div10):=lapply(.SD,function(x)x/10),.SDcols=div10]; rm(div
 
 full_data[,c("birth_year","total_exp_floor","total_pay"):=
             list(as.integer(birth_year),floor(total_exp),salary+fringe)]
-full_data[,age:=tt+1-birth_year]
+full_data[,age:=year-birth_year]
 ethnames<-c("black","hispanic","white")
 ethcodes<-c("B","H","W")
 full_data[,(ethnames):=lapply(ethcodes,function(x)ethnicity==x)]; rm(ethnames,ethcodes)
@@ -130,6 +130,115 @@ full_data[,ethnicity_main:=
 full_data[setkey(unique(full_data[year==1996,.(id)])[,teacher_id:=.I],id),
           teacher_id:=ifelse(year==1996,i.teacher_id,NA)]
 full_data[year==1996,c("new_teacher","married"):=list(as.logical(total_exp<2),as.logical(nee_clean!=""))]
+
+get_id<-function(yr,key_from,key_to=key_from,exp=F){
+  if (!exp){
+    setkey(setkeyv(full_data,key_to
+                   )[setkeyv(full_data[year<yr,.SD[.N],by=teacher_id,
+                                       .SDcols=c(key_from,"teacher_id")],
+                             key_from),teacher_id:=ifelse(year==yr,i.teacher_id,NA)],year)
+  } else{
+    setkey(setkeyv(full_data,key_to
+                   )[setkeyv(full_data[year<yr,.SD[.N],by=teacher_id,
+                                       .SDcols=c(key_from,"teacher_id")],
+                             key_from),teacher_id:=ifelse(year==yr,i.teacher_id,NA),
+                     roll=-1L],year)
+  }
+}
+
+setkey(full_data,year)
+
+for (yy in 1997:2015){
+  print(yy)
+  #1) First match anyone who stayed in the same school
+  #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency","school"))
+  #2) Loosen criteria--find within-district switchers
+  #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency"))
+  #3) Loosen criteria--find district switchers
+  #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year"))
+  #4) Find anyone who appears to have gotten married
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency","school"),
+            c("first_name_clean","nee_clean"      ,"birth_year","agency","school"))
+  #5) married and changed schools
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency"),
+            c("first_name_clean","nee_clean"      ,"birth_year","agency"))
+  #6) married and changed districts
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year"),
+            c("first_name_clean","nee_clean"      ,"birth_year"))
+  #7) now match some stragglers with missing/included middle names & repeat above
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
+  get_id(yy,c("first_name2","last_name_clean","birth_year","agency","school"))
+  #8) stripped first name + school switch
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY
+  get_id(yy,c("first_name2","last_name_clean","birth_year","agency"))
+  #9) stripped first name + district switch
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR
+  get_id(yy,c("first_name2","last_name_clean","birth_year"))
+  #10) stripped first name + married
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
+  get_id(yy,c("first_name2","last_name_clean","birth_year","agency","school"),
+            c("first_name2","nee_clean"      ,"birth_year","agency","school"))
+  #11) stripped first name, married, school switch
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
+  get_id(yy,c("first_name2","last_name_clean","birth_year","agency"),
+            c("first_name2","nee_clean"      ,"birth_year","agency"))
+  #12) stripped first name, married, district switch
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
+  get_id(yy,c("first_name2","last_name_clean","birth_year"),
+            c("first_name2","nee_clean"      ,"birth_year"))
+  #13) some people appear to be missing birth year only
+  #MATCH ON: FIRST NAME | LAST NAME | AGENCY | SCHOOL ID
+  get_id(yy,c("first_name_clean","last_name_clean","agency","school"))
+  #14) among missing YOB-only folks, check school switching
+  #MATCH ON: FIRST NAME | LAST NAME | AGENCY
+  get_id(yy,c("first_name_clean","last_name_clean","agency"))
+  #15) among missing YOB-only folks, check marriage
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | AGENCY | SCHOOL ID
+  get_id(yy,c("first_name_clean","last_name_clean","agency","school"),
+            c("first_name_clean","nee_clean"      ,"agency","school"))
+  #16) among missing YOB-only folks, check marriage + school switch
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | AGENCY
+  get_id(yy,c("first_name_clean","last_name_clean","agency"),
+            c("first_name_clean","nee_clean"      ,"agency"))
+  #17) among missing YOB-only folks, check stripped name
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | AGENCY | SCHOOL ID
+  get_id(yy,c("first_name2","last_name_clean","agency","school"))
+  #18) among missing YOB-only folks, check stripped name + switch school
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | AGENCY
+  get_id(yy,c("first_name2","last_name_clean","agency"))
+  #19) among missing YOB-only folks, check stripped name + married
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | AGENCY | SCHOOL ID
+  get_id(yy,c("first_name2","last_name_clean","agency","school"),
+            c("first_name2","nee_clean"      ,"agency","school"))
+  #20) among missing YOB-only folks, check stripped name + married + switch school
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | AGENCY
+  get_id(yy,c("first_name2","last_name_clean","agency"),
+            c("first_name2","nee_clean"      ,"agency"))
+  #21) among missing YOB-only folks, check if experience is within a year
+  #MATCH ON: FIRST NAME | LAST NAME | EXPERIENCE
+  get_id(yy,c("first_name_clean","last_name_clean","total_exp"),exp=T)
+  #22) among missing YOB-only folks, check experience + marriage
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | EXPERIENCE
+  get_id(yy,c("first_name_clean","last_name_clean","total_exp"),
+            c("first_name_clean","nee_clean"      ,"total_exp"),exp=T)
+  #23) among missing YOB-only folks, check experience + first name mismatch
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | EXPERIENCE
+  get_id(yy,c("first_name2","last_name_clean","total_exp"),exp=T)
+  #24) among missing YOB-only folks, check experience + first name mismatch + married
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | EXPERIENCE
+  get_id(yy,c("first_name2","last_name_clean","total_exp"),
+            c("first_name2","nee_clean"      ,"total_exp"),exp=T)
+  #25) finally, give up and assign new ids to new (read: unmatched) teachers
+  setkey(full_data,id
+         )[setkey(unique(full_data[year==yy&is.na(teacher_id),.(id)])[,count:=.I],id),
+           teacher_id:=ifelse(year==yy,max(teacher_id)+i.count,teacher_id)]
+}
 
 staff_type==1&agency_type==4&area %in% 0050, 0300, 0400
 [agency_type %in% c("01","03","04","1","3","4","49")
@@ -146,255 +255,16 @@ staff_type==1&agency_type==4&area %in% 0050, 0300, 0400
 dummy[age-total_exp>17&salary>=15000&highest_degree %in% c("4","5")
       &substr(agency,1,2)!="99"&salary>fringe&fringe>=0&total_exp_floor<=31
       &total_exp_floor>0,]
-###***** CONTINUE CLEANING FROM HERE *****###
 
-# Dynamic teacher matching & Master data compilation ####
 
-#***********************************************************
-# MATCHING PROCESS: METICULOUSLY MATCH CONSECUTIVE YEARS-- *
-#    HAMMER OUT MATCHES AS MUCH ASS POSSIBLE               *
-#    BUILDING UP THE ID SYSTEM IN THE PROCESS              *
-#***********************************************************
-
-#Count all teachers in year 1
-data_1996[,teacher_id:=.I][,c("move_school","move_district","move",
-                              "mismatch_yob","mismatch_inits","mismatch_exp"):=NA
-                           ]
-
-#More avenues for exploration:
-# * Mis-spelling/typos: e.g. ARYLS OELKE <-> ARLYS OELKE
-# * Switching maiden/married names: e.g. DONNA M BACKUS <-> DONNA M WAGNER BACKUS
-# * Maternity leaves (??)
-# * Indicator for certification (deg=4, t-1 -> deg=5, t)
-#Problems remaining:
-# * find "married" with common maiden name: e.g., JENNIFER DAVIS -> JENNIFER CASHIN DAVIS, JENNIFER SCHMUHL DAVIS
-match_on_names<-function(from,to){
-  #1) First match anyone who stayed in the same school
-  #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
-  setkey(from,first_name_clean,last_name_clean,birth_year,agency,school)
-  setkey(to,first_name_clean,last_name_clean,birth_year,agency,school
-  )[from,
-    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
-         move=0,married=0,mismatch_yob=0,mismatch_inits=0,
-         mismatch_exp=0,new_teacher=0)]
-  #2) Loosen criteria--find within-district switchers
-  #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY
-  setkey(to,first_name_clean,last_name_clean,birth_year,agency
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
-         move=1,married=0,mismatch_yob=0,mismatch_inits=0,
-         mismatch_exp=0,new_teacher=0)]
-  #3) Loosen criteria--find district switchers
-  #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR
-  setkey(to,first_name_clean,last_name_clean,birth_year
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
-         move=1,married=0,mismatch_yob=0,mismatch_inits=0,
-         mismatch_exp=0,new_teacher=0)]
-  #4) Find anyone who appears to have gotten married
-  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
-  setkey(to,first_name_clean,nee_clean,birth_year,agency,school
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
-         move=0,married=1,mismatch_yob=0,mismatch_inits=0,
-         mismatch_exp=0,new_teacher=0)]
-  
-  #5) married and changed schools
-  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY
-  setkey(to,first_name_clean,nee_clean,birth_year,agency
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
-         move=1,married=1,mismatch_yob=0,mismatch_inits=0,
-         mismatch_exp=0,new_teacher=0)]
-  
-  #6) married and changed districts
-  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR
-  setkey(to,first_name_clean,nee_clean,birth_year
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
-         move=1,married=1,mismatch_yob=0,mismatch_inits=0,
-         mismatch_exp=0,new_teacher=0)]
-  #7) now match some stragglers with missing/included middle names & repeat above
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
-  setkey(from,first_name2,last_name_clean,birth_year,agency,school)
-  setkey(to,first_name2,last_name_clean,birth_year,agency,school
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
-         move=0,married=0,mismatch_yob=0,mismatch_inits=1,
-         mismatch_exp=0,new_teacher=0)]
-  #8) stripped first name + school switch
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY
-  setkey(to,first_name2,last_name_clean,birth_year,agency
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
-         move=1,married=0,mismatch_yob=0,mismatch_inits=1,
-         mismatch_exp=0,new_teacher=0)]
-  #9) stripped first name + district switch
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR
-  setkey(to,first_name2,last_name_clean,birth_year
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
-         move=1,married=0,mismatch_yob=0,mismatch_inits=1,
-         mismatch_exp=0,new_teacher=0)]
-  #10) stripped first name + married
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
-  setkey(to,first_name2,nee_clean,birth_year,agency,school
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
-         move=0,married=1,mismatch_yob=0,mismatch_inits=1,
-         mismatch_exp=0,new_teacher=0)]
-  #11) stripped first name, married, school switch
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
-  setkey(to,first_name2,nee_clean,birth_year,agency,school
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
-         move=1,married=1,mismatch_yob=0,mismatch_inits=1,
-         mismatch_exp=0,new_teacher=0)]
-  #12) stripped first name, married, district switch
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
-  setkey(to,first_name2,nee_clean,birth_year,agency,school
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
-         move=1,married=1,mismatch_yob=0,mismatch_inits=1,
-         mismatch_exp=0,new_teacher=0)]
-  #13) some people appear to be missing birth year only
-  #MATCH ON: FIRST NAME | LAST NAME | AGENCY | SCHOOL ID
-  setkey(from,first_name_clean,last_name_clean,agency,school)
-  setkey(to,first_name_clean,last_name_clean,agency,school
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
-         move=0,married=0,mismatch_yob=1,mismatch_inits=0,
-         mismatch_exp=0,new_teacher=0)]
-  #14) among missing YOB-only folks, check school switching
-  #MATCH ON: FIRST NAME | LAST NAME | AGENCY
-  setkey(from,first_name_clean,last_name_clean,agency)
-  setkey(to,first_name_clean,last_name_clean,agency
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
-         move=1,married=0,mismatch_yob=1,mismatch_inits=0,
-         mismatch_exp=0,new_teacher=0)]
-  #15) among missing YOB-only folks, check marriage
-  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | AGENCY | SCHOOL ID
-  setkey(from,first_name_clean,nee_clean,agency,school)
-  setkey(to,first_name_clean,last_name_clean,agency,school
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
-         move=0,married=1,mismatch_yob=1,mismatch_inits=0,
-         mismatch_exp=0,new_teacher=0)]
-  #16) among missing YOB-only folks, check marriage + school switch
-  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | AGENCY
-  setkey(from,first_name_clean,nee_clean,agency)
-  setkey(to,first_name_clean,last_name_clean,agency
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
-         move=1,married=1,mismatch_yob=1,mismatch_inits=0,
-         mismatch_exp=0,new_teacher=0)]
-  #17) among missing YOB-only folks, check stripped name
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | AGENCY | SCHOOL ID
-  setkey(from,first_name2,last_name_clean,agency,school)
-  setkey(to,first_name2,last_name_clean,agency,school
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
-         move=0,married=0,mismatch_yob=1,mismatch_inits=1,
-         mismatch_exp=0,new_teacher=0)]
-  #18) among missing YOB-only folks, check stripped name + switch school
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | AGENCY
-  setkey(from,first_name2,last_name_clean,agency)
-  setkey(to,first_name2,last_name_clean,agency
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
-         move=1,married=0,mismatch_yob=1,mismatch_inits=1,
-         mismatch_exp=0,new_teacher=0)]
-  #19) among missing YOB-only folks, check stripped name + married
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | AGENCY | SCHOOL ID
-  setkey(from,first_name2,last_name_clean,agency,school)
-  setkey(to,first_name2,nee_clean,agency,school
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=0,move_district=0,
-         move=0,married=1,mismatch_yob=1,mismatch_inits=1,
-         mismatch_exp=0,new_teacher=0)]
-  #20) among missing YOB-only folks, check stripped name + married + switch school
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | AGENCY
-  setkey(from,first_name2,last_name_clean,agency,school)
-  setkey(to,first_name2,nee_clean,agency,school
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=0,
-         move=1,married=1,mismatch_yob=1,mismatch_inits=1,
-         mismatch_exp=0,new_teacher=0)]
-  #21) among missing YOB-only folks, check if experience is within a year
-  #MATCH ON: FIRST NAME | LAST NAME | EXPERIENCE
-  setkey(from,first_name_clean,last_name_clean,total_exp)
-  setkey(to,first_name_clean,last_name_clean,total_exp
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
-         move=1,married=0,mismatch_yob=1,mismatch_inits=0,
-         mismatch_exp=1,new_teacher=0),roll=-1L]
-  #22) among missing YOB-only folks, check experience + marriage
-  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | EXPERIENCE
-  setkey(from,first_name_clean,last_name_clean,total_exp)
-  setkey(to,first_name_clean,nee_clean,total_exp
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
-         move=1,married=1,mismatch_yob=1,mismatch_inits=0,
-         mismatch_exp=1,new_teacher=0),roll=-1L]
-  #23) among missing YOB-only folks, check experience + first name mismatch
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | EXPERIENCE
-  setkey(from,first_name2,last_name_clean,total_exp)
-  setkey(to,first_name2,last_name_clean,total_exp
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
-         move=1,married=0,mismatch_yob=1,mismatch_inits=1,
-         mismatch_exp=1,new_teacher=0),roll=-1L]
-  #24) among missing YOB-only folks, check experience + first name mismatch + married
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | EXPERIENCE
-  setkey(from,first_name2,last_name_clean,total_exp)
-  setkey(to,first_name2,nee_clean,total_exp
-  )[from[!(teacher_id %in% to$teacher_id),],
-    `:=`(teacher_id=i.teacher_id,move_school=1,move_district=1,
-         move=1,married=1,mismatch_yob=1,mismatch_inits=1,
-         mismatch_exp=1,new_teacher=0),roll=-1L]
-  
-  #25) finally, give up and assign new ids to new (read: unmatched) teachers
-  to[is.na(teacher_id),`:=`(teacher_id=.I+max(from$teacher_id),move_school=0,move_district=0,
-                            move=0,married=0,mismatch_yob=0,mismatch_inits=0,
-                            mismatch_exp=0,new_teacher=1)]
-  #Now look forward from `from`--if we matched them, they didn't quit/retire
-  from[teacher_id %in% to$teacher_id   ,quit:=0]
-  from[!(teacher_id %in% to$teacher_id),quit:=1]
-  to
-}
-
-data_1997<-match_on_names(from=data_1996,to=data_1997)
-data_1998<-match_on_names(from=data_1997,to=data_1998)
-data_1999<-match_on_names(from=data_1998,to=data_1999)
-data_2000<-match_on_names(from=data_1999,to=data_2000)
-data_2001<-match_on_names(from=data_2000,to=data_2001)
-data_2002<-match_on_names(from=data_2001,to=data_2002)
-data_2003<-match_on_names(from=data_2002,to=data_2003)
-data_2004<-match_on_names(from=data_2003,to=data_2004)
-data_2005<-match_on_names(from=data_2004,to=data_2005)
-data_2006<-match_on_names(from=data_2005,to=data_2006)
-data_2007<-match_on_names(from=data_2006,to=data_2007)
-data_2008<-match_on_names(from=data_2007,to=data_2008)
-data_2009<-match_on_names(from=data_2008,to=data_2009)
-data_2010<-match_on_names(from=data_2009,to=data_2010)
-data_2011<-match_on_names(from=data_2010,to=data_2011)
-data_2012<-match_on_names(from=data_2011,to=data_2012)
-data_2013<-match_on_names(from=data_2012,to=data_2013)
-data_2014<-match_on_names(from=data_2013,to=data_2014)
-data_2015<-match_on_names(from=data_2014,to=data_2015)
-
-teacher_data<-
-  rbindlist(list(data_1996,data_1997,data_1998,data_1999,data_2000,
-                 data_2001,data_2002,data_2003,data_2004,data_2005,
-                 data_2006,data_2007,data_2008,data_2009,data_2010,
-                 data_2011,data_2012,data_2013,data_2014,data_2015),
-            fill=T)[total_exp_floor<=30,][,move_type:=
+[total_exp_floor<=30,][,move_type:=
                                             as.factor(ifelse(
                                               !move&!quit,"Stay",
                                               ifelse(move_school&!move_district,"Switch Campus",
                                                      ifelse(move_district,"Switch District","??"))))
                                           ]; rm(list=ls(pattern="data_"))
+
+###***** CONTINUE CLEANING FROM HERE *****###
 
 teacher_data[,multiples:=.N,by=.(teacher_id,year)]
 #Delete history for any multi-matched teachers (down to only a few at this point)

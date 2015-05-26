@@ -2,6 +2,7 @@
 
 # Package setup & Convenient Functions ####
 rm(list=ls(all=T))
+gc()
 setwd("/home/michael/Desktop/research/Wisconsin Bargaining")
 library(data.table)
 library(cobs)
@@ -19,30 +20,18 @@ create_quantiles<-function(x,num,right=F,include.lowest=T,na.rm=T){
   cut(x,breaks=quantile(x,probs=seq(0,1,by=1/num),na.rm=T),labels=1:num,right=right,include.lowest=include.lowest)
 }
 
-prop.table2<-function(...,exclude=if(useNA=="no")c(NA,NaN),useNA=c("no","ifany", "always"),
-                      dnn=list.names(...),deparse.level=1,margin=NULL,pct=F,ndig=1){
-  list.names <- function(...) {
-    l <- as.list(substitute(list(...)))[-1L]
-    nm <- names(l)
-    fixup <- if (is.null(nm)) 
-      seq_along(l)
-    else nm == ""
-    dep <- vapply(l[fixup], function(x) switch(deparse.level + 
-                                                 1, "", if (is.symbol(x)) as.character(x) else "", 
-                                               deparse(x, nlines = 1)[1L]), "")
-    if (is.null(nm)) 
-      dep
-    else {
-      nm[fixup] <- dep
-      nm
-    }
-  }
-  if (!missing(exclude) && is.null(exclude)) 
-    useNA <- "always"
-  useNA <- match.arg(useNA)
-  ttable<-prop.table(table(...,exclude=exclude,useNA=useNA,dnn=dnn,deparse.level=1),margin=margin)
-  if (pct) round(100*ttable,ndig) else ttable
+prop.table2<-function(...){
+  dots<-list(...)
+  args<-names(dots) %in% names(formals(prop.table))
+  do.call('prop.table',c(list(do.call('table',dots[!args])),
+                              dots[args]))
 }
+
+o.table<-function(...){
+  x<-do.call('table',list(...))
+  x[order(x)]
+}
+
 
 ntostring<-function(n,digits=2){
   paste0(ifelse(log10(n)<digits-1,
@@ -87,94 +76,79 @@ dev.off(which=dev.list()["pdf"])
 #http://lbstat.dpi.wi.gov/lbstat_newasr
 rm(agg_salary_data,to_numeric)
 
-## Data import ####
+# Data import ####
 
-#read and do some data cleaning/uniforming
-for (tt in 1995:2014){
-  dummy<-
-    fread(paste0("/media/data_drive/wisconsin/",substr(tt,3,4),"staff.csv"),
-          drop=which(scan(file=paste0("/media/data_drive/wisconsin/",
-                                      substr(tt,3,4),"staff.csv"),
-                          what="",sep=",",nlines=1,quiet=T)=="filler"),
-          colClasses=fread(paste0("/media/data_drive/wisconsin/",
-                                  substr(tt,3,4),"dict.csv"))[,V3]
-    )[position_code==53&(agency_type %in% c("01","03","04","1","3","4","49"))
-      &!is.na(salary),][is.na(fringe),fringe:=0]
-  
-  if (!("nee" %in% names(dummy))){
-    #For through 1999-2000, maiden names were stored in parentheses;
-    #  some spillover happened thereafter (through roughly 2003-04)                                  
-    dummy[,nee:=ifelse(grepl("\\(",last_name),
-                       regmatches(last_name,regexpr("(?<=\\().*?(?=\\)|$)",last_name,perl=T)),
-                       ifelse(grepl("-",last_name),
-                              regmatches(last_name,regexpr(".*(?=-)",last_name,perl=T)),""))]
-  }
-  strings<-c("first_name","last_name","nee")
-  dummy[,paste0(strings,"_clean"):=
-          lapply(.SD,function(x){gsub(paste0("\\s+$|^\\s+|\\s+[a-z]\\.?\\s+|",
-                                             "^[a-z]\\.?\\s+|\\s+[a-z]\\.?$|"),
-                                      "",tolower(gsub("[\\.,']"," ",x)))}),
-        .SDcols=strings]
-  #If last name deleted hereby, can confuse 
-  # matching algorithm to match empty maiden name with ""
-  # So, use the placeholder "_" to denote deleted last name
-  dummy[last_name_clean=="",last_name_clean:="_"]
-  
-  #eliminate duplicate observations of teachers who have multiple assignments--
-  #  relevant variables (for now) are constant across observations
-  #**Not constant within teacher rows: SHOULD CHECK**
-  # Also, sidestep the issue of identifying which teacher is which when there
-  # are more than one teachers with the same first,last name and birth year
-  dummy<-setkey(dummy[!duplicated(id),
-                      ][,count:=.N,by=.(first_name_clean,last_name_clean,birth_year)
-                        ][count==1,],first_name_clean,last_name_clean,birth_year)
-  
-  #whether middle names are included is sometimes random; use as backup
-  dummy[,first_name2:=ifelse(grepl("\\s",first_name_clean),
-                             regmatches(first_name_clean,
-                                        regexpr(".*(?=\\s)",first_name_clean,perl=T)),
-                             first_name_clean)]
-  
-  #Be careful--2012 data stores experience differently
-  dummy[,local_exp:=if (tt==2011) local_exp else local_exp/10]
-  dummy[,total_exp:=if (tt==2011) total_exp else total_exp/10]
-  
-  #2012 also stores agency & school differently
-  dummy[,agency:=if (tt==2011) substr(paste0("000",agency),nchar(agency),nchar(agency)+3) else agency]
-  dummy[,school:=if (tt==2011) substr(paste0("000",school),nchar(school),nchar(school)+3) else school]
-  
-  #some later useful objects
-  dummy[,birth_year:=as.integer(birth_year)]
-  dummy[,total_exp_floor:=floor(total_exp)]
-  dummy[,age:=tt+1-birth_year]
-  dummy[,total_pay:=salary+fringe]
-  dummy[,black:=ethnicity=="B"]
-  dummy[,hispanic:=ethnicity=="H"]
-  dummy[,white:=ethnicity=="W"]
-  dummy[,ethnicity_main:=
-          as.factor(ifelse(ethnicity=="B","Black",
-                           ifelse(ethnicity=="W","White",
-                                  ifelse(ethnicity=="H","Hispanic",NA))))]
-  
-  #SHOULD TRY AND DELVE INTO THIS MORE LATER, but for now--delete any record of teachers working since before age 17
-  # Also delete teachers earning less than $15,000 and older than 40
-  # Also delete teachers with degrees besides bachelors and masters
-  # Also delete teachers with outside (0,31] years experience
-  #      (later restrict to <=30, but need to record retirement first)
-  # Also delete all CESAs
-  # Also delete any teacher with fringe pay > salary (probably typo--0.5% of teachers)
-  # Also delete one teacher w fringe < 0
-  dummy<-dummy[age-total_exp>17&salary>=15000&highest_degree %in% c("4","5")
-               &substr(agency,1,2)!="99"&salary>fringe&fringe>=0&total_exp_floor<=31
-               &total_exp_floor>0,]
-  
-  #create year dummy for appending data next
-  dummy[,year:=tt+1]
-  
-  assign(paste("data",tt+1,sep="_"),dummy)
-}; rm(tt,dummy,strings)
+full_data<-setkey(rbindlist(lapply(1995:2014,function(x){
+  fread(paste0("/media/data_drive/wisconsin/",substr(x,3,4),"staff.csv"),
+        drop=which(scan(file=paste0("/media/data_drive/wisconsin/",
+                                    substr(x,3,4),"staff.csv"),
+                        what="",sep=",",nlines=1,quiet=T)=="filler"),
+        colClasses=fread(paste0("/media/data_drive/wisconsin/",
+                                substr(x,3,4),"dict.csv"),select=3)$V3)}),fill=T
+  )[,year:=as.integer(substr(year_session,1,4))+1][year<2004,area:=paste0("0",area)],id,year)
+full_data<-full_data[!.(unique(full_data[is.na(salary)|is.na(school)])[,.(id,year)])]
+full_data<-full_data[,N:=uniqueN(id),
+                     by=.(first_name,last_name,birth_year,
+                          year,agency,school)][N==1][,N:=NULL][is.na(fringe),fringe:=0]
 
-## Dynamic teacher matching & Master data compilation ####
+full_data[is.na(nee),nee:=
+            ifelse(grepl("\\(",last_name),
+                   regmatches(last_name,regexpr("(?<=\\().*?(?=\\)|$)",last_name,perl=T)),
+                   ifelse(grepl("-",last_name),
+                          regmatches(last_name,regexpr(".*(?=-)",last_name,perl=T)),NA))]
+
+strings<-c("first_name","last_name","nee")
+full_data[,paste0(strings,"_clean"):=
+            lapply(.SD,function(x){gsub(paste0("\\s+$|^\\s+|\\s+[a-z]\\.?\\s+|",
+                                               "^[a-z]\\.?\\s+|\\s+[a-z]\\.?$|"),
+                                        "",tolower(gsub("[\\.,']"," ",x)))}),
+          .SDcols=strings]; rm(strings)
+
+full_data[,first_name2:=ifelse(grepl("\\s",first_name_clean),
+                               regmatches(first_name_clean,
+                                          regexpr(".*(?=\\s)",first_name_clean,perl=T)),
+                               first_name_clean)]
+
+add0s<-c("agency","school","area")
+full_data[year==2012,(add0s):=lapply(.SD,function(x)
+  substr(paste0("000",x),nchar(x),nchar(x)+3)),.SDcols=add0s]; rm(add0s)
+
+div10<-paste0(c("local","total"),"_exp")
+full_data[year!=2012,(div10):=lapply(.SD,function(x)x/10),.SDcols=div10]; rm(div10)
+
+full_data[,c("birth_year","total_exp_floor","total_pay"):=
+            list(as.integer(birth_year),floor(total_exp),salary+fringe)]
+full_data[,age:=tt+1-birth_year]
+ethnames<-c("black","hispanic","white")
+ethcodes<-c("B","H","W")
+full_data[,(ethnames):=lapply(ethcodes,function(x)ethnicity==x)]; rm(ethnames,ethcodes)
+full_data[,ethnicity_main:=
+            as.factor(ifelse(black,"Black",
+                             ifelse(white,"White",
+                                    ifelse(hispanic,"Hispanic",NA))))]
+
+full_data[setkey(unique(full_data[year==1996,.(id)])[,teacher_id:=.I],id),
+          teacher_id:=ifelse(year==1996,i.teacher_id,NA)]
+full_data[year==1996,c("new_teacher","married"):=list(as.logical(total_exp<2),as.logical(nee_clean!=""))]
+
+staff_type==1&agency_type==4&area %in% 0050, 0300, 0400
+[agency_type %in% c("01","03","04","1","3","4","49")
+            &(if (tt<=2003) months_employed>=875 else days_of_contract>=175)
+            &if (tt %in% c(1999:2003,2008:2014)) long_term_sub=="N"&position_code==53 else position_code==53,
+            ]
+# Also delete teachers earning less than $15,000 and older than 40
+# Also delete teachers with degrees besides bachelors and masters
+# Also delete teachers with outside (0,31] years experience
+#      (later restrict to <=30, but need to record retirement first)
+# Also delete all CESAs
+# Also delete any teacher with fringe pay > salary (probably typo--0.5% of teachers)
+# Also delete one teacher w fringe < 0
+dummy[age-total_exp>17&salary>=15000&highest_degree %in% c("4","5")
+      &substr(agency,1,2)!="99"&salary>fringe&fringe>=0&total_exp_floor<=31
+      &total_exp_floor>0,]
+###***** CONTINUE CLEANING FROM HERE *****###
+
+# Dynamic teacher matching & Master data compilation ####
 
 #***********************************************************
 # MATCHING PROCESS: METICULOUSLY MATCH CONSECUTIVE YEARS-- *
@@ -185,7 +159,7 @@ for (tt in 1995:2014){
 #Count all teachers in year 1
 data_1996[,teacher_id:=.I][,c("move_school","move_district","move",
                               "mismatch_yob","mismatch_inits","mismatch_exp"):=NA
-                           ][,new_teacher:=as.integer(total_exp<2)][,married:=as.integer(nee_clean!="")]
+                           ]
 
 #More avenues for exploration:
 # * Mis-spelling/typos: e.g. ARYLS OELKE <-> ARLYS OELKE
@@ -442,7 +416,7 @@ teacher_data[,c("first_year","last_year"):=.(year[1],year[.N]),by=teacher_id]
 ## is my trajectory for this teacher censored by the data's beginning or end?
 teacher_data[,paste0(c("left_","right_"),"censored"):=.(first_year==1996,last_year==2015),by=teacher_id]
 
-## Pay Scale Interpolation ####
+# Pay Scale Interpolation ####
 cobs_extrap<-function(total_exp_floor,outcome,min_exp,max_exp,
                       constraint="increase",print.mesg=F,nknots=8,
                       keep.data=F,maxiter=150){
@@ -464,7 +438,7 @@ cobs_extrap<-function(total_exp_floor,outcome,min_exp,max_exp,
          in_sample,
          #append by linear extension above max_exp
          if (max_exp==30) NULL else in_sample[length(in_sample)]+
-           (1:(40-max_exp))*(in_sample[length(in_sample)]-
+           (1:(30-max_exp))*(in_sample[length(in_sample)]-
                                in_sample[length(in_sample)-1]))
   #Just force to 0 anything that wants to go negative
   fit[fit<0]<-0
@@ -579,7 +553,7 @@ rm(infl,dollar_cols)
 write.csv(salary_scales,"wisconsin_salary_scales_imputed.csv",row.names=F)
 salary_scales<-setkey(fread("wisconsin_salary_scales_imputed.csv"),year,agency,highest_degree,total_exp_floor)
 
-## Spatial Data ####
+# Spatial Data ####
 
 wi_districts_elem_shp<-
   readShapeSpatial("/media/data_drive/gis_data/WI/wisconsin_elementary_districts_statewide.shp")
@@ -643,7 +617,7 @@ rm(tpf)
 
 teacher_data[,potential_earnings:=total_pay_loc_val-total_pay_future]
 
-## District Demographic Data ####
+# District Demographic Data ####
 ### Common Core of Data
 ### ***SHOULD EXPAND TO OTHER YEARS BY AGGREGATING SCHOOL-LEVEL FILES***
 ccd<-setkey(setnames(

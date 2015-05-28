@@ -41,41 +41,6 @@ ntostring<-function(n,digits=2){
                        n)))
 }
 
-# Using the district-level average wage files for the teachers ####
-
-##Data is from fall, but I prefer to think of an academic year as its spring year, so add one
-to_numeric<-c("low_salary","high_salary","avg_salary","avg_fringe")
-agg_salary_data<-setkey(setnames(
-  rbindlist(lapply(1998:2013,
-                   function(x){fread(paste0("/media/data_drive/wisconsin/",
-                                            "salaries_by_district_wi_",substr(x,3,4),".csv")
-                   )[,year:=x+1]}),fill=T)[,Year:=NULL],
-  c("district","dist_no","city_code","cesa",
-    "pos_code","position","low_salary","high_salary","avg_salary",
-    "avg_fringe","avg_exp_local","avg_exp_total","year")),dist_no
-)[,(to_numeric):=lapply(.SD,as.numeric),.SDcols=to_numeric]
-
-#plot the three series, including a line demarcating the implementation of Act 10
-graphics.off()
-dev.new()
-pdf("wage_series_unweighted_all_dist.pdf")
-dev.set(which=dev.list()["RStudioGD"])
-matplot(1998:2013,agg_salary_data[,lapply(.SD,mean,na.rm=T),by=year,
-                                  .SDcols=c("avg_salary","high_salary","low_salary")
-                                  ][,!"year",with=F],
-        type="l",col=c("blue","black","black"),lty=c(1,2,2),lwd=c(4,3,3),
-        xaxt="n",xlab="Year",ylab="Nominal Wage")
-axis(1,at=seq(1998,2014,by=2))
-#wages measured 3rd Friday of September (the 16th in 2011), which came 79 days after the enactment of Act 10 in Wisconsin.
-abline(v=2011-79/365,col="red",lty=2,lwd=2)
-dev.copy(which=dev.list()["pdf"])
-dev.off(which=dev.list()["pdf"])
-
-# Analysis of Teacher-Level File ####
-#Teacher-level data found here:
-#http://lbstat.dpi.wi.gov/lbstat_newasr
-rm(agg_salary_data,to_numeric)
-
 # Data import ####
 
 full_data<-setkey(rbindlist(lapply(1995:2014,function(x){
@@ -85,7 +50,7 @@ full_data<-setkey(rbindlist(lapply(1995:2014,function(x){
                         what="",sep=",",nlines=1,quiet=T)=="filler"),
         colClasses=fread(paste0("/media/data_drive/wisconsin/",
                                 substr(x,3,4),"dict.csv"),select=3)$V3)}),fill=T
-  )[,year:=as.integer(substr(year_session,1,4))+1][year<2004,area:=paste0("0",area)],id,year)
+  )[,year:=as.integer(substr(year_session,1,4))+1][year<2005,area:=paste0("0",area)],id,year)
 full_data<-full_data[!.(unique(full_data[is.na(salary)|is.na(school)])[,.(id,year)])]
 
 full_data[is.na(nee),nee:=
@@ -116,8 +81,8 @@ full_data[year==2012,(add0s):=lapply(.SD,function(x)
 div10<-paste0(c("local","total"),"_exp")
 full_data[year!=2012,(div10):=lapply(.SD,function(x)x/10),.SDcols=div10]; rm(div10)
 
-full_data[,c("birth_year","total_exp_floor","total_pay"):=
-            list(as.integer(birth_year),floor(total_exp),salary+fringe)]
+full_data[,c("birth_year","total_exp_floor","total_pay","agency_type"):=
+            list(as.integer(birth_year),floor(total_exp),salary+fringe,as.integer(agency_type))]
 full_data[,age:=year-birth_year]
 ethnames<-c("black","hispanic","white")
 ethcodes<-c("B","H","W")
@@ -129,20 +94,26 @@ full_data[,ethnicity_main:=
 
 full_data[setkey(unique(full_data[year==1996,.(id)])[,teacher_id:=.I],id),
           teacher_id:=ifelse(year==1996,i.teacher_id,NA)]
-full_data[year==1996,c("new_teacher","married"):=list(as.logical(total_exp<2),as.logical(nee_clean!=""))]
+full_data[year==1996,c("new_teacher","married",paste0("mismatch_",c("inits","exp"))):=
+            list(as.logical(total_exp<2),as.logical(nee_clean!=""),F,F)]
 
-get_id<-function(yr,key_from,key_to=key_from,exp=F){
+update_cols<-c("teacher_id","married",paste0("mismatch_",c("inits","exp")))
+
+get_id<-function(yr,key_from,key_to=key_from,
+                 mard,init,mexp,exp=F){
   if (!exp){
-    setkey(setkeyv(full_data,key_to
-                   )[setkeyv(full_data[year<yr,.SD[.N],by=teacher_id,
-                                       .SDcols=c(key_from,"teacher_id")],
-                             key_from),teacher_id:=ifelse(year==yr,i.teacher_id,NA)],year)
+    setkey(setkeyv(
+      full_data,key_to)[year==yr,(update_cols):=list(setkeyv(full_data[
+        year<yr&!teacher_id %in% full_data[year==yr,unique(teacher_id)],
+        .SD[.N],by=teacher_id,.SDcols=c(key_from,"teacher_id")],
+        key_from)[,if (.N==1L) .SD,by=key_from][.SD,teacher_id],mard,init,exp)],year)
   } else{
-    setkey(setkeyv(full_data,key_to
-                   )[setkeyv(full_data[year<yr,.SD[.N],by=teacher_id,
-                                       .SDcols=c(key_from,"teacher_id")],
-                             key_from),teacher_id:=ifelse(year==yr,i.teacher_id,NA),
-                     roll=-1L],year)
+    setkey(setkeyv(
+      full_data,key_to)[year==yr,(update_cols):=list(setkeyv(full_data[
+        year<yr&!teacher_id %in% full_data[year==yr,unique(teacher_id)],
+        .SD[.N],by=teacher_id,.SDcols=c(key_from,"teacher_id")],
+        key_from)[,if (.N==1L) .SD,by=key_from][.SD,teacher_id],mard,init,exp),
+        roll=-1L],year)
   }
 }
 
@@ -152,98 +123,79 @@ for (yy in 1997:2015){
   print(yy)
   #1) First match anyone who stayed in the same school
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
-  get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency","school"))
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency","school"),
+         mard=F,init=F,mexp=F)
   #2) Loosen criteria--find within-district switchers
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY
-  get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency"))
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency"),
+         mard=F,init=F,mexp=F)
   #3) Loosen criteria--find district switchers
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR
-  get_id(yy,c("first_name_clean","last_name_clean","birth_year"))
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year"),
+         mard=F,init=F,mexp=F)
   #4) Find anyone who appears to have gotten married
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency","school"),
-            c("first_name_clean","nee_clean"      ,"birth_year","agency","school"))
+            c("first_name_clean","nee_clean"      ,"birth_year","agency","school"),
+         mard=T,init=F,mexp=F)
   #5) married and changed schools
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency"),
-            c("first_name_clean","nee_clean"      ,"birth_year","agency"))
+            c("first_name_clean","nee_clean"      ,"birth_year","agency"),
+         mard=T,init=F,mexp=F)
   #6) married and changed districts
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR
   get_id(yy,c("first_name_clean","last_name_clean","birth_year"),
-            c("first_name_clean","nee_clean"      ,"birth_year"))
+            c("first_name_clean","nee_clean"      ,"birth_year"),
+         mard=T,init=F,mexp=F)
   #7) now match some stragglers with missing/included middle names & repeat above
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
-  get_id(yy,c("first_name2","last_name_clean","birth_year","agency","school"))
+  get_id(yy,c("first_name2","last_name_clean","birth_year","agency","school"),
+         mard=F,init=T,mexp=F)
   #8) stripped first name + school switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY
-  get_id(yy,c("first_name2","last_name_clean","birth_year","agency"))
+  get_id(yy,c("first_name2","last_name_clean","birth_year","agency"),
+         mard=F,init=T,mexp=F)
   #9) stripped first name + district switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR
-  get_id(yy,c("first_name2","last_name_clean","birth_year"))
+  get_id(yy,c("first_name2","last_name_clean","birth_year"),
+         mard=F,init=T,mexp=F)
   #10) stripped first name + married
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name2","last_name_clean","birth_year","agency","school"),
-            c("first_name2","nee_clean"      ,"birth_year","agency","school"))
+            c("first_name2","nee_clean"      ,"birth_year","agency","school"),
+         mard=T,init=T,mexp=F)
   #11) stripped first name, married, school switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year","agency"),
-            c("first_name2","nee_clean"      ,"birth_year","agency"))
+            c("first_name2","nee_clean"      ,"birth_year","agency"),
+         mard=T,init=T,mexp=F)
   #12) stripped first name, married, district switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year"),
-            c("first_name2","nee_clean"      ,"birth_year"))
-  #13) some people appear to be missing birth year only
-  #MATCH ON: FIRST NAME | LAST NAME | AGENCY | SCHOOL ID
-  get_id(yy,c("first_name_clean","last_name_clean","agency","school"))
-  #14) among missing YOB-only folks, check school switching
-  #MATCH ON: FIRST NAME | LAST NAME | AGENCY
-  get_id(yy,c("first_name_clean","last_name_clean","agency"))
-  #15) among missing YOB-only folks, check marriage
-  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | AGENCY | SCHOOL ID
-  get_id(yy,c("first_name_clean","last_name_clean","agency","school"),
-            c("first_name_clean","nee_clean"      ,"agency","school"))
-  #16) among missing YOB-only folks, check marriage + school switch
-  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | AGENCY
-  get_id(yy,c("first_name_clean","last_name_clean","agency"),
-            c("first_name_clean","nee_clean"      ,"agency"))
-  #17) among missing YOB-only folks, check stripped name
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | AGENCY | SCHOOL ID
-  get_id(yy,c("first_name2","last_name_clean","agency","school"))
-  #18) among missing YOB-only folks, check stripped name + switch school
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | AGENCY
-  get_id(yy,c("first_name2","last_name_clean","agency"))
-  #19) among missing YOB-only folks, check stripped name + married
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | AGENCY | SCHOOL ID
-  get_id(yy,c("first_name2","last_name_clean","agency","school"),
-            c("first_name2","nee_clean"      ,"agency","school"))
-  #20) among missing YOB-only folks, check stripped name + married + switch school
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | AGENCY
-  get_id(yy,c("first_name2","last_name_clean","agency"),
-            c("first_name2","nee_clean"      ,"agency"))
-  #21) among missing YOB-only folks, check if experience is within a year
-  #MATCH ON: FIRST NAME | LAST NAME | EXPERIENCE
-  get_id(yy,c("first_name_clean","last_name_clean","total_exp"),exp=T)
-  #22) among missing YOB-only folks, check experience + marriage
-  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | EXPERIENCE
-  get_id(yy,c("first_name_clean","last_name_clean","total_exp"),
-            c("first_name_clean","nee_clean"      ,"total_exp"),exp=T)
-  #23) among missing YOB-only folks, check experience + first name mismatch
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | EXPERIENCE
-  get_id(yy,c("first_name2","last_name_clean","total_exp"),exp=T)
-  #24) among missing YOB-only folks, check experience + first name mismatch + married
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME->MAIDEN NAME | EXPERIENCE
-  get_id(yy,c("first_name2","last_name_clean","total_exp"),
-            c("first_name2","nee_clean"      ,"total_exp"),exp=T)
-  #25) finally, give up and assign new ids to new (read: unmatched) teachers
+            c("first_name2","nee_clean"      ,"birth_year"),
+         mard=T,init=T,mexp=F)
+  #13) finally, give up and assign new ids to new (read: unmatched) teachers
+  current_max<-full_data[,max(teacher_id,na.rm=T)]
   setkey(full_data,id
          )[setkey(unique(full_data[year==yy&is.na(teacher_id),.(id)])[,count:=.I],id),
-           teacher_id:=ifelse(year==yy,max(teacher_id)+i.count,teacher_id)]
+           teacher_id:=ifelse(year==yy,current_max+i.count,teacher_id)]
+  #Picked up some stragglers by accident--worth checking if this can be improved
+  #  But current mistakes are .09%
+  full_data[teacher_id %in% full_data[year<=yy,uniqueN(id),by=teacher_id
+                                      ][V1>yy-1995,teacher_id],teacher_id:=NA]
 }
 
-staff_type==1&agency_type==4&area %in% 0050, 0300, 0400
-[agency_type %in% c("01","03","04","1","3","4","49")
+full_data<-setkey(full_data[!is.na(teacher_id)],teacher_id
+                  )[.(full_data[agency_type==4&area %in% c("0050","0300","0400")
+                                &position_code==53,unique(teacher_id)])]
+
+
+
+staff_type==1 #???? Why so missing....
+
             &(if (tt<=2003) months_employed>=875 else days_of_contract>=175)
-            &if (tt %in% c(1999:2003,2008:2014)) long_term_sub=="N"&position_code==53 else position_code==53,
+            &if (tt %in% c(1999:2003,2008:2014)) long_term_sub=="N"
             ]
 # Also delete teachers earning less than $15,000 and older than 40
 # Also delete teachers with degrees besides bachelors and masters

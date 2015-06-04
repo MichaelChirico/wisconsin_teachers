@@ -23,9 +23,17 @@ create_quantiles<-function(x,num,right=F,include.lowest=T,na.rm=T){
 prop.table2<-function(...){
   dots<-list(...)
   args<-names(dots) %in% names(formals(prop.table))
-  do.call('prop.table',c(list(do.call('table',dots[!args])),
-                              dots[args]))
+  do.call('prop.table',
+          c(list(do.call('table',if (length(args)) dots[!args] else dots)),
+            dots[args]))
 }
+
+
+print.xtable2<-function(...){
+  #For pretty copy-pasting into LyX
+  cat(capture.output(do.call('print.xtable',list(...))),sep="\n\n")
+}
+
 
 o.table<-function(...){
   x<-do.call('table',list(...))
@@ -101,20 +109,12 @@ update_cols<-c("teacher_id","married",paste0("mismatch_",c("inits","exp")))
 
 get_id<-function(yr,key_from,key_to=key_from,
                  mard,init,mexp,exp=F){
-  if (!exp){
-    setkey(setkeyv(
-      full_data,key_to)[year==yr,(update_cols):=list(setkeyv(full_data[
-        year<yr&!teacher_id %in% full_data[year==yr,unique(teacher_id)],
-        .SD[.N],by=teacher_id,.SDcols=c(key_from,"teacher_id")],
-        key_from)[,if (.N==1L) .SD,by=key_from][.SD,teacher_id],mard,init,exp)],year)
-  } else{
     setkey(setkeyv(
       full_data,key_to)[year==yr,(update_cols):=list(setkeyv(full_data[
         year<yr&!teacher_id %in% full_data[year==yr,unique(teacher_id)],
         .SD[.N],by=teacher_id,.SDcols=c(key_from,"teacher_id")],
         key_from)[,if (.N==1L) .SD,by=key_from][.SD,teacher_id],mard,init,exp),
-        roll=-1L],year)
-  }
+        roll=if (exp) -1L else F],year)
 }
 
 setkey(full_data,year)

@@ -20,12 +20,15 @@ create_quantiles<-function(x,num,right=F,include.lowest=T,na.rm=T){
   cut(x,breaks=quantile(x,probs=seq(0,1,by=1/num),na.rm=T),labels=1:num,right=right,include.lowest=include.lowest)
 }
 
-prop.table2<-function(...,dig=NULL){
+table2<-function(...,dig=NULL,prop=F,ord=F,pct=F){
   dots<-list(...)
   args<-names(dots) %in% names(formals(prop.table))
-  tab<-do.call('prop.table',
-               c(list(do.call('table',if (length(args)) dots[!args] else dots)),
-                 dots[args]))
+  tab<-if (prop) do.call(
+    'prop.table',c(list(
+      do.call('table',if (length(args)) dots[!args] else dots)),
+      dots[args])) else do.call('table',list(...))
+  if (ord) tab<-tab[order(tab)]
+  if (pct) tab<-100*tab
   if (is.null(dig)) tab else round(tab,digits=dig)
 }
 
@@ -35,14 +38,7 @@ print.xtable2<-function(...){
   cat(capture.output(do.call('print.xtable',list(...))),sep="\n\n")
 }
 
-
-o.table<-function(...){
-  x<-do.call('table',list(...))
-  x[order(x)]
-}
-
-
-ntostring<-function(n,digits=2){
+ntostr<-function(n,digits=2){
   paste0(ifelse(log10(n)<digits-1,
                 substr(n+10^digits,2,digits+1),
                 ifelse(log10(n)>=digits,
@@ -55,7 +51,7 @@ ntostring<-function(n,digits=2){
 #   (most available in fixed width; these were converted using
 #   the Python file fixed_to_csv.py along with hand-made
 #   variable name dictionaries XXdict.csv)
-full_data<-setkey(rbindlist(lapply(ntostring(95:114),function(x){
+full_data<-setkey(rbindlist(lapply(ntostr(95:114),function(x){
   fread(paste0("/media/data_drive/wisconsin/",x,"staff.csv"),
         drop=which(scan(file=paste0("/media/data_drive/wisconsin/",x,"staff.csv"),
                         what="",sep=",",nlines=1,quiet=T)=="filler"),
@@ -464,7 +460,7 @@ setkey(teacher_data,year,agency_next)[ccd,`:=`(pct_hispanic_next=i.pct_hispanic,
 #### via: http://oea.dpi.wi.gov/assessment/data/WKCE/proficiency
 #### Only use mathematics scores for now
 wsas_data<-setkey(setnames(
-  rbindlist(lapply(paste(ntostring(5:13),ntostring(6:14),sep="-"),
+  rbindlist(lapply(paste(ntostr(5:13),ntostr(6:14),sep="-"),
                    function(x){fread(paste0("/media/data_drive/wisconsin/",
                                             "wsas_certified_20",x,".csv"),na.strings="*"
                    )[GRADE_GROUP=="[All]"&DISTRICT_CODE!="0000"&
@@ -489,7 +485,7 @@ setkey(teacher_data,year,agency_next
 #### via: http://wise.dpi.wi.gov/wisedash_downloadfiles
 #### Only look at Math for now
 act_data<-setkey(setnames(
-  rbindlist(lapply(paste(ntostring(7:13),ntostring(8:14),sep="-"),
+  rbindlist(lapply(paste(ntostr(7:13),ntostr(8:14),sep="-"),
                    function(x){fread(paste0("/media/data_drive/wisconsin/",
                                             "act_certified_20",x,".csv"),na.strings="*"
                    )[GRADE_GROUP=="[All]"&DISTRICT_CODE!="0000"&TEST_RESULT!="*"
@@ -513,7 +509,7 @@ setkey(teacher_data,year,agency_next
 ####Now AP scores
 #### only look at Calc AB for now
 ap_data<-setkey(setnames(
-  rbindlist(lapply(paste(ntostring(6:13),ntostring(7:14),sep="-"),
+  rbindlist(lapply(paste(ntostr(6:13),ntostr(7:14),sep="-"),
                    function(x){fread(paste0("/media/data_drive/wisconsin/",
                                             "ap_certified_20",x,".csv"),na.strings="*"
                    )[DISTRICT_CODE!="0000"&TEST_SUBJECT=="Calculus AB"
@@ -536,7 +532,7 @@ setkey(teacher_data,year,agency_next
 #### Only look at regular completion for now
 #### Details on differences: http://lbstat.dpi.wi.gov/lbstat_datahsc
 dropout_data<-setkey(setnames(
-  rbindlist(lapply(paste(ntostring(9:12),ntostring(10:13),sep="-"),
+  rbindlist(lapply(paste(ntostr(9:12),ntostr(10:13),sep="-"),
                    function(x){fread(paste("/media/data_drive/wisconsin/",
                                            "hs_completion_certified_20",x,".csv",sep=""),na.strings="*"
                    )[GRADE_GROUP=="[All]"&DISTRICT_CODE!="0000"&GROUP_BY=="All Students"
@@ -580,8 +576,8 @@ setkey(teacher_data,agency_next
 # Reduced Form Analysis: Tables ####
 
 #Plain one-way tables of # Career moves
-t1<-teacher_data[,sum(move&!move_district),by=teacher_id][,prop.table2(V1,pct=T)]
-t2<-teacher_data[,sum(move_district),by=teacher_id][,prop.table2(V1,pct=T)]
+t1<-teacher_data[,sum(move&!move_district),by=teacher_id][,table2(V1,pct=T,prop=T)]
+t2<-teacher_data[,sum(move_district),by=teacher_id][,table2(V1,pct=T,prop=T)]
 t1[setdiff(names(t2),names(t1))]=NA
 t2[setdiff(names(t1),names(t2))]=NA
 t<-rbind(t1,t2)[,paste0(0:6)]
@@ -626,29 +622,29 @@ cat(capture.output(print(xtable(matrix(unlist(cbind(
   include.rownames=F,hline.after=c(-1,0,7,14),scalebox=.8)),sep="\n\n")
 
 #Comparing Turnover matrix by urbanicity to that in HKR '04 (JHR) Table 2
-teacher_data[move_district_next==1,prop.table2(urbanicity,urbanicity_next,margin=1,pct=T,ndig=1)]
+teacher_data[move_district_next==1,table2(urbanicity,urbanicity_next,margin=1,pct=T,prop=T,dig=1)]
 
 #Comparing Turnover matrix by received vs. would-be salary & total pay
 salary_comparison<-
   teacher_data[move_district_next==1,
-               prop.table2(create_quantiles(agency_salary_next,5),
-                           create_quantiles(salary_next,5),margin=1,pct=T,ndig=1)]
+               table2(create_quantiles(agency_salary_next,5),
+                      create_quantiles(salary_next,5),margin=1,pct=T,dig=1,prop=T)]
 rownames(salary_comparison)<-paste0("Q",1:5)
 colnames(salary_comparison)<-paste0("Q",1:5)
 cat(capture.output(xtable(salary_comparison)),sep="\n\n")
 
 total_pay_comparison<-
   teacher_data[move_district_next==1,
-               prop.table2(create_quantiles(agency_total_pay_next,5),
-                           create_quantiles(total_pay_next,5),margin=1,pct=T,ndig=1)]
+               table2(create_quantiles(agency_total_pay_next,5),
+                      create_quantiles(total_pay_next,5),margin=1,pct=T,dig=1,prop=T)]
 rownames(total_pay_comparison)<-paste0("Q",1:5)
 colnames(total_pay_comparison)<-paste0("Q",1:5)
 cat(capture.output(xtable(total_pay_comparison)),sep="\n\n")
 
 total_pay_future_comparison<-
   teacher_data[move_district_next==1,
-               prop.table2(create_quantiles(agency_total_pay_future_next,5),
-                           create_quantiles(total_pay_future_next,5),margin=1,pct=T,ndig=1)]
+               table2(create_quantiles(agency_total_pay_future_next,5),
+                      create_quantiles(total_pay_future_next,5),margin=1,pct=T,dig=1,prop=T)]
 rownames(total_pay_future_comparison)<-paste0("Q",1:5)
 colnames(total_pay_future_comparison)<-paste0("Q",1:5)
 cat(capture.output(xtable(total_pay_future_comparison)),sep="\n\n")

@@ -20,12 +20,13 @@ create_quantiles<-function(x,num,right=F,include.lowest=T,na.rm=T){
   cut(x,breaks=quantile(x,probs=seq(0,1,by=1/num),na.rm=T),labels=1:num,right=right,include.lowest=include.lowest)
 }
 
-prop.table2<-function(...){
+prop.table2<-function(...,dig=NULL){
   dots<-list(...)
   args<-names(dots) %in% names(formals(prop.table))
-  do.call('prop.table',
-          c(list(do.call('table',if (length(args)) dots[!args] else dots)),
-            dots[args]))
+  tab<-do.call('prop.table',
+               c(list(do.call('table',if (length(args)) dots[!args] else dots)),
+                 dots[args]))
+  if (is.null(dig)) tab else round(tab,digits=dig)
 }
 
 
@@ -50,15 +51,17 @@ ntostring<-function(n,digits=2){
 }
 
 # Data import ####
-
-full_data<-setkey(rbindlist(lapply(1995:2014,function(x){
-  fread(paste0("/media/data_drive/wisconsin/",substr(x,3,4),"staff.csv"),
-        drop=which(scan(file=paste0("/media/data_drive/wisconsin/",
-                                    substr(x,3,4),"staff.csv"),
+#   Raw data available here: http://lbstat.dpi.wi.gov/lbstat_newasr
+#   (most available in fixed width; these were converted using
+#   the Python file fixed_to_csv.py along with hand-made
+#   variable name dictionaries XXdict.csv)
+full_data<-setkey(rbindlist(lapply(ntostring(95:114),function(x){
+  fread(paste0("/media/data_drive/wisconsin/",x,"staff.csv"),
+        drop=which(scan(file=paste0("/media/data_drive/wisconsin/",x,"staff.csv"),
                         what="",sep=",",nlines=1,quiet=T)=="filler"),
-        colClasses=fread(paste0("/media/data_drive/wisconsin/",
-                                substr(x,3,4),"dict.csv"),select=3)$V3)}),fill=T
-  )[,year:=as.integer(substr(year_session,1,4))+1][year<2005,area:=paste0("0",area)],id,year)
+        colClasses=fread(paste0("/media/data_drive/wisconsin/",x,"dict.csv"),select=3)$V3)}),
+  fill=T)[,year:=as.integer(substr(year_session,1,4))+1L
+          ][year<2005,area:=paste0("0",area)],id,year)
 full_data<-full_data[!.(unique(full_data[is.na(salary)|is.na(school)])[,.(id,year)])]
 
 full_data[is.na(nee),nee:=
@@ -184,44 +187,22 @@ for (yy in 1997:2015){
   #  But current mistakes are .09%
   full_data[teacher_id %in% full_data[year<=yy,uniqueN(id),by=teacher_id
                                       ][V1>yy-1995,teacher_id],teacher_id:=NA]
-}
+}; rm(yy,update_cols)
 
+#staff_type==1 #???? Why so missing....
 full_data<-setkey(full_data[!is.na(teacher_id)],teacher_id
-                  )[.(full_data[agency_type==4&area %in% c("0050","0300","0400")
+                  )[.(full_data[ifelse(year<2012,agency_type==4,agency_type==3)
+                                &ifelse(year<2005,months_employed>=875,
+                                        days_of_contract>=175)
+                                &salary>=15000&age-total_exp>17
+                                &highest_degree %in% c("4","5")
+                                &salary>fringe&fringe>=0
+                                &substr(agency,1,2)!="99"
+                                &total_exp_floor>0
+                                &total_exp_floor<=31
+                                &area %in% c("0050","0300","0400")
                                 &position_code==53,unique(teacher_id)])]
 
-
-
-staff_type==1 #???? Why so missing....
-
-            &(if (tt<=2003) months_employed>=875 else days_of_contract>=175)
-            &if (tt %in% c(1999:2003,2008:2014)) long_term_sub=="N"
-            ]
-# Also delete teachers earning less than $15,000 and older than 40
-# Also delete teachers with degrees besides bachelors and masters
-# Also delete teachers with outside (0,31] years experience
-#      (later restrict to <=30, but need to record retirement first)
-# Also delete all CESAs
-# Also delete any teacher with fringe pay > salary (probably typo--0.5% of teachers)
-# Also delete one teacher w fringe < 0
-dummy[age-total_exp>17&salary>=15000&highest_degree %in% c("4","5")
-      &substr(agency,1,2)!="99"&salary>fringe&fringe>=0&total_exp_floor<=31
-      &total_exp_floor>0,]
-
-
-[total_exp_floor<=30,][,move_type:=
-                                            as.factor(ifelse(
-                                              !move&!quit,"Stay",
-                                              ifelse(move_school&!move_district,"Switch Campus",
-                                                     ifelse(move_district,"Switch District","??"))))
-                                          ]; rm(list=ls(pattern="data_"))
-
-###***** CONTINUE CLEANING FROM HERE *****###
-
-teacher_data[,multiples:=.N,by=.(teacher_id,year)]
-#Delete history for any multi-matched teachers (down to only a few at this point)
-teacher_data<-teacher_data[!(teacher_id %in% teacher_data[multiples!=1,teacher_id]),]
-setkey(teacher_data,teacher_id,year)
 
 #some full-sample variables:
 ## identify the "earliest" years for each teacher

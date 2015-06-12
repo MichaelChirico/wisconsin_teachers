@@ -46,10 +46,22 @@ ntostr<-function(n,digits=2){
                        n)))
 }
 
+pdf2<-function(...){
+  graphics.off()
+  dev.new()
+  do.call('pdf',list(...))
+  dev.set(which=dev.list()["RStudioGD"])
+}
+
+dev.off2<-function(){
+  dev.copy(which=dev.list()["pdf"])
+  invisible(dev.off(which=dev.list()["pdf"]))
+}
+
 # Data import ####
 #   Raw data available here: http://lbstat.dpi.wi.gov/lbstat_newasr
 #   (most available in fixed width; these were converted using
-#   the Python file fixed_to_csv.py along with hand-made
+#   the Python file fixed_to_csv.py along with hand-made"    "
 #   variable name dictionaries XXdict.csv)
 full_data<-setkey(rbindlist(lapply(ntostr(95:114),function(x){
   fread(paste0("/media/data_drive/wisconsin/",x,"staff.csv"),
@@ -58,7 +70,7 @@ full_data<-setkey(rbindlist(lapply(ntostr(95:114),function(x){
         colClasses=fread(paste0("/media/data_drive/wisconsin/",x,"dict.csv"),select=3)$V3)}),
   fill=T)[,year:=as.integer(substr(year_session,1,4))+1L
           ][year<2005,area:=paste0("0",area)],id,year)
-full_data<-full_data[!.(unique(full_data[is.na(salary)|is.na(school)])[,.(id,year)])]
+full_data<-full_data[!.(unique(full_data[is.na(salary)])[,.(id,year)])]
 
 full_data[is.na(nee),nee:=
             ifelse(grepl("\\(",last_name),
@@ -84,12 +96,14 @@ full_data[,first_name2:=ifelse(grepl("\\s",first_name_clean),
 add0s<-c("agency","school","area")
 full_data[year==2012,(add0s):=lapply(.SD,function(x)
   substr(paste0("000",x),nchar(x),nchar(x)+3)),.SDcols=add0s]; rm(add0s)
+full_data[year==2012&nchar(position_code)==1,position_code:=paste0("0",position_code)]
 
 div10<-paste0(c("local","total"),"_exp")
 full_data[year!=2012,(div10):=lapply(.SD,function(x)x/10),.SDcols=div10]; rm(div10)
 
-full_data[,c("birth_year","total_exp_floor","total_pay","agency_type"):=
-            list(as.integer(birth_year),floor(total_exp),salary+fringe,as.integer(agency_type))]
+full_data[,c("birth_year","total_exp_floor","total_pay","agency_work_type","agency_hire_type"):=
+            list(as.integer(birth_year),floor(total_exp),salary+fringe,
+                 as.integer(agency_work_type),as.integer(agency_hire_type))]
 full_data[,age:=year-birth_year]
 ethnames<-c("black","hispanic","white")
 ethcodes<-c("B","H","W")
@@ -187,7 +201,7 @@ for (yy in 1997:2015){
 
 #staff_type==1 #???? Why so missing....
 full_data<-setkey(full_data[!is.na(teacher_id)],teacher_id
-                  )[.(full_data[ifelse(year<2012,agency_type==4,agency_type==3)
+                  )[.(full_data[agency_work_type==4
                                 &ifelse(year<2005,months_employed>=875,
                                         days_of_contract>=175)
                                 &salary>=15000&age-total_exp>17
@@ -703,10 +717,7 @@ cat(capture.output(
 # Reduced Form Analysis: Plots ####
 
 #Evolution of Turnover by Experience Across Time
-graphics.off()
-dev.new()
-pdf("wisconsin_turnover_stats_by_5ennial.pdf")
-dev.set(which=dev.list()["RStudioGD"])
+pdf2("wisconsin_turnover_stats_by_5ennial.pdf")
 ##By District
 layout(mat=matrix(c(1,3,5,2,4,5),nrow=3),heights=c(.4,.4,.2))
 par(oma=c(0,0,3,0))
@@ -766,14 +777,10 @@ plot(1,type="n",axes=F,xlab="",ylab="")
 legend("top",legend=c("96-00","01-05","06-10","11-15"),lty=1,lwd=2,
        col=c("black","blue","red","green"),horiz=T,inset=0)
 mtext("WI Turnover Moments",side=3,line=-1.5,outer=T)
-dev.copy(which=dev.list()["pdf"])
-dev.off(which=dev.list()["pdf"])
+dev.off2()
 
 # Total turnover by year
-graphics.off()
-dev.new()
-pdf("wisconsin_turnover_by_year.pdf")
-dev.set(which=dev.list()["RStudioGD"])
+pdf2("wisconsin_turnover_by_year.pdf")
 matplot(1997:2015,teacher_data[year>1996,
                                .(sum(move),sum(move&!move_district),
                                  sum(move_district)),by=year][,!"year",with=F],
@@ -781,17 +788,13 @@ matplot(1997:2015,teacher_data[year>1996,
         main="Number of Moves\nBy Year and Type")
 legend("topleft",legend=c("Total","School","District"),lwd=3,lty=1,
        col=c("black","red","green"),cex=.7)
-dev.copy(which=dev.list()["pdf"])
-dev.off(which=dev.list()["pdf"])
+dev.off2()
 
 #plotting the salary schedules for the 5 most populous agencies over the first 30 years
 biggest_5<-sort(teacher_data[.(2015,unique(agency)),.N,by=agency][order(N)][(.N-4):.N,agency])
 biggest_5_names<-c("Green Bay","Kenosha","Madison","Milwaukee","Racine")
 rng<-salary_scales[.(2015,rep(biggest_5,2),rep(c("4","5"),5)),range(range(total_pay),range(salary))]
-graphics.off()
-dev.new()
-pdf("wisconsin_salary_tables_imputed_15_big5_ba.pdf")
-dev.set(which=dev.list()["RStudioGD"])
+pdf2("wisconsin_salary_tables_imputed_15_big5_ba.pdf")
 matplot(1:30,dcast.data.table(salary_scales[.(2015,biggest_5,"4"),
                                             c("agency","total_exp_floor","salary","total_pay"),with=F],
                               total_exp_floor~agency,value.var=c("salary","total_pay"))[,!"total_exp_floor",with=F],
@@ -801,13 +804,9 @@ legend("topleft",legend=biggest_5_names,bty="n",cex=.6,
        col=c("black","red","blue","green","purple"),lty=1,lwd=3)
 legend("bottomright",legend=c("Total Pay","Base Pay"),cex=.6,
        lty=c(1,2),lwd=3,col="black",bty="n")
-dev.copy(which=dev.list()["pdf"])
-dev.off(which=dev.list()["pdf"])
+dev.off2()
 
-graphics.off()
-dev.new()
-pdf("wisconsin_salary_tables_imputed_15_big5_ma.pdf")
-dev.set(which=dev.list()["RStudioGD"])
+pdf2("wisconsin_salary_tables_imputed_15_big5_ma.pdf")
 matplot(1:30,dcast.data.table(salary_scales[.(2015,biggest_5,"5"),
                                             c("agency","total_exp_floor","salary","total_pay"),with=F],
                               total_exp_floor~agency,value.var=c("salary","total_pay"))[,!"total_exp_floor",with=F],
@@ -817,8 +816,7 @@ legend("topleft",legend=biggest_5_names,bty="n",cex=.6,
        col=c("black","red","blue","green","purple"),lty=1,lwd=3)
 legend("bottomright",legend=c("Total Pay","Base Pay"),cex=.6,
        lty=c(1,2),lwd=3,col="black",bty="n")
-dev.copy(which=dev.list()["pdf"])
-dev.off(which=dev.list()["pdf"])
+dev.off2()
 
 # Contrast with a sparsely-populated district (say 20 teachers)
 # code to find one: teacher_data[max_exp<30&min_exp>1,.N,by=.(year,agency,highest_degree)][N==20,]

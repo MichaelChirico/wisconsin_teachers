@@ -61,58 +61,76 @@ dev.off2<-function(){
 # Data import ####
 #   Raw data available here: http://lbstat.dpi.wi.gov/lbstat_newasr
 #   (most available in fixed width; these were converted using
-#   the Python file fixed_to_csv.py along with hand-made"    "
+#   the Python file fixed_to_csv.py along with hand-made
 #   variable name dictionaries XXdict.csv)
-full_data<-setkey(rbindlist(lapply(ntostr(95:114),function(x){
+names<-c("first_name","last_name","nee")
+full_data<-rbindlist(lapply(ntostr(95:114),function(x){
+  #simultaneously read, concatenate all 20 years' data files
   fread(paste0("/media/data_drive/wisconsin/",x,"staff.csv"),
         drop=which(scan(file=paste0("/media/data_drive/wisconsin/",x,"staff.csv"),
                         what="",sep=",",nlines=1,quiet=T)=="filler"),
         colClasses=fread(paste0("/media/data_drive/wisconsin/",x,"dict.csv"),select=3)$V3)}),
+  #fill=T is necessary because fields are not constant across time
   fill=T)[,year:=as.integer(substr(year_session,1,4))+1L
-          ][year<2005,area:=paste0("0",area)],id,year)
-full_data<-full_data[!.(unique(full_data[is.na(salary)])[,.(id,year)])]
+          #storage of some fields inconsistent across time; start unifying here
+          ][year<2005,area:=paste0("0",area)
+            #trim extraneous white space from names and force lowercase
+            ][,(names):=lapply(.SD,function(x)gsub("^\\s+|\\s+$","",
+                                                   gsub("\\b\\s{2,}\\b"," ",
+                                                        tolower(x)))),
+              .SDcols=names]
 
-full_data[is.na(nee),nee:=
-            ifelse(grepl("\\(",last_name),
-                   regmatches(last_name,regexpr("(?<=\\().*?(?=\\)|$)",last_name,perl=T)),
-                   ifelse(grepl("-",last_name),
-                          regmatches(last_name,regexpr(".*(?=-)",last_name,perl=T)),NA))]
+#Try to impute maiden name when it seems to have been stored in the last name
+#  Specifically, when nee is empty, look for names with "(" or "-"; maiden names appear to be
+#  stored between parentheses and before hyphens (not a perfect system); note that
+#  full_data[gsub("\\s","",nee)=="",names(table(nee))] shows that when missing nee is stored as
+#  a string, there is only one possible length of that string.
+full_data[(is.na(nee)|nee=="")
+          &grepl("\\(|-",last_name),nee:=
+            regmatches(last_name,regexpr("(?<=\\().*?(?=\\)|$)|.*(?=-)",last_name,perl=T))]
 
-strings<-c("first_name","last_name","nee")
-full_data[,paste0(strings,"_clean"):=
-            lapply(.SD,function(x){gsub(paste0("\\s+$|^\\s+|\\s+[a-z]\\.?\\s+|",
-                                               "^[a-z]\\.?\\s+|\\s+[a-z]\\.?$|"),
-                                        "",tolower(gsub("[\\.,']"," ",x)))}),
-          .SDcols=strings]; rm(strings)
-full_data<-full_data[,N:=uniqueN(id),
-                     by=.(first_name_clean,last_name_clean,birth_year,
-                          year,agency,school)][N==1][,N:=NULL][is.na(fringe),fringe:=0]
+#Try to get a "clean" version of first, last, and maiden names;
+#  Delete *all* white space, initials
+full_data[,paste0(names,"_clean"):=
+            lapply(.SD,function(x){gsub("\\s|\\b[a-z]\\b","",
+                                        gsub("[\\.,'\\-]","",x))}),
+          .SDcols=names]; rm(names)
+#Delete anyone who cannot possibly be identified below:
+#  Namely, those who match another exactly on (cleaned) first/last name,
+#  birth year, year of data, district (agency) and school
+full_data<-full_data[,if (uniqueN(id)==1) .SD,
+                     by=.(first_name_clean,last_name_clean,
+                          birth_year,year,agency,school)][is.na(fringe),fringe:=0]
 
-full_data[,first_name2:=ifelse(grepl("\\s",first_name_clean),
-                               regmatches(first_name_clean,
-                                          regexpr(".*(?=\\s)",first_name_clean,perl=T)),
-                               first_name_clean)]
+#Will also use a different cleaned version of the first name--
+#  Delete everything after the first space
+full_data[grepl("\\s",first_name),first_name2:=
+            regmatches(first_name,regexpr(".*(?=\\s)",first_name,perl=T))]
 
+#Data stored differently in 2011-12; need to append 0s for consistency
 add0s<-c("agency","school","area")
 full_data[year==2012,(add0s):=lapply(.SD,function(x)
   substr(paste0("000",x),nchar(x),nchar(x)+3)),.SDcols=add0s]; rm(add0s)
 full_data[year==2012&nchar(position_code)==1,position_code:=paste0("0",position_code)]
 
+#Again, 2012 already has experience defined correctly; other years express as 10ths
 div10<-paste0(c("local","total"),"_exp")
 full_data[year!=2012,(div10):=lapply(.SD,function(x)x/10),.SDcols=div10]; rm(div10)
 
+#Reformat/create some variables
 full_data[,c("birth_year","total_exp_floor","total_pay","agency_work_type","agency_hire_type"):=
             list(as.integer(birth_year),floor(total_exp),salary+fringe,
-                 as.integer(agency_work_type),as.integer(agency_hire_type))]
-full_data[,age:=year-birth_year]
+                 as.integer(agency_work_type),as.integer(agency_hire_type))][,age:=year-birth_year]
+#Create ethnicity dummies, and separate the "main" ethnicities
 ethnames<-c("black","hispanic","white")
 ethcodes<-c("B","H","W")
-full_data[,(ethnames):=lapply(ethcodes,function(x)ethnicity==x)]; rm(ethnames,ethcodes)
-full_data[,ethnicity_main:=
-            as.factor(ifelse(black,"Black",
-                             ifelse(white,"White",
-                                    ifelse(hispanic,"Hispanic",NA))))]
+setkey(full_data[,(ethnames):=lapply(ethcodes,function(x)ethnicity==x)],ethnicity); rm(ethnames,ethcodes)
+full_data["B",ethnicity_main:="Black"]
+full_data["H",ethnicity_main:="Hispanic"]
+full_data["W",ethnicity_main:="White"]
+full_data[,ethnicity_main:=factor(ethnicity_main)]
 
+#Initialize ID system & matching flags
 full_data[setkey(unique(full_data[year==1996,.(id)])[,teacher_id:=.I],id),
           teacher_id:=ifelse(year==1996,i.teacher_id,NA)]
 full_data[year==1996,c("new_teacher","married",paste0("mismatch_",c("inits","exp"))):=

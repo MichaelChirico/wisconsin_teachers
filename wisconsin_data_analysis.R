@@ -131,21 +131,34 @@ full_data["W",ethnicity_main:="White"]
 full_data[,ethnicity_main:=factor(ethnicity_main)]
 
 #Initialize ID system & matching flags
-full_data[setkey(unique(full_data[year==1996,.(id)])[,teacher_id:=.I],id),
-          teacher_id:=ifelse(year==1996,i.teacher_id,NA)]
+setkey(full_data,id)[setkey(unique(full_data[year==1996,.(id)])[,teacher_id:=.I],id),
+                     teacher_id:=ifelse(year==1996,i.teacher_id,NA)]
 full_data[year==1996,c("new_teacher","married",paste0("mismatch_",c("inits","exp"))):=
             list(as.logical(total_exp<2),as.logical(nee_clean!=""),F,F)]
 
-update_cols<-c("teacher_id","married",paste0("mismatch_",c("inits","exp")))
+update_cols<-c("teacher_id","married",paste0("mismatch_",c("inits","exp")),"step")
+flags<-setdiff(update_cols,"teacher_id")
 
+#Main matching function--given keys in previous years and key in current year,
+#  match and assign flags as necessary; note that setting keys repeatedly is
+#  quite (and increasingly, as more previous years are included) costly;
+#  may be worth looking into using Pandas to speed up this process.
 get_id<-function(yr,key_from,key_to=key_from,
-                 mard,init,mexp,exp=F){
-    setkey(setkeyv(
-      full_data,key_to)[year==yr,(update_cols):=list(setkeyv(full_data[
-        year<yr&!teacher_id %in% full_data[year==yr,unique(teacher_id)],
-        .SD[.N],by=teacher_id,.SDcols=c(key_from,"teacher_id")],
-        key_from)[,if (.N==1L) .SD,by=key_from][.SD,teacher_id],mard,init,exp),
-        roll=if (exp) -1L else F],year)
+                 mard,init,mexp,step){
+  existing_ids<-full_data[.(yr),unique(na.omit(teacher_id))]
+  unmatched<-
+    full_data[.(1996:(yr-1))
+              ][!teacher_id %in% existing_ids,
+                .SD[.N],by=teacher_id,
+                .SDcols=c(key_from,"teacher_id")
+                ][,if (.N==1L) .SD,keyby=key_from
+                  ][,(flags):=list(mard,init,mexp,step)]
+  setkey(setkeyv(
+    full_data,key_to)[year==yr&is.na(teacher_id),
+                      (update_cols):=
+                        setkeyv(unmatched,key_from
+                                )[.SD,update_cols,with=F]],
+    year)
 }
 
 setkey(full_data,year)
@@ -155,69 +168,83 @@ for (yy in 1997:2015){
   #1) First match anyone who stayed in the same school
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency","school"),
-         mard=F,init=F,mexp=F)
+         mard=F,init=F,mexp=F,step=1L)
   #2) Loosen criteria--find within-district switchers
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency"),
-         mard=F,init=F,mexp=F)
+         mard=F,init=F,mexp=F,step=2L)
   #3) Loosen criteria--find district switchers
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR
   get_id(yy,c("first_name_clean","last_name_clean","birth_year"),
-         mard=F,init=F,mexp=F)
+         mard=F,init=F,mexp=F,step=3L)
   #4) Find anyone who appears to have gotten married
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency","school"),
             c("first_name_clean","nee_clean"      ,"birth_year","agency","school"),
-         mard=T,init=F,mexp=F)
+         mard=T,init=F,mexp=F,step=4L)
   #5) married and changed schools
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency"),
             c("first_name_clean","nee_clean"      ,"birth_year","agency"),
-         mard=T,init=F,mexp=F)
+         mard=T,init=F,mexp=F,step=5L)
   #6) married and changed districts
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR
   get_id(yy,c("first_name_clean","last_name_clean","birth_year"),
             c("first_name_clean","nee_clean"      ,"birth_year"),
-         mard=T,init=F,mexp=F)
+         mard=T,init=F,mexp=F,step=6L)
   #7) now match some stragglers with missing/included middle names & repeat above
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name2","last_name_clean","birth_year","agency","school"),
-         mard=F,init=T,mexp=F)
+         mard=F,init=T,mexp=F,step=7L)
   #8) stripped first name + school switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year","agency"),
-         mard=F,init=T,mexp=F)
+         mard=F,init=T,mexp=F,step=8L)
   #9) stripped first name + district switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR
   get_id(yy,c("first_name2","last_name_clean","birth_year"),
-         mard=F,init=T,mexp=F)
+         mard=F,init=T,mexp=F,step=9L)
   #10) stripped first name + married
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name2","last_name_clean","birth_year","agency","school"),
             c("first_name2","nee_clean"      ,"birth_year","agency","school"),
-         mard=T,init=T,mexp=F)
+         mard=T,init=T,mexp=F,step=10L)
   #11) stripped first name, married, school switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year","agency"),
             c("first_name2","nee_clean"      ,"birth_year","agency"),
-         mard=T,init=T,mexp=F)
+         mard=T,init=T,mexp=F,step=11L)
   #12) stripped first name, married, district switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year"),
             c("first_name2","nee_clean"      ,"birth_year"),
-         mard=T,init=T,mexp=F)
+         mard=T,init=T,mexp=F,step=12L)
   #13) finally, give up and assign new ids to new (read: unmatched) teachers
   current_max<-full_data[,max(teacher_id,na.rm=T)]
-  setkey(full_data,id
-         )[setkey(unique(full_data[year==yy&is.na(teacher_id),.(id)])[,count:=.I],id),
-           teacher_id:=ifelse(year==yy,current_max+i.count,teacher_id)]
+  setkey(setkey(full_data,id
+                )[setkey(unique(full_data[year==yy&is.na(teacher_id),.(id)])[,count:=.I],id),
+                  teacher_id:=ifelse(year==yy,current_max+i.count,teacher_id)],year)
   #Picked up some stragglers by accident--worth checking if this can be improved
   #  But current mistakes are .09%
   full_data[teacher_id %in% full_data[year<=yy,uniqueN(id),by=teacher_id
                                       ][V1>yy-1995,teacher_id],teacher_id:=NA]
-}; rm(yy,update_cols)
+}; rm(yy,update_cols,current_max)
 
-#staff_type==1 #???? Why so missing....
+#Eliminate teachers *with at least some positions*
+#  that don't satisfy some criteria/data cleanliness
+#  - Agency Work Type: 4 is schools
+#  - Months Employed (pre-2005) / Days of Contract (post-):
+#      data-based reasonable minima chosen
+#  - Salary: data-based reasonable minimum
+#  - Non-Working Life Years: teachers should have been
+#      at least 17 when they started working
+#  - Highest Degree: Focus on Bachelor's/Master's holders
+#  - Salary vs. Fringe : Fringe should not be higher than salary
+#  - Fringe: Should be non-negative
+#  - Agency Code: 99xx corresponds to administrative positions
+#  - Total Experience: Ignore 31+ year teachers and 0-year teachers
+#  - Area: Focus on math, reading, and all-purpose (elem.) teachers
+#  - Position Code: 53 means full-time teacher
 full_data<-setkey(full_data[!is.na(teacher_id)],teacher_id
                   )[.(full_data[agency_work_type==4
                                 &ifelse(year<2005,months_employed>=875,
@@ -230,6 +257,11 @@ full_data<-setkey(full_data[!is.na(teacher_id)],teacher_id
                                 &total_exp_floor<=31
                                 &area %in% c("0050","0300","0400")
                                 &position_code==53,unique(teacher_id)])]
+
+#Now remove anyone who *still* has more than one position in any given year--
+#  will be basically impossible to distinguish their position.
+full_data<-
+  setkey(full_data,teacher_id)[!.(unique(full_data[,if (.N>1) teacher_id,by=.(year,teacher_id)]$V1))]
 
 
 #some full-sample variables:

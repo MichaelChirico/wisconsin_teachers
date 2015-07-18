@@ -1,0 +1,276 @@
+Data cleaning tasks
+
+* 2015-07-17 - Ethnicity not stable within teacher_id; may be the result of mismatch on common names & cause over-estimated turnover, e.g.:
+
+	           id year first_name       last_name      nee birth_year ethnicity agency
+	58: 000539381 2006     thomas             ngo       NA       1977         A   3428
+	59: 000118431 2007     thomas             ngo       NA       1977         A   3428
+	60: 000119862 2008     thomas             ngo       NA       1977         A   3428
+	61: 000098138 2009     thomas             ngo                1977         H   6678 #Ethnicity changes every time district does
+	62: 000122076 2010     thomas             ngo                1977         H   6678
+	63: 000122076 2010     thomas             ngo                1977         H   6678
+	64: 000124135 2011     thomas             ngo                1977         H   6678
+	65: 000124135 2011     thomas             ngo                1977         H   6678
+	66:    123215 2012     thomas             ngo                1977         W   1316
+	67: 000120103 2013     thomas             ngo                1977         W   1316
+	68: 000120249 2014     thomas             ngo                1977         A   1134
+	69: 000120249 2014     thomas             ngo                1977         A   1134
+	70: 000119415 2015     thomas             ngo                1977         I   2611
+
+                **However, sometimes pure noise**
+
+	 6: 000102673 2010    lindsay   krueger               1984         W   3619
+	 7: 000102673 2010    lindsay   krueger               1984         W   3619
+	 8: 000102673 2010    lindsay   krueger               1984         W   3619
+	 9: 000100784 2013    lindsay   krueger               1984         H   2695
+	10: 000100828 2014    lindsay   krueger               1984         W   2695
+	11: 000100828 2014    lindsay   krueger               1984         W   2695
+	12: 000100261 2015    lindsay   krueger               1984         W   3619
+
+	            **Perhaps use classification technique from Xun Tang's class?**
+
+* 2015-07-17 - Use consistent difference between local_exp and total_exp as evidence of a censored switch OR of spurious ID loss
+
+	           id year first_name last_name birth_year total_exp local_exp agency
+	22: 000002223 1996   sandra l   wittwer       1953      12.0         5   0896 #suggests 7 years experience
+	23: 000001845 1997   sandra l   wittwer       1953      13.0         6   0896 #  elsewhere, but would need
+	24: 000151645 1998   sandra l   wittwer       1953      14.0         7   0896 #  pre-1995 data to see the switch
+	25: 000276915 1999   sandra l   wittwer       1953      15.0         8   0896 #  **CAVEAT: EXPERIENCE NOISY**
+	26: 000276915 1999   sandra l   wittwer       1953      15.0         8   0896
+	27: 000440856 2000   sandra l   wittwer       1953      16.0         9   0896
+	28: 000552100 2001   sandra l   wittwer       1953      17.0        10   0896
+	29: 000681506 2002   sandra l   wittwer       1953      18.0        11   0896
+	30: 000815623 2003   sandra l   wittwer       1953      19.0        12   0896
+	31: 000949100 2004   sandra l   wittwer       1953      21.0        14   0896
+	32: 000373396 2005     sandra   wittwer       1953      22.0        15   0896
+
+                **May also be an indication that we've missed earlier observations**
+                **      (alternatively, evidence of out-of-state experience)      **
+
+	          id year first_name last_name      nee birth_year local_exp total_exp agency
+	1:     99261 2012       kari  debruine                1976         1        10   4620 #4620: Racine, WI
+	2: 000096498 2013       kari  debruine                1976         2        11   4620 #  (which is very close to IL)
+	3: 000096571 2014       kari  schaefer debruine       1976         3        12   4620
+	4: 000095966 2015       kari  schaefer                1976         4        13   4620
+
+* 2015-07-17 - Substitutes (position_code 43) usually (94% of the time) have no assigned school (school=="    ")
+
+                **This seems to happen in 3 cases:                              **
+                ***CASE I: Began career as a substitute before transitioning   ***
+
+	           id year birth_year highest_degree first_name   last_name position_code area agency school	
+	24: 000354007 1999       1974                 stephanie       young            43 0000   2793        #Note highest_degree
+	25: 000613741 2001       1974              4  stephanie       young            53 0050   2793   0600 #  missing--perhaps
+	26: 000799740 2002       1974              4  stephanie       young            53 0050   2793   0600 #  served as substitute
+	27: 000932373 2003       1974              4  stephanie       young            53 0050   2793   0600 #  until completing degree?
+
+	            ***CASE II: Mid-career stint as substitute--possibly maternity?***
+
+	           id year birth_year highest_degree  first_name        last_name position_code area agency school #That the transition
+	 1: 000003002 1997       1973              0     jill j.            brath            53 0808   2058   0120 #  also coincides
+	 2: 000003002 1997       1973              0     jill j.            brath            43 0000   2800        #  with marriage hints
+	 3: 000155540 1998       1973              4      jill j buettner (brath)            43 0000   2800        #  at the association
+	 4: 000155540 1998       1973              4      jill j buettner (brath)            53 0050   5390   0010 #  with childbirth
+	 5: 000320033 1999       1973              4      jill j buettner (brath)            43 0000   2800        #  (this population is
+	 6: 000320033 1999       1973              4      jill j buettner (brath)            53 0050   5390   0010 #   2% more female)
+
+
+	            ***CASE III: "Soft Retirement"--end career as a substitute     ***
+
+               id year birth_year highest_degree first_name last_name position_code area agency school
+	65: 000056472 1996       1944              4    linda a   connors            53 0811   2695   0280
+	66: 000003988 1997       1944              4    linda a   connors            53 0811   2695   0280
+	67: 000187282 1998       1944              4    linda a   connors            53 0811   2695   0280
+	68: 000289158 1999       1944              4    linda a   connors            53 0811   2695   0280
+	69: 000413574 2000       1944              4    linda a   connors            53 0811   2695   0280
+	70: 000548199 2001       1944              4    linda a   connors            53 0811   2695   0280
+	71: 000678829 2002       1944              4    linda a   connors            53 0811   2695   0280
+	72: 000979201 2004       1944                     linda   connors            43 0000   1694        #age 60 at first
+	73: 000979201 2004       1944                     linda   connors            43 0000   2695        #  substitute position
+	74: 000338644 2005       1944              0      linda   connors            43 0000   2695       
+	75: 000338644 2005       1944              0      linda   connors            43 0000   3612       
+	76: 000463440 2006       1944              0      linda   connors            43 0000   3612       
+
+* 2015-07-17 - School code "0999" used (inconsistently) as a dummy for "mutliple schools" / "the district as a whole"
+* 2015-07-17 - Should unify gaps in maiden names (_only_ when it's apparent that there was no divorce)
+
+
+               id year  first_name last_name                nee agency school
+    78: 000052743 1996      jean c    detert                 NA   3787   0120
+	79: 000067508 1997      jean c    detert                 NA   3787   0120
+	80: 000210425 1998      jean c    detert                 NA   3787   0120
+	81: 000326148 1999      jean c    detert                 NA   3787   0120
+	82: 000478364 2000      jean c    detert                      3787   0120
+	83: 000582324 2001      jean c    detert      kapszukiewicz   3787   0120
+	84: 000724375 2002      jean c    detert      kapszukiewicz   3787   0120
+	85: 000844899 2003      jean c    detert      kapszukiewicz   3787   0120
+	86: 000994618 2004      jean c    detert      kapszukiewicz   3787   0120
+	87: 000324810 2005        jean    detert                 NA   3787   0120
+	88: 000451508 2006        jean    detert                 NA   3787   0120 #No reason why "kapszukiewicz" should
+	89: 000451508 2006        jean    detert                 NA   3787   0120 #  be missing from 2005 to 2008
+	90: 000017089 2007        jean    detert                 NA   3787   0120
+	91: 000017089 2007        jean    detert                 NA   3787   0120
+	92: 000016923 2008        jean    detert                 NA   3787   0120
+	93: 000016923 2008        jean    detert                 NA   3787   0120
+	94: 000013564 2009        jean    detert      kapszukiewicz   3787   0120
+	95: 000016918 2010        jean    detert      kapszukiewicz   3787   0120
+
+* 2015-07-17 - Sort data by full_time_equiv to make sure the primary position is matched every year
+
+	           id year first_name last_name agency school position_code area full_time_equiv move_district move_school
+	39: 000053688 1996      louis     bitto   6174   0210            53 0530              60         FALSE       FALSE
+	40: 000053688 1996      louis     bitto   6174   0210            53 0910              40         FALSE       FALSE
+	41: 000111627 1997      louis     bitto   6174   0210            53 0530              75         FALSE       FALSE
+	42: 000111627 1997      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
+	43: 000259834 1998      louis     bitto   6174   0210            53 0530              75         FALSE       FALSE
+	44: 000259834 1998      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
+	45: 000387061 1999      louis     bitto   6174   0210            53 0530              75         FALSE       FALSE
+	46: 000387061 1999      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
+	47: 000432380 2000      louis     bitto   6174   0210            53 0530              83         FALSE       FALSE
+	48: 000432380 2000      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
+	49: 000607298 2001      louis     bitto   6174   0210            53 0530              75         FALSE       FALSE
+	50: 000607298 2001      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
+	51: 000789999 2002      louis     bitto   6174   0210            53 0530              75         FALSE       FALSE
+	52: 000789999 2002      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
+	53: 000896587 2003      louis     bitto   6174   0210            53 0530              75         FALSE       FALSE
+	54: 000896587 2003      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
+	55: 000034160 2004      louis     bitto   6174   0100            53 0530              25         FALSE       FALSE
+	56: 000034160 2004      louis     bitto   6174   0100            53 0910              25         FALSE       FALSE
+	57: 000034160 2004      louis     bitto   6174   0210            53 0530              25         FALSE       FALSE
+	58: 000034160 2004      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
+	59: 000312992 2005      louis     bitto   6174   0210            53 0530              75         FALSE       FALSE
+	60: 000312992 2005      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
+	61: 000441410 2006      louis     bitto   6174   0210            53 0530              83         FALSE       FALSE
+	62: 000441410 2006      louis     bitto   6174   0210            53 0935              17         FALSE       FALSE
+	63: 000005883 2007      louis     bitto   6174   0210            53 0530             100         FALSE       FALSE
+	64: 000005895 2008      louis     bitto   6174   0210            53 0935              17         FALSE       FALSE
+	65: 000005895 2008      louis     bitto   6174   0210            53 0530              83         FALSE       FALSE
+	66: 000004407 2009      louis     bitto   6174   0210            53 0530             100         FALSE       FALSE
+	67: 000005884 2010      louis     bitto   6174   0210            53 0530             100         FALSE       FALSE
+	68: 000005957 2011      louis     bitto   6174   0290            53 0530             100         FALSE        TRUE #didn't actually change schools
+	69: 000005957 2011      louis     bitto   6174   0560            98 9077              NA         FALSE        TRUE #  (the full-time position in
+	70:      5891 2012      louis     bitto   6174   0210            98 9077              NA         FALSE        TRUE #   2011 is at the same school
+	71:      5891 2012      louis     bitto   6174   0290            53 0530             100         FALSE        TRUE #   as in 2012, i.e. 6174-0290)
+	72: 000005682 2013      louis     bitto   6174                   43 0000              NA         FALSE        TRUE
+	73: 000005759 2014      louis     bitto   6174                   43 0000              NA         FALSE       FALSE
+	74: 000005740 2015      louis     bitto   6174                   43 0000              NA         FALSE       FALSE
+
+* 2015-07-17 - Noise in birth_year leading to spurious retirements/late career starts
+
+	           id year first_name last_name birth_year agency school position_code area
+	 1: 000211468 1996  herbert e    dundun       1959   3619   0044            53 0701
+	 2: 000211468 1996  herbert e    dundun       1959   3619   0044            53 0940
+	 3: 000120978 1997  herbert e    dundun       1959   3619   0065            53 0701
+	 4: 000120978 1997  herbert e    dundun       1959   3619   0065            53 0940
+	 5: 000268718 1998  herbert e    dundun       1959   3619   0065            53 0316
+	 6: 000268718 1998  herbert e    dundun       1959   3619   0065            53 0701
+	 7: 000395889 1999  herbert e    dundun       1959   3619   0065            53 0701
+	 8: 000519170 2000  herbert e    dundun       1959   3619   0065            53 0701
+	 9: 000651716 2001  herbert e    dundun       1959   3619   0065            53 0050
+	10: 000713385 2002  herbert e    dundun       1959   3619   0065            53 0050
+	11: 000926183 2003  herbert e    dundun       1959   3619   0065            53 0050
+	12: 000063707 2004  herbert e    dundun       1959   3619   0065            53 0050
+	13: 000384885 2005    herbert    dundun       1959   3619   0065            53 0400
+	14: 000007040 2006    herbert    dundun       1959   3619   0065            53 0400
+	15: 000076470 2007    herbert    dundun       1959   3619   0065            53 0400
+	16: 000077182 2008    herbert    dundun       1959   3619   0065            53 0400
+	17: 000119743 2009    herbert    dundun       1959   3619   0170            53 0701
+	18: 000119743 2009    herbert    dundun       1959   3619   0170            53 0400
+	19: 000119743 2009    herbert    dundun       1959   3619   0170            53 0620
+	20: 000078056 2010    herbert    dundun       1959   3619   0170            53 0910
+	21: 000078056 2010    herbert    dundun       1959   3619   0170            53 0316
+	22: 000078056 2010    herbert    dundun       1959   3619   0170            53 0405
+	23: 000078056 2010    herbert    dundun       1959   3619   0170            53 0050
+	24: 000078056 2010    herbert    dundun       1959   3619   0170            53 0400
+	25: 000078056 2010    herbert    dundun       1959   3619   0170            53 0550 #suddenly changes by two years
+	26: 000079270 2011    herbert    dundun       1957   3619   0170            53 0050 #  (so likely not son/father),
+	27: 000079270 2011    herbert    dundun       1957   3619   0170            53 0400 #  despite being same school
+	28: 000079270 2011    herbert    dundun       1957   3619   0170            53 0316
+	29: 000079270 2011    herbert    dundun       1957   3619   0170            53 0300
+	30: 000079270 2011    herbert    dundun       1957   3619   0170            53 0404
+	31:     78591 2012    herbert    dundun       1957   3619   0170            53 0530
+	32:     78591 2012    herbert    dundun       1957   3619   0170            53 0400
+	33:     78591 2012    herbert    dundun       1957   3619   0170            53 0365
+	34:     78591 2012    herbert    dundun       1957   3619   0170            53 0620
+	35:     78591 2012    herbert    dundun       1957   3619   0170            53 0404
+	36:     78591 2012    herbert    dundun       1957   3619   0170            53 0725
+	37:     78591 2012    herbert    dundun       1957   3619   0170            53 0300
+	38:     78591 2012    herbert    dundun       1957   3619   0170            53 0316
+	39:     78591 2012    herbert    dundun       1957   3619   0170            53 0515
+	40:     78591 2012    herbert    dundun       1957   3619   0170            53 0550
+	41: 000076358 2013    herbert    dundun       1957   3619   0170            53 0316
+	42: 000076358 2013    herbert    dundun       1957   3619   0170            53 0910
+	43: 000076358 2013    herbert    dundun       1957   3619   0170            53 0725
+	44: 000076358 2013    herbert    dundun       1957   3619   0170            53 0620
+	45: 000076358 2013    herbert    dundun       1957   3619   0170            53 0550
+	46: 000076358 2013    herbert    dundun       1957   3619   0170            53 0530
+	47: 000076358 2013    herbert    dundun       1957   3619   0170            53 0515
+	48: 000076358 2013    herbert    dundun       1957   3619   0170            53 0404
+	49: 000076358 2013    herbert    dundun       1957   3619   0170            53 0400
+	50: 000076358 2013    herbert    dundun       1957   3619   0170            53 0300
+	51: 000076299 2014    herbert    dundun       1957   3619   0170            53 0316
+	52: 000076299 2014    herbert    dundun       1957   3619   0170            53 0300
+	53: 000076299 2014    herbert    dundun       1957   3619   0170            53 0910
+	54: 000076299 2014    herbert    dundun       1957   3619   0170            53 0725
+	55: 000076299 2014    herbert    dundun       1957   3619   0170            53 0620
+	56: 000076299 2014    herbert    dundun       1957   3619   0170            53 0550
+	57: 000076299 2014    herbert    dundun       1957   3619   0170            53 0530
+	58: 000076299 2014    herbert    dundun       1957   3619   0170            53 0515
+	59: 000076299 2014    herbert    dundun       1957   3619   0170            53 0404
+	60: 000076299 2014    herbert    dundun       1957   3619   0170            53 0400
+
+* 2015-07-17 - Typos/misspellings/changes to nicknames causing missed matches
+
+	           id year first_name     last_name birth_year agency school position_code area
+	 1: 000475820 2000    jenifer lemke-bublitz       1959   1945                   67 0000
+	 2: 000325187 2005    jenifer lemke-bublitz       1959   4515   0140            53 0830
+	 3: 000451787 2006    jenifer lemke-bublitz       1959   4515   0140            53 0830
+	 4: 000017457 2007    jenifer lemke-bublitz       1959   4515   0140            53 0830
+	 5: 000017289 2008    jenifer lemke bublitz       1959   4515   0140            53 0811
+	 6: 000013811 2009    jenifer lemke bublitz       1959   4515   0140            53 0811
+	 7: 000017260 2010    jenifer lemke bublitz       1959   4515   0140            53 0811
+	 8: 000017460 2011    jenifer lemke bublitz       1959   4515   0140            53 0811
+	 9:     17287 2012    jenifer lemke bublitz       1959   4515   0140            53 0830
+	10: 000016629 2013    jenifer lemke bublitz       1959   4515   0140            53 0830
+	11: 000016695 2014    jenifer lemke bublitz       1959   4515   0140            53 0830
+	12: 000016657 2015    jenifer lemke bublitz       1959   4515   0140            53 0830 #recorded as "jenifer" in
+	13: 000577332 2001   jennifer lemke-bublitz       1959   1945   0080            97 0883 #  one school and as
+	14: 000769347 2002   jennifer lemke-bublitz       1959   1945   0080            97 0883 #  "jennifer" in the other
+	15: 000848947 2003   jennifer lemke-bublitz       1959   1945   0080            97 0883
+	16: 000011642 2004   jennifer lemke-bublitz       1959   1945   0080            97 0883
+
+	          id year first_name last_name birth_year agency school position_code area
+	1: 000218099 1998   patricia      haas       1959   4473   0060            53 0050
+	2: 000352882 1999   patricia      haas       1959   4473   0050            53 0050
+	3: 000352882 1999   patricia      haas       1959   4473   0060            53 0050
+	4: 000482863 2000   patricia      haas       1959   4473   0050            53 0050
+	5: 000482863 2000   patricia      haas       1959   4473   0060            53 0050
+	6: 000610451 2001   patricia      haas       1959   4473   0060            53 0050
+	7: 000682423 2002    patti j      haas       1959   1015   0070            97 0907 #opted for "patti" at this school
+	8: 000839439 2003   patricia      haas       1959   2058   0110            53 0620
+
+* 2015-07-17 - Missing birth_year often associated with another ID (and assigned birth_year)
+
+	           id year first_name last_name birth_year agency school position_code area
+	 1: 000000102 1996  elizabeth  hestekin         NA   0154   0020            97 0883 #quite clear it's the same person
+	 2: 000000764 1997  elizabeth  hestekin       1956   0154   0020            97 0883
+	 3: 000151259 1998  elizabeth  hestekin       1956   0154   0020            97 0883
+	 4: 000278816 1999  elizabeth  hestekin       1956   0154                   97 0883
+	 5: 000278816 1999  elizabeth  hestekin       1956   0154   0020            97 0883
+	 6: 000435824 2000  elizabeth  hestekin       1956   0154                   97 0883
+	 7: 000435824 2000  elizabeth  hestekin       1956   0154   0020            97 0883
+	 8: 000543752 2001  elizabeth  hestekin       1956   0154                   97 0883
+	 9: 000683882 2002  elizabeth  hestekin       1956   0154                   97 0883
+	10: 000803821 2003  elizabeth  hestekin       1956   0154                   97 0883
+	11: 000950657 2004  elizabeth  hestekin       1956   0154   0020            97 0883
+	12: 000326406 2005  elizabeth  hestekin       1956   0154   0020            97 0883
+	13: 000452828 2006  elizabeth  hestekin       1956   0154   0020            97 0883
+	14: 000018646 2007  elizabeth  hestekin       1956   0154   0020            97 0883
+	15: 000018488 2008  elizabeth  hestekin       1956   0154   0020            97 0883
+	16: 000014811 2009  elizabeth  hestekin       1956   0154   0020            97 0883
+	17: 000018439 2010  elizabeth  hestekin       1956   0154   0020            97 0883
+	18: 000018608 2011  elizabeth  hestekin       1956   0154   0020            97 0883
+	19:     18415 2012  elizabeth  hestekin       1956   0154   0020            97 0883
+	20: 000017659 2013  elizabeth  hestekin       1956   0154   0020            97 0883
+	21: 000017680 2014  elizabeth  hestekin       1956   0154   0020            97 0883
+	22: 000017580 2015  elizabeth  hestekin       1956   0154   0020            97 0883

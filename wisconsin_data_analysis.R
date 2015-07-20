@@ -21,13 +21,14 @@ create_quantiles<-function(x,num,right=F,include.lowest=T,na.rm=T){
 }
 
 table2<-function(...,dig=NULL,prop=F,ord=F,pct=F){
+  if (ord=="dec"){ dec<-T; ord<-T} else dec<-F
   dots<-list(...)
   args<-names(dots) %in% names(formals(prop.table))
   tab<-if (prop) do.call(
     'prop.table',c(list(
       do.call('table',if (length(args)) dots[!args] else dots)),
       dots[args])) else do.call('table',list(...))
-  if (ord) tab<-tab[order(tab)]
+  if (ord) tab<-tab[order(tab,decreasing=dec)]
   if (pct) tab<-100*tab
   if (is.null(dig)) tab else round(tab,digits=dig)
 }
@@ -250,10 +251,26 @@ system.time(for (yy in 1997:2015){
   full_data[teacher_id %in% full_data[.(1996:yy),uniqueN(id),by=teacher_id
                                       ][V1>yy-1995,teacher_id],teacher_id:=NA]
 }); rm(yy,update_cols,flags,current_max,new_ids)
+setkey(full_data,teacher_id,year)
 
 #Use last observation carried forward (LOCF) to synergize maiden names
 mns<-paste0("nee",c("","_clean"))
 full_data[,(mns):=lapply(.SD,na.locf,na.rm=F),by=teacher_id,.SDcols=mns]; rm(mns)
+
+#Correct ethnicity code for teachers with noisy assignment in two cases:
+## 1: Ethnicity plain missing (==" ") for subset of observations
+##      -Here, just replace missing by LOCF
+full_data[ethnicity==" ",ethnicity:=NA]
+full_data[.(full_data[is.na(ethnicity),unique(teacher_id)]),
+          ethnicity:=na.locf(na.locf(ethnicity,na.rm=F),na.rm=F,fromLast=T),
+          by=teacher_id]
+## 2: Single ethnicity violated on at most 20% of observations
+##      -Here, overwrite with "dominant" ethnicity
+full_data[full_data[,if(uniqueN(ethnicity)>1){
+  if(table2(ethnicity,prop=T,ord="dec")[1]>=.7){
+    names(table2(ethnicity,prop=T,ord="dec"))[1]}},by=teacher_id],
+  ethnicity:=i.V1]
+
 
 #Eliminate teachers *with at least some positions*
 #  that don't satisfy some criteria/data cleanliness

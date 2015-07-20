@@ -1,34 +1,5 @@
 Data cleaning tasks
 
-* 2015-07-17 - Ethnicity not stable within teacher_id; may be the result of mismatch on common names & cause over-estimated turnover, e.g.:
-
-	           id year first_name       last_name      nee birth_year ethnicity agency
-	58: 000539381 2006     thomas             ngo       NA       1977         A   3428
-	59: 000118431 2007     thomas             ngo       NA       1977         A   3428
-	60: 000119862 2008     thomas             ngo       NA       1977         A   3428
-	61: 000098138 2009     thomas             ngo                1977         H   6678 #Ethnicity changes every time district does
-	62: 000122076 2010     thomas             ngo                1977         H   6678
-	63: 000122076 2010     thomas             ngo                1977         H   6678
-	64: 000124135 2011     thomas             ngo                1977         H   6678
-	65: 000124135 2011     thomas             ngo                1977         H   6678
-	66:    123215 2012     thomas             ngo                1977         W   1316
-	67: 000120103 2013     thomas             ngo                1977         W   1316
-	68: 000120249 2014     thomas             ngo                1977         A   1134
-	69: 000120249 2014     thomas             ngo                1977         A   1134
-	70: 000119415 2015     thomas             ngo                1977         I   2611
-
-                **However, sometimes pure noise**
-
-	 6: 000102673 2010    lindsay   krueger               1984         W   3619
-	 7: 000102673 2010    lindsay   krueger               1984         W   3619
-	 8: 000102673 2010    lindsay   krueger               1984         W   3619
-	 9: 000100784 2013    lindsay   krueger               1984         H   2695
-	10: 000100828 2014    lindsay   krueger               1984         W   2695
-	11: 000100828 2014    lindsay   krueger               1984         W   2695
-	12: 000100261 2015    lindsay   krueger               1984         W   3619
-
-	            **Perhaps use classification technique from Xun Tang's class?**
-
 * 2015-07-17 - Use consistent difference between local_exp and total_exp as evidence of a censored switch OR of spurious ID loss
 
 	           id year first_name last_name birth_year total_exp local_exp agency

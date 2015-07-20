@@ -94,11 +94,11 @@ full_data[(is.na(nee)|nee=="")
 full_data[,paste0(names,"_clean"):=
             lapply(.SD,function(x){gsub("\\s|\\b[a-z]\\b","",
                                         gsub("[\\.,'\\-]","",x))}),
-          .SDcols=names]; rm(names)
+          .SDcols=names]
 ##Names like W C Fields were deleted; restore them
 lapply(names,function(x)full_data[get(paste0(x,"_clean"))=="",
                                   paste0(x,"_clean"):=get(x)])
-
+rm(names)
 #Delete anyone who cannot possibly be identified below:
 #  Namely, those who match another exactly on (cleaned) first/last name,
 #  birth year and year of data
@@ -107,7 +107,7 @@ lapply(names,function(x)full_data[get(paste0(x,"_clean"))=="",
 full_data<-full_data[,if (uniqueN(id)==1) .SD,
                      by=.(first_name_clean,last_name_clean,
                           birth_year,year)
-                     ][is.na(fringe),fringe:=0][!is.na(birth_year)]
+                     ][is.na(fringe),fringe:=0]
 
 #Will also use a different cleaned version of the first name--
 #  Delete everything after the first space
@@ -151,35 +151,36 @@ update_cols<-c("teacher_id",flags)
 #  match and assign flags as necessary; note that setting keys repeatedly is
 #  quite (and increasingly, as more previous years are included) costly;
 #  may be worth looking into using Pandas to speed up this process.
-get_id<-function(yr,key_from,key_to=key_from,
+get_id<-function(yr,key_crnt,key_prev=key_crnt,
                  mdis,msch,mard,init,mexp,step){
-  #Always key on ethnicity (found some mismatches that could have been
-  #  avoided by enforcing this)
-  key_from<-paste0(key_from,"ethnicity")
-  key_to<-paste0(key_to,"ethnicity")
   #Want to exclude anyone who is matched
   existing_ids<-full_data[.(yr),unique(na.omit(teacher_id))]
-  #Get the most recent prior observation of all
-  #  unmatched teachers, excluding those teachers
-  #  who cannot be uniquely identified by the
-  #  current key setting
+  #Get the most recent prior observation of all unmatched teachers
   unmatched<-
     full_data[.(1996:(yr-1))
               ][!teacher_id %in% existing_ids,
+                #.N here gives the most recent observation
+                #  of the teacher, in their "highest-intensity"
+                #  position (b/c ordered by FTE)
                 .SD[.N],by=teacher_id,
-                .SDcols=c(key_from,"teacher_id")
-                ][,if (.N==1L) .SD,keyby=key_from
+                .SDcols=c(key_prev,"teacher_id")
+                #if .N>1, there is more than 1 teacher matched by
+                #  keyfrom among the past teachers; 
+                ][,if (.N==1L) .SD,keyby=key_prev
                   ][,(flags):=list(mdis,msch,mard,init,mexp,step)]
   #Merge, reset keys
   setkey(setkeyv(
-    full_data,key_to)[year==yr&is.na(teacher_id),
-                      (update_cols):=unmatched[.SD,update_cols,with=F]],
+    full_data,key_crnt)[year==yr&is.na(teacher_id),
+                        (update_cols):=unmatched[.SD,update_cols,with=F]],
     year)
+
+  #assign the ID and flags to all observations of matched teachers in the
+  #  the current year (within-year, they can be identified by shared id)
   full_data[.(yr),(update_cols):=lapply(.SD,function(x)na.omit(x)[1]),
                                         by=id,.SDcols=update_cols]
 }
 
-setkey(full_data,year)
+setkey(full_data,year,full_time_equiv)
 
 system.time(for (yy in 1997:2015){
   print(yy)
@@ -248,7 +249,11 @@ system.time(for (yy in 1997:2015){
   #  But current mistakes are .09%
   full_data[teacher_id %in% full_data[.(1996:yy),uniqueN(id),by=teacher_id
                                       ][V1>yy-1995,teacher_id],teacher_id:=NA]
-}); rm(yy,update_cols,flags,current_max)
+}); rm(yy,update_cols,flags,current_max,new_ids)
+
+#Use last observation carried forward (LOCF) to synergize maiden names
+mns<-paste0("nee",c("","_clean"))
+full_data[,(mns):=lapply(.SD,na.locf,na.rm=F),by=teacher_id,.SDcols=mns]; rm(mns)
 
 #Eliminate teachers *with at least some positions*
 #  that don't satisfy some criteria/data cleanliness

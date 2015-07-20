@@ -92,68 +92,6 @@ Data cleaning tasks
 	76: 000463440 2006       1944              0      linda   connors            43 0000   3612       
 
 * 2015-07-17 - School code "0999" used (inconsistently) as a dummy for "mutliple schools" / "the district as a whole"
-* 2015-07-17 - Should unify gaps in maiden names (_only_ when it's apparent that there was no divorce)
-
-
-               id year  first_name last_name                nee agency school
-    78: 000052743 1996      jean c    detert                 NA   3787   0120
-	79: 000067508 1997      jean c    detert                 NA   3787   0120
-	80: 000210425 1998      jean c    detert                 NA   3787   0120
-	81: 000326148 1999      jean c    detert                 NA   3787   0120
-	82: 000478364 2000      jean c    detert                      3787   0120
-	83: 000582324 2001      jean c    detert      kapszukiewicz   3787   0120
-	84: 000724375 2002      jean c    detert      kapszukiewicz   3787   0120
-	85: 000844899 2003      jean c    detert      kapszukiewicz   3787   0120
-	86: 000994618 2004      jean c    detert      kapszukiewicz   3787   0120
-	87: 000324810 2005        jean    detert                 NA   3787   0120
-	88: 000451508 2006        jean    detert                 NA   3787   0120 #No reason why "kapszukiewicz" should
-	89: 000451508 2006        jean    detert                 NA   3787   0120 #  be missing from 2005 to 2008
-	90: 000017089 2007        jean    detert                 NA   3787   0120
-	91: 000017089 2007        jean    detert                 NA   3787   0120
-	92: 000016923 2008        jean    detert                 NA   3787   0120
-	93: 000016923 2008        jean    detert                 NA   3787   0120
-	94: 000013564 2009        jean    detert      kapszukiewicz   3787   0120
-	95: 000016918 2010        jean    detert      kapszukiewicz   3787   0120
-
-* 2015-07-17 - Sort data by full_time_equiv to make sure the primary position is matched every year
-
-	           id year first_name last_name agency school position_code area full_time_equiv move_district move_school
-	39: 000053688 1996      louis     bitto   6174   0210            53 0530              60         FALSE       FALSE
-	40: 000053688 1996      louis     bitto   6174   0210            53 0910              40         FALSE       FALSE
-	41: 000111627 1997      louis     bitto   6174   0210            53 0530              75         FALSE       FALSE
-	42: 000111627 1997      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
-	43: 000259834 1998      louis     bitto   6174   0210            53 0530              75         FALSE       FALSE
-	44: 000259834 1998      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
-	45: 000387061 1999      louis     bitto   6174   0210            53 0530              75         FALSE       FALSE
-	46: 000387061 1999      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
-	47: 000432380 2000      louis     bitto   6174   0210            53 0530              83         FALSE       FALSE
-	48: 000432380 2000      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
-	49: 000607298 2001      louis     bitto   6174   0210            53 0530              75         FALSE       FALSE
-	50: 000607298 2001      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
-	51: 000789999 2002      louis     bitto   6174   0210            53 0530              75         FALSE       FALSE
-	52: 000789999 2002      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
-	53: 000896587 2003      louis     bitto   6174   0210            53 0530              75         FALSE       FALSE
-	54: 000896587 2003      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
-	55: 000034160 2004      louis     bitto   6174   0100            53 0530              25         FALSE       FALSE
-	56: 000034160 2004      louis     bitto   6174   0100            53 0910              25         FALSE       FALSE
-	57: 000034160 2004      louis     bitto   6174   0210            53 0530              25         FALSE       FALSE
-	58: 000034160 2004      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
-	59: 000312992 2005      louis     bitto   6174   0210            53 0530              75         FALSE       FALSE
-	60: 000312992 2005      louis     bitto   6174   0210            53 0910              25         FALSE       FALSE
-	61: 000441410 2006      louis     bitto   6174   0210            53 0530              83         FALSE       FALSE
-	62: 000441410 2006      louis     bitto   6174   0210            53 0935              17         FALSE       FALSE
-	63: 000005883 2007      louis     bitto   6174   0210            53 0530             100         FALSE       FALSE
-	64: 000005895 2008      louis     bitto   6174   0210            53 0935              17         FALSE       FALSE
-	65: 000005895 2008      louis     bitto   6174   0210            53 0530              83         FALSE       FALSE
-	66: 000004407 2009      louis     bitto   6174   0210            53 0530             100         FALSE       FALSE
-	67: 000005884 2010      louis     bitto   6174   0210            53 0530             100         FALSE       FALSE
-	68: 000005957 2011      louis     bitto   6174   0290            53 0530             100         FALSE        TRUE #didn't actually change schools
-	69: 000005957 2011      louis     bitto   6174   0560            98 9077              NA         FALSE        TRUE #  (the full-time position in
-	70:      5891 2012      louis     bitto   6174   0210            98 9077              NA         FALSE        TRUE #   2011 is at the same school
-	71:      5891 2012      louis     bitto   6174   0290            53 0530             100         FALSE        TRUE #   as in 2012, i.e. 6174-0290)
-	72: 000005682 2013      louis     bitto   6174                   43 0000              NA         FALSE        TRUE
-	73: 000005759 2014      louis     bitto   6174                   43 0000              NA         FALSE       FALSE
-	74: 000005740 2015      louis     bitto   6174                   43 0000              NA         FALSE       FALSE
 
 * 2015-07-17 - Noise in birth_year leading to spurious retirements/late career starts
 
@@ -274,3 +212,5 @@ Data cleaning tasks
 	20: 000017659 2013  elizabeth  hestekin       1956   0154   0020            97 0883
 	21: 000017680 2014  elizabeth  hestekin       1956   0154   0020            97 0883
 	22: 000017580 2015  elizabeth  hestekin       1956   0154   0020            97 0883
+
+* 2015-07-20 - Check for possibility of divorce--last name->maiden name->last name again?

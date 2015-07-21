@@ -64,70 +64,6 @@ Data cleaning tasks
 
 * 2015-07-17 - School code "0999" used (inconsistently) as a dummy for "mutliple schools" / "the district as a whole"
 
-* 2015-07-17 - Noise in birth_year leading to spurious retirements/late career starts
-
-	           id year first_name last_name birth_year agency school position_code area
-	 1: 000211468 1996  herbert e    dundun       1959   3619   0044            53 0701
-	 2: 000211468 1996  herbert e    dundun       1959   3619   0044            53 0940
-	 3: 000120978 1997  herbert e    dundun       1959   3619   0065            53 0701
-	 4: 000120978 1997  herbert e    dundun       1959   3619   0065            53 0940
-	 5: 000268718 1998  herbert e    dundun       1959   3619   0065            53 0316
-	 6: 000268718 1998  herbert e    dundun       1959   3619   0065            53 0701
-	 7: 000395889 1999  herbert e    dundun       1959   3619   0065            53 0701
-	 8: 000519170 2000  herbert e    dundun       1959   3619   0065            53 0701
-	 9: 000651716 2001  herbert e    dundun       1959   3619   0065            53 0050
-	10: 000713385 2002  herbert e    dundun       1959   3619   0065            53 0050
-	11: 000926183 2003  herbert e    dundun       1959   3619   0065            53 0050
-	12: 000063707 2004  herbert e    dundun       1959   3619   0065            53 0050
-	13: 000384885 2005    herbert    dundun       1959   3619   0065            53 0400
-	14: 000007040 2006    herbert    dundun       1959   3619   0065            53 0400
-	15: 000076470 2007    herbert    dundun       1959   3619   0065            53 0400
-	16: 000077182 2008    herbert    dundun       1959   3619   0065            53 0400
-	17: 000119743 2009    herbert    dundun       1959   3619   0170            53 0701
-	18: 000119743 2009    herbert    dundun       1959   3619   0170            53 0400
-	19: 000119743 2009    herbert    dundun       1959   3619   0170            53 0620
-	20: 000078056 2010    herbert    dundun       1959   3619   0170            53 0910
-	21: 000078056 2010    herbert    dundun       1959   3619   0170            53 0316
-	22: 000078056 2010    herbert    dundun       1959   3619   0170            53 0405
-	23: 000078056 2010    herbert    dundun       1959   3619   0170            53 0050
-	24: 000078056 2010    herbert    dundun       1959   3619   0170            53 0400
-	25: 000078056 2010    herbert    dundun       1959   3619   0170            53 0550 #suddenly changes by two years
-	26: 000079270 2011    herbert    dundun       1957   3619   0170            53 0050 #  (so likely not son/father),
-	27: 000079270 2011    herbert    dundun       1957   3619   0170            53 0400 #  despite being same school
-	28: 000079270 2011    herbert    dundun       1957   3619   0170            53 0316
-	29: 000079270 2011    herbert    dundun       1957   3619   0170            53 0300
-	30: 000079270 2011    herbert    dundun       1957   3619   0170            53 0404
-	31:     78591 2012    herbert    dundun       1957   3619   0170            53 0530
-	32:     78591 2012    herbert    dundun       1957   3619   0170            53 0400
-	33:     78591 2012    herbert    dundun       1957   3619   0170            53 0365
-	34:     78591 2012    herbert    dundun       1957   3619   0170            53 0620
-	35:     78591 2012    herbert    dundun       1957   3619   0170            53 0404
-	36:     78591 2012    herbert    dundun       1957   3619   0170            53 0725
-	37:     78591 2012    herbert    dundun       1957   3619   0170            53 0300
-	38:     78591 2012    herbert    dundun       1957   3619   0170            53 0316
-	39:     78591 2012    herbert    dundun       1957   3619   0170            53 0515
-	40:     78591 2012    herbert    dundun       1957   3619   0170            53 0550
-	41: 000076358 2013    herbert    dundun       1957   3619   0170            53 0316
-	42: 000076358 2013    herbert    dundun       1957   3619   0170            53 0910
-	43: 000076358 2013    herbert    dundun       1957   3619   0170            53 0725
-	44: 000076358 2013    herbert    dundun       1957   3619   0170            53 0620
-	45: 000076358 2013    herbert    dundun       1957   3619   0170            53 0550
-	46: 000076358 2013    herbert    dundun       1957   3619   0170            53 0530
-	47: 000076358 2013    herbert    dundun       1957   3619   0170            53 0515
-	48: 000076358 2013    herbert    dundun       1957   3619   0170            53 0404
-	49: 000076358 2013    herbert    dundun       1957   3619   0170            53 0400
-	50: 000076358 2013    herbert    dundun       1957   3619   0170            53 0300
-	51: 000076299 2014    herbert    dundun       1957   3619   0170            53 0316
-	52: 000076299 2014    herbert    dundun       1957   3619   0170            53 0300
-	53: 000076299 2014    herbert    dundun       1957   3619   0170            53 0910
-	54: 000076299 2014    herbert    dundun       1957   3619   0170            53 0725
-	55: 000076299 2014    herbert    dundun       1957   3619   0170            53 0620
-	56: 000076299 2014    herbert    dundun       1957   3619   0170            53 0550
-	57: 000076299 2014    herbert    dundun       1957   3619   0170            53 0530
-	58: 000076299 2014    herbert    dundun       1957   3619   0170            53 0515
-	59: 000076299 2014    herbert    dundun       1957   3619   0170            53 0404
-	60: 000076299 2014    herbert    dundun       1957   3619   0170            53 0400
-
 * 2015-07-17 - Typos/misspellings/changes to nicknames causing missed matches
 
 	           id year first_name     last_name birth_year agency school position_code area
@@ -158,30 +94,8 @@ Data cleaning tasks
 	7: 000682423 2002    patti j      haas       1959   1015   0070            97 0907 #opted for "patti" at this school
 	8: 000839439 2003   patricia      haas       1959   2058   0110            53 0620
 
-* 2015-07-17 - Missing birth_year often associated with another ID (and assigned birth_year)
-
-	           id year first_name last_name birth_year agency school position_code area
-	 1: 000000102 1996  elizabeth  hestekin         NA   0154   0020            97 0883 #quite clear it's the same person
-	 2: 000000764 1997  elizabeth  hestekin       1956   0154   0020            97 0883
-	 3: 000151259 1998  elizabeth  hestekin       1956   0154   0020            97 0883
-	 4: 000278816 1999  elizabeth  hestekin       1956   0154                   97 0883
-	 5: 000278816 1999  elizabeth  hestekin       1956   0154   0020            97 0883
-	 6: 000435824 2000  elizabeth  hestekin       1956   0154                   97 0883
-	 7: 000435824 2000  elizabeth  hestekin       1956   0154   0020            97 0883
-	 8: 000543752 2001  elizabeth  hestekin       1956   0154                   97 0883
-	 9: 000683882 2002  elizabeth  hestekin       1956   0154                   97 0883
-	10: 000803821 2003  elizabeth  hestekin       1956   0154                   97 0883
-	11: 000950657 2004  elizabeth  hestekin       1956   0154   0020            97 0883
-	12: 000326406 2005  elizabeth  hestekin       1956   0154   0020            97 0883
-	13: 000452828 2006  elizabeth  hestekin       1956   0154   0020            97 0883
-	14: 000018646 2007  elizabeth  hestekin       1956   0154   0020            97 0883
-	15: 000018488 2008  elizabeth  hestekin       1956   0154   0020            97 0883
-	16: 000014811 2009  elizabeth  hestekin       1956   0154   0020            97 0883
-	17: 000018439 2010  elizabeth  hestekin       1956   0154   0020            97 0883
-	18: 000018608 2011  elizabeth  hestekin       1956   0154   0020            97 0883
-	19:     18415 2012  elizabeth  hestekin       1956   0154   0020            97 0883
-	20: 000017659 2013  elizabeth  hestekin       1956   0154   0020            97 0883
-	21: 000017680 2014  elizabeth  hestekin       1956   0154   0020            97 0883
-	22: 000017580 2015  elizabeth  hestekin       1956   0154   0020            97 0883
-
 * 2015-07-20 - Check for possibility of divorce--last name->maiden name->last name again?
+
+* 2015-07-21 - Potential speed-up for matching: only define flags as T, then replace NAs with F
+
+* 2015-07-21 - Need to add flags for second-stage cleaning measures (YOB noise, maiden name clean-up, etc.)

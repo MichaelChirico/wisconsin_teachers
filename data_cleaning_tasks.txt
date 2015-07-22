@@ -24,44 +24,6 @@ Data cleaning tasks
 	3: 000096571 2014       kari  schaefer debruine       1976         3        12   4620
 	4: 000095966 2015       kari  schaefer                1976         4        13   4620
 
-* 2015-07-17 - Substitutes (position_code 43) usually (94% of the time) have no assigned school (school=="    ")
-
-                **This seems to happen in 3 cases:                              **
-                ***CASE I: Began career as a substitute before transitioning   ***
-
-	           id year birth_year highest_degree first_name   last_name position_code area agency school	
-	24: 000354007 1999       1974                 stephanie       young            43 0000   2793        #Note highest_degree
-	25: 000613741 2001       1974              4  stephanie       young            53 0050   2793   0600 #  missing--perhaps
-	26: 000799740 2002       1974              4  stephanie       young            53 0050   2793   0600 #  served as substitute
-	27: 000932373 2003       1974              4  stephanie       young            53 0050   2793   0600 #  until completing degree?
-
-	            ***CASE II: Mid-career stint as substitute--possibly maternity?***
-
-	           id year birth_year highest_degree  first_name        last_name position_code area agency school #That the transition
-	 1: 000003002 1997       1973              0     jill j.            brath            53 0808   2058   0120 #  also coincides
-	 2: 000003002 1997       1973              0     jill j.            brath            43 0000   2800        #  with marriage hints
-	 3: 000155540 1998       1973              4      jill j buettner (brath)            43 0000   2800        #  at the association
-	 4: 000155540 1998       1973              4      jill j buettner (brath)            53 0050   5390   0010 #  with childbirth
-	 5: 000320033 1999       1973              4      jill j buettner (brath)            43 0000   2800        #  (this population is
-	 6: 000320033 1999       1973              4      jill j buettner (brath)            53 0050   5390   0010 #   2% more female)
-
-
-	            ***CASE III: "Soft Retirement"--end career as a substitute     ***
-
-               id year birth_year highest_degree first_name last_name position_code area agency school
-	65: 000056472 1996       1944              4    linda a   connors            53 0811   2695   0280
-	66: 000003988 1997       1944              4    linda a   connors            53 0811   2695   0280
-	67: 000187282 1998       1944              4    linda a   connors            53 0811   2695   0280
-	68: 000289158 1999       1944              4    linda a   connors            53 0811   2695   0280
-	69: 000413574 2000       1944              4    linda a   connors            53 0811   2695   0280
-	70: 000548199 2001       1944              4    linda a   connors            53 0811   2695   0280
-	71: 000678829 2002       1944              4    linda a   connors            53 0811   2695   0280
-	72: 000979201 2004       1944                     linda   connors            43 0000   1694        #age 60 at first
-	73: 000979201 2004       1944                     linda   connors            43 0000   2695        #  substitute position
-	74: 000338644 2005       1944              0      linda   connors            43 0000   2695       
-	75: 000338644 2005       1944              0      linda   connors            43 0000   3612       
-	76: 000463440 2006       1944              0      linda   connors            43 0000   3612       
-
 * 2015-07-17 - School code "0999" used (inconsistently) as a dummy for "mutliple schools" / "the district as a whole"
 
 * 2015-07-17 - Typos/misspellings/changes to nicknames causing missed matches
@@ -99,3 +61,7 @@ Data cleaning tasks
 * 2015-07-21 - Potential speed-up for matching: only define flags as T, then replace NAs with F
 
 * 2015-07-21 - Need to add flags for second-stage cleaning measures (YOB noise, maiden name clean-up, etc.)
+
+* 2015-07-22 - Why did I lose Jill Buettner? (id: 000003002 in 1997, 000155540 in 1998)
+
+* 2015-07-22 - Rectify birth year noise for those matches on non-YOB characteristics

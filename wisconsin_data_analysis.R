@@ -141,8 +141,7 @@ full_data[,ethnicity_main:=factor(ethnicity_main)]
 #Initialize ID system & matching flags
 setkey(full_data,id)[setkey(unique(full_data[year==1996,.(id)])[,teacher_id:=.I],id),
                      teacher_id:=ifelse(year==1996,i.teacher_id,NA)]
-flags<-c("move_district","move_school","married",
-         paste0("mismatch_",c("inits","yob")),"step")
+flags<-c("married",paste0("mismatch_",c("inits","yob")),"step")
 full_data[year==1996,c("new_teacher",flags):=
             list(total_exp<2,F,F,F,F,F,0L)]
 
@@ -153,7 +152,7 @@ update_cols<-c("teacher_id",flags)
 #  quite (and increasingly, as more previous years are included) costly;
 #  may be worth looking into using Pandas to speed up this process.
 get_id<-function(yr,key_crnt,key_prev=key_crnt,
-                 mdis,msch,mard,init,myob,step){
+                 mard,init,myob,step){
   #Want to exclude anyone who is matched
   existing_ids<-full_data[.(yr),unique(na.omit(teacher_id))]
   #Get the most recent prior observation of all unmatched teachers
@@ -168,7 +167,7 @@ get_id<-function(yr,key_crnt,key_prev=key_crnt,
                 #if .N>1, there is more than 1 teacher matched by
                 #  keyfrom among the past teachers; 
                 ][,if (.N==1L) .SD,keyby=key_prev
-                  ][,(flags):=list(mdis,msch,mard,init,myob,step)]
+                  ][,(flags):=list(mard,init,myob,step)]
   #Merge, reset keys
   setkey(setkeyv(
     full_data,key_crnt)[year==yr&is.na(teacher_id),
@@ -188,71 +187,66 @@ system.time(for (yy in 1997:2015){
   #1) First match anyone who stayed in the same school
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency","school"),
-         mdis=F,msch=F,mard=F,init=F,myob=F,step=1L)
+         mard=F,init=F,myob=F,step=1L)
   #2) Loosen criteria--find within-district switchers
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency"),
-         mdis=F,msch=T,mard=F,init=F,myob=F,step=2L)
+         mard=F,init=F,myob=F,step=2L)
   #3) Loosen criteria--find district switchers
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR
   get_id(yy,c("first_name_clean","last_name_clean","birth_year"),
-         mdis=T,msch=T,mard=F,init=F,myob=F,step=3L)
+         mard=F,init=F,myob=F,step=3L)
   #4) Find anyone who appears to have gotten married
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency","school"),
             c("first_name_clean","nee_clean"      ,"birth_year","agency","school"),
-         mdis=F,msch=F,mard=T,init=F,myob=F,step=4L)
+         mard=T,init=F,myob=F,step=4L)
   #5) married and changed schools
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency"),
             c("first_name_clean","nee_clean"      ,"birth_year","agency"),
-         mdis=F,msch=T,mard=T,init=F,myob=F,step=5L)
+         mard=T,init=F,myob=F,step=5L)
   #6) married and changed districts
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR
   get_id(yy,c("first_name_clean","last_name_clean","birth_year"),
             c("first_name_clean","nee_clean"      ,"birth_year"),
-         mdis=T,msch=T,mard=T,init=F,myob=F,step=6L)
+         mard=T,init=F,myob=F,step=6L)
   #7) now match some stragglers with missing/included middle names & repeat above
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name2","last_name_clean","birth_year","agency","school"),
-         mdis=F,msch=F,mard=F,init=T,myob=F,step=7L)
+         mard=F,init=T,myob=F,step=7L)
   #8) stripped first name + school switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year","agency"),
-         mdis=F,msch=T,mard=F,init=T,myob=F,step=8L)
+         mard=F,init=T,myob=F,step=8L)
   #9) stripped first name + district switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR
   get_id(yy,c("first_name2","last_name_clean","birth_year"),
-         mdis=T,msch=T,mard=F,init=T,myob=F,step=9L)
+         mard=F,init=T,myob=F,step=9L)
   #10) stripped first name + married
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name2","last_name_clean","birth_year","agency","school"),
             c("first_name2","nee_clean"      ,"birth_year","agency","school"),
-         mdis=F,msch=F,mard=T,init=T,myob=F,step=10L)
+         mard=T,init=T,myob=F,step=10L)
   #11) stripped first name, married, school switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year","agency"),
             c("first_name2","nee_clean"      ,"birth_year","agency"),
-         mdis=F,msch=T,mard=T,init=T,myob=F,step=11L)
+         mard=T,init=T,myob=F,step=11L)
   #12) stripped first name, married, district switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year"),
             c("first_name2","nee_clean"      ,"birth_year"),
-         mdis=T,msch=T,mard=T,init=T,myob=F,step=12L)
-  #12) stripped first name, married, district switch
-  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
-  get_id(yy,c("first_name2","last_name_clean","birth_year"),
-         c("first_name2","nee_clean"      ,"birth_year"),
-         mdis=T,msch=T,mard=T,init=T,myob=F,step=12L)
+         mard=T,init=T,myob=F,step=12L)
   #13) YOB noise: match anyone who stayed in the same school
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name_clean","last_name_clean","agency","school"),
-         mdis=F,msch=F,mard=F,init=F,myob=T,step=13L)
+         mard=F,init=F,myob=T,step=13L)
   #14) YOB noise: within-district switchers
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | POSITION CODE
   get_id(yy,c("first_name_clean","last_name_clean","agency","position_code"),
-         mdis=F,msch=T,mard=F,init=F,myob=T,step=14L)
-  #16) finally, give up and assign new ids to new (read: unmatched) teachers
+         mard=F,init=F,myob=T,step=14L)
+  #15) finally, give up and assign new ids to new (read: unmatched) teachers
   current_max<-full_data[.(yy),max(teacher_id,na.rm=T)]
   new_ids<-
     setkey(full_data[year==yy&is.na(teacher_id),.(id=unique(id))
@@ -264,7 +258,9 @@ system.time(for (yy in 1997:2015){
   duplicated_teachers<-full_data[.(1996:yy),if(uniqueN(id)>yy-1995)teacher_id,by=teacher_id]$V1
   full_data[teacher_id %in% duplicated_teachers,c("teacher_id","doubled_flag"):=list(NA,T)]
 }); rm(yy,update_cols,flags,current_max,new_ids,duplicated_teachers)
-setkey(full_data,teacher_id,year)
+
+#need to sort by FTE for adjustment to move_school below
+setkey(full_data,teacher_id,year,full_time_equiv)
 
 #Use last observation carried forward (LOCF) to synergize maiden names
 mns<-paste0("nee",c("","_clean"))
@@ -284,17 +280,42 @@ full_data[full_data[,if(uniqueN(ethnicity)>1){
     names(table2(ethnicity,prop=T,ord="dec"))[1]}},by=teacher_id],
   ethnicity:=i.V1]
 
-#Correct some year-of-birth noise (particularly prevalent among
-#  substitute teachers) by the following rule:
-#    Match all teachers on first/last names, agency, and school;
-#      If there's more than two ID matches, assign all the year
-#      of birth and teacher ID of the ID among them that has the
-#      most representation in the data; if there's a tie,
-#      pick the one with the age closest to the full-date median.
-#
-#      Among those left (with two ID matches), match further on
-#      position code, then repeat the above.
+#Generate school switch identifier
+#  1) Must take care not to over-estimate switching due to
+#     poor identification of school when substituting full time
+#  2) Also using hire agency to fill in when assigned agency is 0000;
+#     Appears to usually represent a transitional period before 
+#     fully entering the system (as evidenced by hire_agency)
+full_data[school=="    ",school:=NA]
+full_data[agency=="0000",agency:=NA]
+full_data[,school_fill:=na.locf(na.locf(school,na.rm=F),fromLast=T,na.rm=F),
+          by=.(teacher_id,agency)]
+full_data[,agency_fill:=na.locf(na.locf(agency,na.rm=F),fromLast=T,na.rm=F),
+          by=.(teacher_id,hire_agency)]
+full_data[setkey(unique(full_data,by=c("teacher_id","year"),fromLast=T
+                        )[,.(year,shift(school_fill),shift(agency_fill)),
+                          by=teacher_id],teacher_id,year),
+          `:=`(move_school=school_fill!=i.V2,
+               move_district=agency_fill!=i.V3)
+          ][,c("move_district","move_school"):=
+              .(move_district[.N],move_school[.N]),
+            by=.(teacher_id,year)]
 
+#Add identifier for three common patterns of substitution
+#  I) "Ease-in" period: begin career with some years as a sub
+#  II) "Soft retirement" period: end career with some years as a sub
+#  III) "Maternity" period: transition to subbing for some years mid-career
+##I)
+full_data[,sub_ease_in:=all(unique(position_code[year==year[1]])==43)&
+            uniqueN(position_code)>1,by=teacher_id]
+##II)
+full_data[,sub_soft_retd:=all(unique(position_code[year==year[.N]])==43)&
+            uniqueN(position_code)>1&age[.N]>=50,by=teacher_id]
+##III)
+full_data[full_data[,all(position_code==43),
+                    by=.(teacher_id,year)][,.(sub_yr=any(V1)&!all(V1)),
+                                           keyby=teacher_id],
+          sub_maternity:=i.sub_yr&!(sub_ease_in|sub_soft_retd)]
 
 #Eliminate teachers *with at least some positions*
 #  that don't satisfy some criteria/data cleanliness

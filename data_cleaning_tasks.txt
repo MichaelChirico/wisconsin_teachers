@@ -58,10 +58,14 @@ Data cleaning tasks
 
 * 2015-07-20 - Check for possibility of divorce--last name->maiden name->last name again?
 
-* 2015-07-21 - Potential speed-up for matching: only define flags as T, then replace NAs with F
-
-* 2015-07-21 - Need to add flags for second-stage cleaning measures (YOB noise, maiden name clean-up, etc.)
-
 * 2015-07-22 - Why did I lose Jill Buettner? (id: 000003002 in 1997, 000155540 in 1998)
 
-* 2015-07-22 - Rectify birth year noise for those matches on non-YOB characteristics
+* 2015-07-23 - Deal with certification noise (highest_degree)
+
+* 2015-07-23 - Deal with gender noise (1200 individuals w/ more than one gender)
+
+* 2015-07-23 - Add more robust school/position switch identifier--if _any_ position is new, vs. highest-FTE position
+
+* 2015-07-23 - Double check fidelity of post-match variable definitions
+
+* 2015-07-23 - Count impact of days_of_contract slice

@@ -15,12 +15,12 @@ library(xlsx)
 library(nnet)
 library(texreg)
 
-# Convenient functions ####
+# Convenient functions
 create_quantiles<-function(x,num,right=F,include.lowest=T,na.rm=T){
   cut(x,breaks=quantile(x,probs=seq(0,1,by=1/num),na.rm=T),labels=1:num,right=right,include.lowest=include.lowest)
 }
 
-table2<-function(...,dig=NULL,prop=F,ord=F,pct=F){
+table2<-function(...,dig=if (prop) 2 else NULL,prop=F,ord=F,pct=F){
   if (ord=="dec"){ dec<-T; ord<-T} else dec<-F
   dots<-list(...)
   args<-names(dots) %in% names(formals(prop.table))
@@ -59,6 +59,9 @@ dev.off2<-function(){
   invisible(dev.off(which=dev.list()["pdf"]))
 }
 
+#For adding characters & forcing to string
+"%++%" <- function(s,n) do.call("+",lapply(list(s,n),as.integer))
+
 # Data import ####
 #   Raw data available here: http://lbstat.dpi.wi.gov/lbstat_newasr
 #   (most available in fixed width; these were converted using
@@ -72,7 +75,7 @@ full_data<-rbindlist(lapply(ntostr(95:114),function(x){
                         what="",sep=",",nlines=1,quiet=T)=="filler"),
         colClasses=fread(paste0("/media/data_drive/wisconsin/",x,"dict.csv"),select=3)$V3)}),
   #fill=T is necessary because fields are not constant across time
-  fill=T)[,year:=as.integer(substr(year_session,1,4))+1L
+  fill=T)[,year:=substr(year_session,1,4)%++%+1L
           #storage of some fields inconsistent across time; start unifying here
           ][year<2005,area:=paste0("0",area)
             #trim extraneous white space from names and force lowercase
@@ -115,19 +118,21 @@ full_data<-full_data[,if (uniqueN(id)==1) .SD,
 full_data[,first_name2:=gsub("\\s.*","",first_name)]
 
 #Data stored differently in 2011-12; need to append 0s for consistency
-add0s<-c("agency","school","area")
-full_data[year==2012,(add0s):=lapply(.SD,function(x)
-  substr(paste0("000",x),nchar(x),nchar(x)+3)),.SDcols=add0s]; rm(add0s)
-full_data[year==2012&nchar(position_code)==1,position_code:=paste0("0",position_code)]
+add30s<-c("agency","school","area")
+full_data[year==2012,(add30s):=lapply(.SD,function(x)
+  substr(paste0("000",x),nchar(x),nchar(x)+3)),.SDcols=add30s]; rm(add30s)
+add10<-c("position_code","agency_work_type","agency_hire_type")
+full_data[year==2012,(add10):=lapply(.SD,function(x)
+  substr(paste0("0",x),nchar(x),nchar(x)+1)),.SDcols=add10]; rm(add10)
 
 #Again, 2012 already has experience defined correctly; other years express as 10ths
 div10<-paste0(c("local","total"),"_exp")
 full_data[year!=2012,(div10):=lapply(.SD,function(x)x/10),.SDcols=div10]; rm(div10)
 
 #Reformat/create some variables
-full_data[,c("birth_year","total_exp_floor","total_pay","agency_work_type","agency_hire_type"):=
-            list(as.integer(birth_year),floor(total_exp),salary+fringe,
-                 as.integer(agency_work_type),as.integer(agency_hire_type))][,age:=year-birth_year]
+full_data[,c("birth_year","total_exp_floor","total_pay","highest_degree"):=
+            list(birth_year%++%0L,floor(total_exp),
+                 salary+fringe,highest_degree%++%0L)]
 #Create ethnicity dummies, and separate the "main" ethnicities
 ethnames<-c("black","hispanic","white")
 ethcodes<-c("B","H","W")
@@ -141,18 +146,18 @@ full_data[,ethnicity_main:=factor(ethnicity_main)]
 #Initialize ID system & matching flags
 setkey(full_data,id)[setkey(unique(full_data[year==1996,.(id)])[,teacher_id:=.I],id),
                      teacher_id:=ifelse(year==1996,i.teacher_id,NA)]
-flags<-c("married",paste0("mismatch_",c("inits","yob")),"step")
-full_data[year==1996,c("new_teacher",flags):=
-            list(total_exp<2,F,F,F,F,F,0L)]
-
-update_cols<-c("teacher_id",flags)
+full_data[year==1996,c("married",
+                       paste0("mismatch_",c("inits","yob")),
+                       "step"):=list(F,F,F,0L)]
 
 #Main matching function--given keys in previous years and key in current year,
 #  match and assign flags as necessary; note that setting keys repeatedly is
 #  quite (and increasingly, as more previous years are included) costly;
 #  may be worth looking into using Pandas to speed up this process.
-get_id<-function(yr,key_crnt,key_prev=key_crnt,
-                 mard,init,myob,step){
+get_id<-function(yr,key_crnt,key_prev=key_crnt,step,...){
+  #figure out which columns are to be updated
+  flags<-c(names(list(...)),"step")
+  update_cols<-c("teacher_id",flags)
   #Want to exclude anyone who is matched
   existing_ids<-full_data[.(yr),unique(na.omit(teacher_id))]
   #Get the most recent prior observation of all unmatched teachers
@@ -162,12 +167,11 @@ get_id<-function(yr,key_crnt,key_prev=key_crnt,
                 #.N here gives the most recent observation
                 #  of the teacher, in their "highest-intensity"
                 #  position (b/c ordered by FTE)
-                .SD[.N],by=teacher_id,
-                .SDcols=c(key_prev,"teacher_id")
+                .SD[.N],by=teacher_id,.SDcols=key_prev
                 #if .N>1, there is more than 1 teacher matched by
                 #  keyfrom among the past teachers; 
                 ][,if (.N==1L) .SD,keyby=key_prev
-                  ][,(flags):=list(mard,init,myob,step)]
+                  ][,(flags):=list(...,step)]
   #Merge, reset keys
   setkey(setkeyv(
     full_data,key_crnt)[year==yr&is.na(teacher_id),
@@ -186,66 +190,63 @@ system.time(for (yy in 1997:2015){
   print(yy)
   #1) First match anyone who stayed in the same school
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
-  get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency","school"),
-         mard=F,init=F,myob=F,step=1L)
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency","school"),step=1L)
   #2) Loosen criteria--find within-district switchers
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY
-  get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency"),
-         mard=F,init=F,myob=F,step=2L)
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency"),step=2L)
   #3) Loosen criteria--find district switchers
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR
-  get_id(yy,c("first_name_clean","last_name_clean","birth_year"),
-         mard=F,init=F,myob=F,step=3L)
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year"),step=3L)
   #4) Find anyone who appears to have gotten married
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency","school"),
             c("first_name_clean","nee_clean"      ,"birth_year","agency","school"),
-         mard=T,init=F,myob=F,step=4L)
+         married=T,step=4L)
   #5) married and changed schools
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name_clean","last_name_clean","birth_year","agency"),
             c("first_name_clean","nee_clean"      ,"birth_year","agency"),
-         mard=T,init=F,myob=F,step=5L)
+         married=T,step=5L)
   #6) married and changed districts
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME | BIRTH YEAR
   get_id(yy,c("first_name_clean","last_name_clean","birth_year"),
             c("first_name_clean","nee_clean"      ,"birth_year"),
-         mard=T,init=F,myob=F,step=6L)
+         married=T,step=6L)
   #7) now match some stragglers with missing/included middle names & repeat above
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name2","last_name_clean","birth_year","agency","school"),
-         mard=F,init=T,myob=F,step=7L)
+         mismatch_inits=T,step=7L)
   #8) stripped first name + school switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year","agency"),
-         mard=F,init=T,myob=F,step=8L)
+         mismatch_inits=T,step=8L)
   #9) stripped first name + district switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR
   get_id(yy,c("first_name2","last_name_clean","birth_year"),
-         mard=F,init=T,myob=F,step=9L)
+         mismatch_inits=T,step=9L)
   #10) stripped first name + married
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name2","last_name_clean","birth_year","agency","school"),
             c("first_name2","nee_clean"      ,"birth_year","agency","school"),
-         mard=T,init=T,myob=F,step=10L)
+         married=T,mismatch_inits=T,step=10L)
   #11) stripped first name, married, school switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year","agency"),
             c("first_name2","nee_clean"      ,"birth_year","agency"),
-         mard=T,init=T,myob=F,step=11L)
+         married=T,mismatch_inits=T,step=11L)
   #12) stripped first name, married, district switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year"),
             c("first_name2","nee_clean"      ,"birth_year"),
-         mard=T,init=T,myob=F,step=12L)
+         married=T,mismatch_inits=T,step=12L)
   #13) YOB noise: match anyone who stayed in the same school
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name_clean","last_name_clean","agency","school"),
-         mard=F,init=F,myob=T,step=13L)
+         mismatch_yob=T,step=13L)
   #14) YOB noise: within-district switchers
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | POSITION CODE
   get_id(yy,c("first_name_clean","last_name_clean","agency","position_code"),
-         mard=F,init=F,myob=T,step=14L)
+         mismatch_yob=T,step=14L)
   #15) finally, give up and assign new ids to new (read: unmatched) teachers
   current_max<-full_data[.(yy),max(teacher_id,na.rm=T)]
   new_ids<-
@@ -253,11 +254,9 @@ system.time(for (yy in 1997:2015){
                      ][,add_id:=.I+current_max],id)
   setkey(setkey(full_data,id)[year==yy&is.na(teacher_id),
                               teacher_id:=new_ids[.SD,add_id]],year)
-  #Picked up some stragglers by accident--worth checking if this can be improved
-  #  But current mistakes are .09%
-  duplicated_teachers<-full_data[.(1996:yy),if(uniqueN(id)>yy-1995)teacher_id,by=teacher_id]$V1
-  full_data[teacher_id %in% duplicated_teachers,c("teacher_id","doubled_flag"):=list(NA,T)]
-}); rm(yy,update_cols,flags,current_max,new_ids,duplicated_teachers)
+}); rm(yy,current_max,new_ids)
+
+# Post-match clean-up ####
 
 #need to sort by FTE for adjustment to move_school below
 setkey(full_data,teacher_id,year,full_time_equiv)
@@ -270,15 +269,16 @@ full_data[,(mns):=lapply(.SD,na.locf,na.rm=F),by=teacher_id,.SDcols=mns]; rm(mns
 ## 1: Ethnicity plain missing (==" ") for subset of observations
 ##      -Here, just replace missing by LOCF
 full_data[ethnicity==" ",ethnicity:=NA]
-full_data[.(unique(teacher_id[is.na(ethnicity)]),
-          ethnicity:=na.locf(na.locf(ethnicity,na.rm=F),na.rm=F,fromLast=T),
+full_data[.(unique(teacher_id[is.na(ethnicity)])),
+          c("ethnicity","ethnicity_flag"):=
+            list(na.locf(na.locf(ethnicity,na.rm=F),na.rm=F,fromLast=T),T),
           by=teacher_id]
 ## 2: Single ethnicity violated on at most 30% of observations
 ##      -Here, overwrite with "dominant" ethnicity
 full_data[full_data[,if(uniqueN(ethnicity)>1){
   if(table2(ethnicity,prop=T,ord="dec")[1]>=.7){
     names(table2(ethnicity,prop=T,ord="dec"))[1]}},by=teacher_id],
-  ethnicity:=i.V1]
+  c("ethnicity","ethnicity_flag"):=list(i.V1,T)]
 
 #Generate school switch identifier
 #  1) Must take care not to over-estimate switching due to
@@ -286,6 +286,7 @@ full_data[full_data[,if(uniqueN(ethnicity)>1){
 #  2) Also using hire agency to fill in when assigned agency is 0000;
 #     Appears to usually represent a transitional period before 
 #     fully entering the system (as evidenced by hire_agency)
+#  Main district: associated with highest FTE
 full_data[school=="    ",school:=NA]
 full_data[agency=="0000",agency:=NA]
 full_data[,school_fill:=na.locf(na.locf(school,na.rm=F),fromLast=T,na.rm=F),
@@ -293,13 +294,35 @@ full_data[,school_fill:=na.locf(na.locf(school,na.rm=F),fromLast=T,na.rm=F),
 full_data[,agency_fill:=na.locf(na.locf(agency,na.rm=F),fromLast=T,na.rm=F),
           by=.(teacher_id,hire_agency)]
 full_data[setkey(unique(full_data,by=c("teacher_id","year"),fromLast=T
-                        )[,.(year,shift(school_fill),shift(agency_fill)),
+                        )[,.(year,
+                             sch.prv=shift(school_fill),
+                             dis.prv=shift(agency_fill),
+                             sch.nxt=shift(school_fill,type="lead"),
+                             dis.nxt=shift(agency_fill,type="lead")),
                           by=teacher_id],teacher_id,year),
-          `:=`(move_school=school_fill!=i.V2,
-               move_district=agency_fill!=i.V3)
-          ][,c("move_district","move_school"):=
-              .(move_district[.N],move_school[.N]),
+          `:=`(school_prev_main=i.sch.prv,
+               agency_prev_main=i.dis.prv,
+               school_next_main=i.sch.nxt,
+               agency_next_main=i.dis.nxt)
+          ][,c("agency_prev_main","school_prev_main",
+               "agency_next_main","school_next_main"):=
+              .(agency_prev_main[.N],school_prev_main[.N],
+                agency_next_main[.N],school_next_main[.N]),
             by=.(teacher_id,year)]
+full_data[,c("move_school","move_district",
+             "move_school_next","move_district_next"):=
+            .(school!=school_prev_main,
+              agency!=agency_prev_main,
+              school!=school_next_main,
+              agency!=agency_next_main)]
+
+#Synergize birth_year for those matched in the final two steps
+#  Simply use the most common year of birth
+#  Define age now that birth_year noise is eliminated
+full_data[.(full_data[,if(any(step>12,na.rm=T))teacher_id,by=teacher_id]),
+          c("birth_year","yob_flag"):=
+            list(type.convert(names(table2(birth_year,ord="dec"))[1]),T)
+          ][,age:=year-birth_year]
 
 #Add identifier for three common patterns of substitution
 #  I) "Ease-in" period: begin career with some years as a sub
@@ -317,38 +340,97 @@ full_data[full_data[,all(position_code==43),
                                            keyby=teacher_id],
           sub_maternity:=i.sub_yr&!(sub_ease_in|sub_soft_retd)]
 
-#Eliminate teachers *with at least some positions*
-#  that don't satisfy some criteria/data cleanliness
+#Add retirement/quit & new teacher flags
+full_data[,c("start_year","quit_next"):=
+            .(year==min(year),year==max(year)),by=teacher_id]
+
+#Identify changing positions
+full_data[setkey(unique(full_data[,.(teacher_id,year,married,
+                                     highest_degree,position_code)],
+                        by=c("teacher_id","year"),fromLast=T
+                        )[,.(year,
+                             mrd.prv=shift(married),
+                             mrd.nxt=shift(married,type="lead"),
+                             crt.prv=shift(highest_degree),
+                             crt.nxt=shift(highest_degree,type="lead"),
+                             pos.prv=shift(position_code),
+                             pos.nxt=shift(position_code,type="lead")),
+                          by=teacher_id],teacher_id,year),
+          `:=`(married_prev=i.mrd.prv,
+               married_next=i.mrd.nxt,
+               certified=highest_degree==i.crt.prv,
+               certified_next=highest_degree==i.crt.nxt,
+               move_position=position_code==i.pos.prv,
+               move_position_next=position_code==i.pos.nxt)
+          ][,c("married_prev","married_next",
+               "certified","certified_next",
+               "move_position","move_position_next"):=
+              .(married_prev[.N],married_next[.N],
+                certified[.N],certified_next[.N],
+                move_position[.N],move_position_next[.N]),
+            by=.(teacher_id,year)]
+#Add lag flags for school/district switches, marriage,
+#  certification, and main position changes
+full_data[setkey(unique(full_data[,.(teacher_id,year,move_school,
+                                     move_district,certified,move_position)],
+                        by=c("teacher_id","year")
+                        )[,.(year,
+                             msc.prv=shift(move_school),
+                             mds.prv=shift(move_district),
+                             crt.prv=shift(certified),
+                             mps.prv=shift(move_position)),
+                          by=teacher_id],teacher_id,year),
+          `:=`(move_school_prev=i.msc.prv,
+               move_district_prev=i.mds.prv,
+               certified_prev=i.crt.prv,
+               move_position_prev=i.mps.prv)]
+
+# Data consolidation ####
+#  Eliminate teachers *with at least some positions*
+#    that don't satisfy some criteria
+
+## 1) Position Code: 53 = full-time teacher
+##    Eliminate 1,324,546 observations (41%) / 188,212 individuals (55%)
+full_data<-full_data[.(full_data[position_code==53,unique(teacher_id)])]
+
+## 2) Area Code: 0050 (all-purpose elementary teachers)
+##               0300 (English, typically middle/high school)
+##               0400 (Mathematics, typically mid/high school)
+##    Eliminate 931,548 observations (50%) / 70,900 individuals (47%)
+full_data<-full_data[.(full_data[area%in%c("0050","0300","0400"),unique(teacher_id)])]
+
+## 3) Highest Degree: 4 (Bachelor's Degree)
+##                    5 (Master's Degree)
+##    Eliminate 3,638 observations (0.4%) / 656 individuals (1%)
+full_data<-full_data[.(full_data[highest_degree%in%4:5,unique(teacher_id)])]
+
+## 4) Agency Code: 99xx are all CESA positions
+##    Eliminate 660 observations (0%) / 50 individuals (0%)
+full_data<-full_data[.(full_data[substring(agency,1,2)!="99",unique(teacher_id)])]
+
+## 5) Total Experience: Eliminate teachers with more than 30 years' experience
+##    Eliminate 80,555 observations (9%) / 1742 individuals (2%)
+full_data<-full_data[total_exp<=30,]
+
+## 6) Work Agency Type: 04 are regular public schools
+##    Eliminate 5,738 observations (1%) / 1297 individuals (2%)
+full_data<-full_data[.(full_data[agency_work_type=="04",unique(teacher_id)])]
+
+## 7) Months Employed / Days of Contract
+##    Through 2003-04, months used, days thereafter
+##      *Eliminate those who never worked >=8.75 months
+##    Eliminate 155,466 observations (18%) / 24,987 individuals (32%)
+##      *Eliminate those who never worked >=175 days
+##
+full_data<-full_data[!.(full_data[,if(all(months_employed<875,na.rm=T))T,
+                                  by=teacher_id]$teacher_id)]
+full_data<-full_data[!.(full_data[,if(all(days_of_contract<175,na.rm=T))T,
+                                  by=teacher_id]$teacher_id)]
+
 #  - Agency Work Type: 4 is schools
 #  - Months Employed (pre-2005) / Days of Contract (post-):
 #      data-based reasonable minima chosen
 #  - Salary: data-based reasonable minimum
-#  - Non-Working Life Years: teachers should have been
-#      at least 17 when they started working
-#  - Highest Degree: Focus on Bachelor's/Master's holders
-#  - Salary vs. Fringe : Fringe should not be higher than salary
-#  - Fringe: Should be non-negative
-#  - Agency Code: 99xx corresponds to administrative positions
-#  - Total Experience: Ignore 31+ year teachers and 0-year teachers
-#  - Area: Focus on math, reading, and all-purpose (elem.) teachers
-#  - Position Code: 53 means full-time teacher
-full_data<-setkey(full_data[!is.na(teacher_id)],teacher_id
-                  )[.(full_data[agency_work_type==4
-                                &ifelse(year<2005,months_employed>=875,
-                                        days_of_contract>=175)
-                                &salary>=15000&age-total_exp>17
-                                &highest_degree %in% c("4","5")
-                                &salary>fringe&fringe>=0
-                                &substr(agency,1,2)!="99"
-                                &total_exp_floor>0
-                                &total_exp_floor<=31
-                                &area %in% c("0050","0300","0400")
-                                &position_code==53,unique(teacher_id)])]
-
-#Now remove anyone who *still* has more than one position in any given year--
-#  will be basically impossible to distinguish their position.
-full_data<-
-  setkey(full_data,teacher_id)[!.(unique(full_data[,if (.N>1) teacher_id,by=.(year,teacher_id)]$V1))]
 
 
 #some full-sample variables:

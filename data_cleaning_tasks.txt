@@ -58,14 +58,42 @@ Data cleaning tasks
 
 * 2015-07-20 - Check for possibility of divorce--last name->maiden name->last name again?
 
-* 2015-07-22 - Why did I lose Jill Buettner? (id: 000003002 in 1997, 000155540 in 1998)
-
-* 2015-07-23 - Deal with certification noise (highest_degree)
-
-* 2015-07-23 - Deal with gender noise (1200 individuals w/ more than one gender)
+* 2015-07-23 - Ask about tendency of highest_degree to decrease
 
 * 2015-07-23 - Add more robust school/position switch identifier--if _any_ position is new, vs. highest-FTE position
 
 * 2015-07-23 - Double check fidelity of post-match variable definitions
 
-* 2015-07-23 - Count impact of days_of_contract slice
+* 2015-07-24 - Check for moves to new district, to school _with same ID_ (i.e. move_district&!move_school)\
+
+* 2015-07-24 - Clean up NA overabundance
+
+* 2015-07-24 - recalculate data consolidation numbers given new/better matching
+
+* 2015-07-24 - Add second step for catching marriage--use second name instead of first name in hyphens as maiden name:
+
+	           id year first_name     last_name   nee position_code area
+	 1: 000067380 1996   patricia       berkery    NA            53 0811
+	 2: 000004811 1997   patricia       berkery    NA            53 0811
+	 3: 000158438 1998   patricia       berkery    NA            53 0811
+	 4: 000280599 1999   patricia       berkery    NA            53 0811
+	 5: 000466869 2000   patricia       berkery    NA            53 0811
+	 6: 000597574 2001   patricia       berkery    NA            53 0811
+	 7: 000774991 2002   patricia       berkery    NA            53 0811
+	 8: 000828789 2003   patricia       berkery    NA            53 0811
+	 9: 000955948 2004   patricia       berkery    NA            53 0811
+	10: 000314191 2005   patricia       berkery    NA            53 0811
+	11: 000442434 2006   patricia       berkery    NA            53 0811
+	12: 000007053 2007   patricia       berkery    NA            53 0811
+	13: 000007038 2008   patricia       berkery    NA            53 0811
+	14: 000005320 2009   patricia       berkery    NA            53 0811
+	15: 000007022 2010   patricia       berkery    NA            53 0811
+	16: 000007128 2011   patricia       berkery    NA            18 0000
+	17: 000007128 2011   patricia       berkery    NA            53 0811
+	18:      7069 2012   patricia riley-berkery riley            18 0000 #seems maiden name was kept second (typically first)
+	19:      7069 2012   patricia riley-berkery riley            53 0811
+	20: 000006840 2013   patricia riley-berkery riley            18 0000
+	21: 000006840 2013   patricia riley-berkery riley            53 0811
+	22: 000006903 2014   patricia riley-berkery riley            18 0000
+	23: 000006903 2014   patricia riley-berkery riley            53 0811
+	24: 000006855 2015   patricia riley-berkery riley            53 0811

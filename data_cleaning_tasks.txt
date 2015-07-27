@@ -56,21 +56,60 @@ Data cleaning tasks
 	7: 000682423 2002    patti j      haas       1959   1015   0070            97 0907 #opted for "patti" at this school
 	8: 000839439 2003   patricia      haas       1959   2058   0110            53 0620
 
-* 2015-07-20 - Check for possibility of divorce--last name->maiden name->last name again?
+* 2015-07-20 - Check for possibility of divorce--last name->maiden name->last name again, e.g.:
+
+	           id year first_name         last_name     nee district position_code birth_year
+	 1: 000012866 2007       joan bacchus-swamidass bacchus     5656            53       1955
+	 2: 000012781 2008       joan bacchus-swamidass bacchus     5656            53       1955
+	 3: 000010079 2009       joan         swamidass      NA     5656            53       1955 #no current mechanism to detect this;
+	 4: 000012920 2010       joan         swamidass      NA     5656            53       1955 #  also, BEWARE: could easily just be
+	 5: 000013089 2011       joan         swamidass      NA     5656            98       1955 #  that they elected to stop using their
+	 6: 000013089 2011       joan         swamidass      NA     5656            53       1955 #  maiden name at some point; either way
+	 7:     13015 2012       joan         swamidass      NA     5656            98       1955 #  would be useful to keep track of 
+	 8:     13015 2012       joan         swamidass      NA     5656            53       1955 #  such individuals after they lose
+	 9: 000012568 2013       joan         swamidass      NA     5656            53       1955 #  their second name
+	10: 000012661 2014       joan         swamidass      NA     5656            53       1955
+	11: 000012688 2015       joan         swamidass      NA     5656            53       1955
+
+	    teacher_id year first_name_clean first_name        last_name nee_clean birth_year county position_code area
+	 1:     123533 1997           lyndee     lyndee rynders(gronfor)   gronfor       1969     40            53 0515
+	 2:     123533 1998           lyndee     lyndee rynders(gronfor)   gronfor       1969     40            53 0515
+	 3:     150957 1999           lyndee     lyndee          rynders        NA       1969     40            53 0515 #seems it could be extra
+	 4:     150957 2000           lyndee     lyndee          rynders        NA       1969     40            53 0515 #  common among those with
+	 5:     150957 2001           lyndee     lyndee          rynders        NA       1969     40            53 0515 #  parentheses in early
+	 6:     150957 2002           lyndee     lyndee          rynders        NA       1969     40            53 0515 #  years, as this convention
+	 7:     150957 2003           lyndee     lyndee          rynders        NA       1969     40            53 0515 #  was thereafter dropped
+	 8:     150957 2004           lyndee     lyndee          rynders        NA       1969     40            53 0515 #  in all the data.
+	 9:     150957 2004           lyndee     lyndee          rynders        NA       1969     40            53 0515
+	10:     150957 2005           lyndee     lyndee          rynders        NA       1969     40            53 0515
+	11:     150957 2005           lyndee     lyndee          rynders        NA       1969     40            53 0515
+	12:     150957 2006           lyndee     lyndee          rynders        NA       1969     40            53 0515
+	13:     150957 2007           lyndee     lyndee          rynders        NA       1969     40            53 0515
+	14:     150957 2008           lyndee     lyndee          rynders        NA       1969     40            53 0515
+	15:     150957 2009           lyndee     lyndee          rynders        NA       1969     40            53 0515
+	16:     150957 2010           lyndee     lyndee          rynders        NA       1969     40            53 0515
+	17:     150957 2011           lyndee     lyndee          rynders        NA       1969     40            53 0515
+	18:     150957 2012           lyndee     lyndee          rynders   gronfor       1969     40            98 9078
+	19:     150957 2012           lyndee     lyndee          rynders   gronfor       1969     40            53 0515
+	20:     150957 2013           lyndee     lyndee          rynders   gronfor       1969     40            98 9078
+	21:     150957 2013           lyndee     lyndee          rynders   gronfor       1969     40            53 0515
+	22:     150957 2013           lyndee     lyndee          rynders   gronfor       1969     40            53 0515
+	23:     150957 2014           lyndee     lyndee          rynders   gronfor       1969     40            98 9078
+	24:     150957 2014           lyndee     lyndee          rynders   gronfor       1969     40            53 0515
+	25:     150957 2014           lyndee     lyndee          rynders   gronfor       1969     40            53 0515
+	26:     150957 2015           lyndee     lyndee          rynders   gronfor       1969     40            98 9078
+	27:     150957 2015           lyndee     lyndee          rynders   gronfor       1969     40            53 0515
+	28:     150957 2015           lyndee     lyndee          rynders   gronfor       1969     40            53 0515
 
 * 2015-07-23 - Ask about tendency of highest_degree to decrease
 
 * 2015-07-23 - Add more robust school/position switch identifier--if _any_ position is new, vs. highest-FTE position
 
-* 2015-07-23 - Double check fidelity of post-match variable definitions
-
-* 2015-07-24 - Check for moves to new district, to school _with same ID_ (i.e. move_district&!move_school)\
-
-* 2015-07-24 - Clean up NA overabundance
+* 2015-07-24 - Check for moves to new district, to school _with same ID_ (i.e. move_district&!move_school)
 
 * 2015-07-24 - recalculate data consolidation numbers given new/better matching
 
-* 2015-07-24 - Add second step for catching marriage--use second name instead of first name in hyphens as maiden name:
+* 2015-07-25 - Add second step for catching marriage--use second name instead of first name in hyphens as maiden name:
 
 	           id year first_name     last_name   nee position_code area
 	 1: 000067380 1996   patricia       berkery    NA            53 0811
@@ -97,3 +136,55 @@ Data cleaning tasks
 	22: 000006903 2014   patricia riley-berkery riley            18 0000
 	23: 000006903 2014   patricia riley-berkery riley            53 0811
 	24: 000006855 2015   patricia riley-berkery riley            53 0811
+
+* 2015-07-25 - Delete anything between parentheses in last_name_clean
+
+	   teacher_id year first_name_clean first_name         last_name nee_clean birth_year county position_code area
+	1:      94366 1996        sherryann sherry ann           sheahan        NA       1959     51            53 0811 #no reason to miss all 3
+	2:     126999 1997        sherryann sherry ann (harriot) sheahan   harriot         NA     51            53 0811 #  of her observations
+	3:     141137 1998        sherryann sherry ann sheahan (herriot)   herriot       1959     51            53 0811
+
+* 2015-07-25 - Any way to deal with the clear ethnicity mismatch?
+
+	    teacher_id year first_name last_name_clean ethnicity district school position_code
+	53:     104802 1996  dorothy a         johnson         B     3619   0498            52
+	54:     104802 1997  dorothy a         johnson         B     3619   0006            52
+	55:     104802 2004  dorothy a         johnson         W     4620                   43 #7-year gap, different location,
+	56:     104802 2005    dorothy         johnson         W     4620                   43 #  different position, etc.
+	57:     104802 2006    dorothy         johnson         W     4620                   43
+	58:     104802 2007    dorothy         johnson         W     4620                   43
+	59:     104802 2008    dorothy         johnson         W     4620                   43
+	60:     104802 2009    dorothy         johnson         W     4620                   43
+	61:     104802 2010    dorothy         johnson         W     4620                   43
+	62:     104802 2011    dorothy         johnson         W     4620                   43
+	63:     104802 2012    dorothy         johnson         W     4620                   43
+	64:     104802 2013    dorothy         johnson         W     4620                   43
+	65:     104802 2014    dorothy         johnson         W     4620                   43
+	66:     104802 2015    dorothy         johnson         W     4620                   43
+
+* 2015-07-26 - What to do when certification noise makes it seem like a person certifies twice?
+
+	           id year first_name last_name highest_degree certified district school position_code
+	 1: 000101691 1996       bryn     perry             NA        NA     2460     NA            43
+	 2: 000101691 1996       bryn     perry             NA        NA     6300     NA            43
+	 3: 000130797 1997       bryn     perry             NA        NA     6300     NA            43
+	 4: 000255951 1998       bryn     perry              4        NA     6300   0280            53
+	 5: 000346264 1999       bryn     perry              4     FALSE     6300   0280            53
+	 6: 000489141 2000       bryn     perry              4     FALSE     6300   0280            53
+	 7: 000669151 2001       bryn     perry              4     FALSE     6300   0140            53
+	 8: 000669151 2001       bryn     perry              4     FALSE     6300   0280            53
+	 9: 000782105 2002       bryn     perry              4     FALSE     6300   0140            53
+	10: 000782105 2002       bryn     perry              4     FALSE     6300   0280            53
+	11: 000035017 2004       bryn     perry              4     FALSE     6174   0999            53
+	12: 000374937 2005       bryn     perry              4     FALSE     6174   0020            53
+	13: 000374937 2005       bryn     perry              4     FALSE     6174   0260            53
+	14: 000494663 2006       bryn     perry              4     FALSE     6174   0260            53
+	15: 000066581 2007       bryn     perry              4     FALSE     6174   0260            53
+	16: 000067172 2008       bryn     perry              4     FALSE     6174   0260            53
+	17: 000054863 2009       bryn     perry              4     FALSE     6174   0260            53
+	18: 000067833 2010       bryn     perry              5      TRUE     6174   0260            53
+	19: 000068873 2011       bryn     perry              4     FALSE     6174   0260            53
+	20:     68264 2012       bryn     perry              5      TRUE     6174   0260            53
+	21: 000066211 2013       bryn     perry              5     FALSE     6174   0260            53
+	22: 000066125 2014       bryn     perry              5     FALSE     6174   0260            53
+	23: 000065632 2015       bryn     perry              5     FALSE     6174   0260            53

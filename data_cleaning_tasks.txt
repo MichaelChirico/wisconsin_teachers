@@ -75,8 +75,6 @@ Data cleaning tasks
 
 * 2015-07-23 - Add more robust school/position switch identifier--if _any_ position is new, vs. highest-FTE position
 
-* 2015-07-24 - recalculate data consolidation numbers given new/better matching
-
 * 2015-07-25 - Any way to deal with the clear ethnicity mismatch?
 
 	    teacher_id year first_name last_name_clean ethnicity district school position_code

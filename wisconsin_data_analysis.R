@@ -111,7 +111,7 @@ full_data[,paste0(nnames,"_clean"):=
                                                "\\([^)]*(\\)|$)|",
                                                "(^|\\()[^)]*\\)"),"",
                                         gsub("[\\.,'\\-]","",x))}),
-          .SDcols=names]
+          .SDcols=nnames]
 ##Names like W C Fields were deleted; restore them
 lapply(nnames,function(x)full_data[get(paste0(x,"_clean"))=="",
                                   paste0(x,"_clean"):=get(x)])
@@ -199,7 +199,7 @@ get_id<-function(yr,key_prev,key_crnt=key_prev,step,...){
 
 setkey(full_data,year,full_time_equiv)
 
-system.time(for (yy in 1997:2015){
+system.time(for (yy in full_data[,(min(year)+1):max(year)]){
   print(yy)
   #1) First match anyone who stayed in the same school
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | DISTRICT | SCHOOL ID
@@ -225,42 +225,72 @@ system.time(for (yy in 1997:2015){
   get_id(yy,c("first_name_clean","last_name_clean","birth_year"),
             c("first_name_clean","nee_clean"      ,"birth_year"),
          married=T,step=6L)
-  #7) now match some stragglers with missing/included middle names & repeat above
+  #7) Find marriages with maiden name assigned after the hyphen
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME 2 | BIRTH YEAR | AGENCY | SCHOOL ID
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year","district","school"),
+         c("first_name_clean","nee_clean2"      ,"birth_year","district","school"),
+         married=T,step=7L)
+  #8) married (maiden name post-hyphen) and changed schools
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME 2 | BIRTH YEAR | AGENCY
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year","district"),
+         c("first_name_clean","nee_clean2"      ,"birth_year","district"),
+         married=T,step=8L)
+  #9) married (maiden name post-hyphen) and changed districts
+  #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME 2 | BIRTH YEAR
+  get_id(yy,c("first_name_clean","last_name_clean","birth_year"),
+         c("first_name_clean","nee_clean2"      ,"birth_year"),
+         married=T,step=9L)
+  #10) now match some stragglers with missing/included middle names & repeat above
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name2","last_name_clean","birth_year","district","school"),
-         mismatch_inits=T,step=7L)
-  #8) stripped first name + school switch
+         mismatch_inits=T,step=10L)
+  #11) stripped first name + school switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year","district"),
-         mismatch_inits=T,step=8L)
-  #9) stripped first name + district switch
+         mismatch_inits=T,step=11L)
+  #12) stripped first name + district switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR
   get_id(yy,c("first_name2","last_name_clean","birth_year"),
-         mismatch_inits=T,step=9L)
-  #10) stripped first name + married
+         mismatch_inits=T,step=12L)
+  #13) stripped first name + married
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name2","last_name_clean","birth_year","district","school"),
             c("first_name2","nee_clean"      ,"birth_year","district","school"),
-         married=T,mismatch_inits=T,step=10L)
-  #11) stripped first name, married, school switch
+         married=T,mismatch_inits=T,step=13L)
+  #14) stripped first name, married, school switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year","district"),
             c("first_name2","nee_clean"      ,"birth_year","district"),
-         married=T,mismatch_inits=T,step=11L)
-  #12) stripped first name, married, district switch
+         married=T,mismatch_inits=T,step=14L)
+  #15) stripped first name, married, district switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year"),
             c("first_name2","nee_clean"      ,"birth_year"),
-         married=T,mismatch_inits=T,step=12L)
-  #13) YOB noise: match anyone who stayed in the same school
+         married=T,mismatch_inits=T,step=15L)
+  #16) stripped first name + married (maiden name post-hyphen)
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME 2 | BIRTH YEAR | AGENCY | SCHOOL ID
+  get_id(yy,c("first_name2","last_name_clean","birth_year","district","school"),
+         c("first_name2","nee_clean2"      ,"birth_year","district","school"),
+         married=T,mismatch_inits=T,step=16L)
+  #17) stripped first name, married (maiden name post-hyphen), school switch
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME 2 | BIRTH YEAR | AGENCY
+  get_id(yy,c("first_name2","last_name_clean","birth_year","district"),
+         c("first_name2","nee_clean2"      ,"birth_year","district"),
+         married=T,mismatch_inits=T,step=17L)
+  #18) stripped first name, married, district switch
+  #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME 2 | BIRTH YEAR | AGENCY
+  get_id(yy,c("first_name2","last_name_clean","birth_year"),
+         c("first_name2","nee_clean2"      ,"birth_year"),
+         married=T,mismatch_inits=T,step=18L)
+  #19) YOB noise: match anyone who stayed in the same school
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name_clean","last_name_clean","district","school"),
-         mismatch_yob=T,step=13L)
-  #14) YOB noise: within-district switchers
+         mismatch_yob=T,step=19L)
+  #20) YOB noise: within-district switchers
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | POSITION CODE
   get_id(yy,c("first_name_clean","last_name_clean","district","position_code"),
-         mismatch_yob=T,step=14L)
-  #15) finally, give up and assign new ids to new (read: unmatched) teachers
+         mismatch_yob=T,step=20L)
+  #21) finally, give up and assign new ids to new (read: unmatched) teachers
   current_max<-full_data[.(yy),max(teacher_id,na.rm=T)]
   new_ids<-
     setkey(full_data[year==yy&is.na(teacher_id),.(id=unique(id))
@@ -394,9 +424,13 @@ full_data[setkey(full_data_main[,.(year,
                district_prev_main=i.dis.prv,
                school_next_main=i.sch.nxt,
                district_next_main=i.dis.nxt,
-               move_school=school_fill[.N]!=i.sch.prv,
+               move_school=
+                 school_fill[.N]!=i.sch.prv|
+                 district_fill[.N]!=i.dis.prv,
                move_district=district_fill[.N]!=i.dis.prv,
-               move_school_next=school_fill[.N]!=i.sch.nxt,
+               move_school_next=
+                 school_fill[.N]!=i.sch.nxt|
+                 district_fill[.N]!=i.dis.nxt,
                move_district_next=district_fill[.N]!=i.dis.nxt),
           by=.EACHI]
 
@@ -419,7 +453,7 @@ full_data[,total_move_school:=
 #      implies an age closest to the full data median age
 #  Define age now that birth_year noise is eliminated
 med_age<-full_data[,median(year-birth_year,na.rm=T)]
-full_data[.(full_data[,if(any(step>12,na.rm=T))teacher_id,
+full_data[.(full_data[,if(any(mismatch_yob,na.rm=T))teacher_id,
                       by=teacher_id]$teacher_id),
           c("birth_year","yob_flag"):={
             x<-table2(birth_year,ord="dec",useNA="ifany")
@@ -514,6 +548,9 @@ for (jj in na.to.f2)full_data[is.na(get(jj))&first_obs==F,(jj):=F]
 ### IIIb) NA when in the last year, F otherwise
 na.to.f3<-gsub("prev","next",na.to.f2)
 for (jj in na.to.f2)full_data[is.na(get(jj))&last_obs==F,(jj):=F]
+rm(list=ls(pattern="na.to"))
+
+rm(full_data_main)
 
 # Data consolidation ####
 #  Eliminate teachers *with at least some positions*

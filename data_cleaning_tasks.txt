@@ -105,8 +105,6 @@ Data cleaning tasks
 
 * 2015-07-23 - Add more robust school/position switch identifier--if _any_ position is new, vs. highest-FTE position
 
-* 2015-07-24 - Check for moves to new district, to school _with same ID_ (i.e. move_district&!move_school)
-
 * 2015-07-24 - recalculate data consolidation numbers given new/better matching
 
 * 2015-07-25 - Add second step for catching marriage--use second name instead of first name in hyphens as maiden name:

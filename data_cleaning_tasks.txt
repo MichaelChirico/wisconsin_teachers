@@ -71,76 +71,11 @@ Data cleaning tasks
 	10: 000012661 2014       joan         swamidass      NA     5656            53       1955
 	11: 000012688 2015       joan         swamidass      NA     5656            53       1955
 
-	    teacher_id year first_name_clean first_name        last_name nee_clean birth_year county position_code area
-	 1:     123533 1997           lyndee     lyndee rynders(gronfor)   gronfor       1969     40            53 0515
-	 2:     123533 1998           lyndee     lyndee rynders(gronfor)   gronfor       1969     40            53 0515
-	 3:     150957 1999           lyndee     lyndee          rynders        NA       1969     40            53 0515 #seems it could be extra
-	 4:     150957 2000           lyndee     lyndee          rynders        NA       1969     40            53 0515 #  common among those with
-	 5:     150957 2001           lyndee     lyndee          rynders        NA       1969     40            53 0515 #  parentheses in early
-	 6:     150957 2002           lyndee     lyndee          rynders        NA       1969     40            53 0515 #  years, as this convention
-	 7:     150957 2003           lyndee     lyndee          rynders        NA       1969     40            53 0515 #  was thereafter dropped
-	 8:     150957 2004           lyndee     lyndee          rynders        NA       1969     40            53 0515 #  in all the data.
-	 9:     150957 2004           lyndee     lyndee          rynders        NA       1969     40            53 0515
-	10:     150957 2005           lyndee     lyndee          rynders        NA       1969     40            53 0515
-	11:     150957 2005           lyndee     lyndee          rynders        NA       1969     40            53 0515
-	12:     150957 2006           lyndee     lyndee          rynders        NA       1969     40            53 0515
-	13:     150957 2007           lyndee     lyndee          rynders        NA       1969     40            53 0515
-	14:     150957 2008           lyndee     lyndee          rynders        NA       1969     40            53 0515
-	15:     150957 2009           lyndee     lyndee          rynders        NA       1969     40            53 0515
-	16:     150957 2010           lyndee     lyndee          rynders        NA       1969     40            53 0515
-	17:     150957 2011           lyndee     lyndee          rynders        NA       1969     40            53 0515
-	18:     150957 2012           lyndee     lyndee          rynders   gronfor       1969     40            98 9078
-	19:     150957 2012           lyndee     lyndee          rynders   gronfor       1969     40            53 0515
-	20:     150957 2013           lyndee     lyndee          rynders   gronfor       1969     40            98 9078
-	21:     150957 2013           lyndee     lyndee          rynders   gronfor       1969     40            53 0515
-	22:     150957 2013           lyndee     lyndee          rynders   gronfor       1969     40            53 0515
-	23:     150957 2014           lyndee     lyndee          rynders   gronfor       1969     40            98 9078
-	24:     150957 2014           lyndee     lyndee          rynders   gronfor       1969     40            53 0515
-	25:     150957 2014           lyndee     lyndee          rynders   gronfor       1969     40            53 0515
-	26:     150957 2015           lyndee     lyndee          rynders   gronfor       1969     40            98 9078
-	27:     150957 2015           lyndee     lyndee          rynders   gronfor       1969     40            53 0515
-	28:     150957 2015           lyndee     lyndee          rynders   gronfor       1969     40            53 0515
-
 * 2015-07-23 - Ask about tendency of highest_degree to decrease
 
 * 2015-07-23 - Add more robust school/position switch identifier--if _any_ position is new, vs. highest-FTE position
 
 * 2015-07-24 - recalculate data consolidation numbers given new/better matching
-
-* 2015-07-25 - Add second step for catching marriage--use second name instead of first name in hyphens as maiden name:
-
-	           id year first_name     last_name   nee position_code area
-	 1: 000067380 1996   patricia       berkery    NA            53 0811
-	 2: 000004811 1997   patricia       berkery    NA            53 0811
-	 3: 000158438 1998   patricia       berkery    NA            53 0811
-	 4: 000280599 1999   patricia       berkery    NA            53 0811
-	 5: 000466869 2000   patricia       berkery    NA            53 0811
-	 6: 000597574 2001   patricia       berkery    NA            53 0811
-	 7: 000774991 2002   patricia       berkery    NA            53 0811
-	 8: 000828789 2003   patricia       berkery    NA            53 0811
-	 9: 000955948 2004   patricia       berkery    NA            53 0811
-	10: 000314191 2005   patricia       berkery    NA            53 0811
-	11: 000442434 2006   patricia       berkery    NA            53 0811
-	12: 000007053 2007   patricia       berkery    NA            53 0811
-	13: 000007038 2008   patricia       berkery    NA            53 0811
-	14: 000005320 2009   patricia       berkery    NA            53 0811
-	15: 000007022 2010   patricia       berkery    NA            53 0811
-	16: 000007128 2011   patricia       berkery    NA            18 0000
-	17: 000007128 2011   patricia       berkery    NA            53 0811
-	18:      7069 2012   patricia riley-berkery riley            18 0000 #seems maiden name was kept second (typically first)
-	19:      7069 2012   patricia riley-berkery riley            53 0811
-	20: 000006840 2013   patricia riley-berkery riley            18 0000
-	21: 000006840 2013   patricia riley-berkery riley            53 0811
-	22: 000006903 2014   patricia riley-berkery riley            18 0000
-	23: 000006903 2014   patricia riley-berkery riley            53 0811
-	24: 000006855 2015   patricia riley-berkery riley            53 0811
-
-* 2015-07-25 - Delete anything between parentheses in last_name_clean
-
-	   teacher_id year first_name_clean first_name         last_name nee_clean birth_year county position_code area
-	1:      94366 1996        sherryann sherry ann           sheahan        NA       1959     51            53 0811 #no reason to miss all 3
-	2:     126999 1997        sherryann sherry ann (harriot) sheahan   harriot         NA     51            53 0811 #  of her observations
-	3:     141137 1998        sherryann sherry ann sheahan (herriot)   herriot       1959     51            53 0811
 
 * 2015-07-25 - Any way to deal with the clear ethnicity mismatch?
 

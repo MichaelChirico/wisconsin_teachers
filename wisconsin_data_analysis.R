@@ -14,6 +14,7 @@ library(xtable)
 library(xlsx)
 library(nnet)
 library(texreg)
+library(stringi)
 
 # Convenient functions
 create_quantiles<-function(x,num,right=F,include.lowest=T,na.rm=T){
@@ -94,12 +95,13 @@ setnames(full_data,ag_rep,gsub("agency","district",ag_rep)); rm(ag_rep)
 #  Also note that there is only one person in the data with both - and () in their name:
 #    terese l demark-russo (uebe) (1998:000237414/1999:000315944), and she has
 #    her maiden name stored as demark
-full_data[(is.na(nee)|nee=="")
-          &grepl("\\(|\\)|-",last_name),nee:=
-            regmatches(last_name,regexpr("(?<=\\(|^).*?(?=\\)|$)|.*(?=-)",last_name,perl=T))]
 ##As an alternative, define nee as the name coming after the hyphen:
 full_data[(is.na(nee)|nee=="")&grepl("-",last_name),
-          nee_clean2:=gsub(".*-","",last_name)]
+          c("nee","nee2"):=.(gsub("-.*","",last_name),
+                             gsub(".*-","",last_name))]
+full_data[grepl("\\(|\\)",last_name),
+          nee:=gsub(".*\\(|\\).*","",last_name)]
+nnames<-c(nnames,"nee2")
 
 #Try to get a "clean" version of first, last, and maiden names;
 #  Delete *all* white space, initials
@@ -107,9 +109,9 @@ full_data[(is.na(nee)|nee=="")&grepl("-",last_name),
 ##  (causing problems & frequent--e.g., "lisa,a"->"lisa a"
 full_data[grepl(",[^ ]",first_name),first_name:=gsub(","," ",first_name)]
 full_data[,paste0(nnames,"_clean"):=
-            lapply(.SD,function(x){gsub(paste0("\\s|\\b[a-z]\\b|",
-                                               "\\([^)]*(\\)|$)|",
-                                               "(^|\\()[^)]*\\)"),"",
+            lapply(.SD,function(x){gsub(paste0("\\s|",
+                                               "(\\s|^)[a-z](\\s|$)|",
+                                               "\\([^)]*(\\)|$)|"),"",
                                         gsub("[\\.,'\\-]","",x))}),
           .SDcols=nnames]
 ##Names like W C Fields were deleted; restore them
@@ -228,17 +230,17 @@ system.time(for (yy in full_data[,(min(year)+1):max(year)]){
   #7) Find marriages with maiden name assigned after the hyphen
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME 2 | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name_clean","last_name_clean","birth_year","district","school"),
-         c("first_name_clean","nee_clean2"      ,"birth_year","district","school"),
+         c("first_name_clean","nee2_clean"      ,"birth_year","district","school"),
          married=T,step=7L)
   #8) married (maiden name post-hyphen) and changed schools
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME 2 | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name_clean","last_name_clean","birth_year","district"),
-         c("first_name_clean","nee_clean2"      ,"birth_year","district"),
+         c("first_name_clean","nee2_clean"      ,"birth_year","district"),
          married=T,step=8L)
   #9) married (maiden name post-hyphen) and changed districts
   #MATCH ON: FIRST NAME | LAST NAME->MAIDEN NAME 2 | BIRTH YEAR
   get_id(yy,c("first_name_clean","last_name_clean","birth_year"),
-         c("first_name_clean","nee_clean2"      ,"birth_year"),
+         c("first_name_clean","nee2_clean"      ,"birth_year"),
          married=T,step=9L)
   #10) now match some stragglers with missing/included middle names & repeat above
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
@@ -270,17 +272,17 @@ system.time(for (yy in full_data[,(min(year)+1):max(year)]){
   #16) stripped first name + married (maiden name post-hyphen)
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME 2 | BIRTH YEAR | AGENCY | SCHOOL ID
   get_id(yy,c("first_name2","last_name_clean","birth_year","district","school"),
-         c("first_name2","nee_clean2"      ,"birth_year","district","school"),
+         c("first_name2","nee2_clean"      ,"birth_year","district","school"),
          married=T,mismatch_inits=T,step=16L)
   #17) stripped first name, married (maiden name post-hyphen), school switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME 2 | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year","district"),
-         c("first_name2","nee_clean2"      ,"birth_year","district"),
+         c("first_name2","nee2_clean"      ,"birth_year","district"),
          married=T,mismatch_inits=T,step=17L)
   #18) stripped first name, married, district switch
   #MATCH ON: FIRST NAME (STRIPPED) | LAST NAME-> MAIDEN NAME 2 | BIRTH YEAR | AGENCY
   get_id(yy,c("first_name2","last_name_clean","birth_year"),
-         c("first_name2","nee_clean2"      ,"birth_year"),
+         c("first_name2","nee2_clean"      ,"birth_year"),
          married=T,mismatch_inits=T,step=18L)
   #19) YOB noise: match anyone who stayed in the same school
   #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID

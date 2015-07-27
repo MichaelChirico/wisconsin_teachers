@@ -119,3 +119,5 @@ Data cleaning tasks
 	21: 000066211 2013       bryn     perry              5     FALSE     6174   0260            53
 	22: 000066125 2014       bryn     perry              5     FALSE     6174   0260            53
 	23: 000065632 2015       bryn     perry              5     FALSE     6174   0260            53
+
+* 2014-07-27 - Convert `gsub` funcionalities to `stringi` equivalents for speed-up

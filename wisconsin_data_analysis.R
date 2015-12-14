@@ -1,37 +1,89 @@
+#Wisconsin Teachers Project
+#Analysis File
+#Michael Chirico
+#August 27, 2015
+
+# Package Setup, Convenient Functions, Import ####
+rm(list=ls(all=T))
+gc()
+setwd("/home/michael/Desktop/research/Wisconsin Bargaining")
+data.wd<-"/media/data_drive/wisconsin/"
+library(funchir)
+library(data.table)
+library(xtable)
+
+fl<-"wisconsin_teacher_data_matched"
+x<-fread(data.wd%+%fl%+%"_colClass.csv",header=F)
+ccs<-unlist(split(as.character(x$V2),x$V1)); rm(x)
+teacher_data<-fread(data.wd%+%fl%+%".csv",colClasses=ccs); rm(ccs)
+setkey(teacher_data,year,teacher_id)
+
+## add forward-looking indicators
+frwd_vars<-c(paste0("move",c("","_school","_district")),"married","quit",
+             "salary","fringe","total_pay","total_pay_future","certified","agency","move_type")
+teacher_data[,paste0(frwd_vars,"_next"):=
+               shift(.SD,type="lead"),by=teacher_id,
+             .SDcols=frwd_vars]
+teacher_data[,paste0(frwd_vars,"_pl5"):=
+               shift(.SD,n=5L,type="lead"),by=teacher_id,
+             .SDcols=frwd_vars]; rm(frwd_vars)
+
+#base wage measures in current district
+teacher_data[setkey(salary_scales[total_exp_floor==1,],year,agency,highest_degree),
+             `:=`(agency_base_salary=i.salary,
+                  agency_base_fringe=i.fringe,
+                  agency_base_total_pay=i.total_pay,
+                  agency_base_total_pay_future=i.total_pay_future)]
+
+#base wage measures at next chosen district
+setkey(teacher_data,year,agency_next,highest_degree
+)[setkey(salary_scales[total_exp_floor==1,],year,agency,highest_degree),
+  `:=`(agency_next_base_salary=i.salary,
+       agency_next_base_fringe=i.fringe,
+       agency_next_base_total_pay=i.total_pay,
+       agency_next_base_total_pay_future=i.total_pay_future)]
+
+#subsequent wage measures at subsequent district
+setkey(teacher_data,year,agency,highest_degree,total_exp_floor
+)[setkey(salary_scales[,.(year,agency,highest_degree,exp=total_exp_floor-1,
+                          salary,fringe,total_pay,total_pay_future)],
+         year,agency,highest_degree,exp),
+  `:=`(agency_salary_next=i.salary,
+       agency_fringe_next=i.fringe,
+       agency_total_pay_next=i.total_pay,
+       agency_total_pay_future_next=i.total_pay_future)]
+
 # Reduced Form Analysis: Tables ####
 
 #Plain one-way tables of # Career moves
-t1<-teacher_data[,sum(move&!move_district),by=teacher_id][,table2(V1,pct=T,prop=T)]
-t2<-teacher_data[,sum(move_district),by=teacher_id][,table2(V1,pct=T,prop=T)]
-t1[setdiff(names(t2),names(t1))]=NA
-t2[setdiff(names(t1),names(t2))]=NA
-t<-rbind(t1,t2)[,paste0(0:6)]
-rownames(t)<-c("Move School","Move District")
-cat(capture.output(xtable(t,digits=1)),sep="\n\n")
+tbl<-unique(teacher_data)[,.(mvs=sum(move_school&!move_district),
+                             mvd=sum(move_district)),by=teacher_id
+                          ][,{x<-lapply(list(mvs,mvd),function(x)
+                            as.list(table2(x,pct=T,prop=T)))
+                          rbindlist(x,fill=T
+                                    )[,rn:="Move "%+%
+                                        c("School","District")]}]
+setcolorder(tbl,c("rn",names(tbl)%\%"rn"))
+print.xtable2(xtable(tbl,digits=1))
 
-#Compare my turnover data to results in Texas from Hanushek, Kain, O'Brien and Rivkin
-setkey(teacher_data,year,agency,highest_degree,total_exp_floor)
-cat(capture.output(print(xtable(matrix(unlist(cbind(
-  c("Wisconsin","1 year",
-    paste(c("2-3","4-6","7-11","12-21",">21"),"years"),
-    "Texas","1 year",
-    paste(c("2-3","4-6","7-11","12-21",">21"),"years")),
-  rbind(as.data.table(rbind(rep(NA,4))),
-        teacher_data[.(unique(year),"3619"),
-                     .(move_school,move_district,quit,
+#Compare my turnover data to results in Texas
+#  from Hanushek, Kain, O'Brien and Rivkin (NBER '05, Table A1)
+hkor_tbl<-read.table("./literature/hkor_05_table_a1.txt",
+                     sep="\t",header=T)
+teacher_data[,if(.N==1).SD,by=.(teacher_[district=="3619"&year>1996,
+                     .(teacher_id,move_school,move_district,quit_next,
                        exp_cut=cut(total_exp_floor,
                                    breaks=c(1,2,4,7,12,22,31),
                                    include.lowest=T,
                                    labels=c("1","2-3","4-6","7-11",
                                             "12-21",">21"),right=F))
-                     ][,.(round(100*mean(!quit&!move_school,na.rm=T),1),
-                          round(100*mean(move_school&!move_district,na.rm=T),1),
-                          round(100*mean(move_district,na.rm=T),1),
-                          round(100*mean(quit,na.rm=T),1)),by=exp_cut
+                     ][order(exp_cut),
+                       .(to.pct(mean(!quit_next&!move_school,na.rm=T),dig=1),
+                         to.pct(mean(move_school&!move_district,na.rm=T),dig=1),
+                         to.pct(mean(move_district,na.rm=T),dig=1),
+                         to.pct(mean(quit_next,na.rm=T),dig=1)),by=exp_cut
                        ][,!"exp_cut",with=F],
-        as.data.table(rbind(rep(NA,4),
-                            #Numbers from Table A1
-                            c(70.4,11.5,4.0,14.0),
+        as.data.table(rbind(c(70.4,11.5,4.0,14.0),
                             c(70.8,11.2,5.0,13.0),
                             c(77.0,10.4,5.4,7.2),
                             c(79.7,10.6,4.3,5.4),

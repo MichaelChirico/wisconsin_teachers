@@ -1,155 +1,155 @@
+#Wisconsin Teacher Project
+#District-Level Pay Scales Fitting
+#Michael Chirico
+#August 23, 2015
+
+# Package Setup, Convenient Functions ####
+rm(list=ls(all=T))
+gc()
+setwd("/home/michael/Desktop/research/Wisconsin Bargaining")
+data.path<-"/media/data_drive/wisconsin/"
+library(funchir)
+library(data.table)
 library(cobs)
 library(doParallel)
-library(maptools)
-library(spdep)
 library(quantmod)
-library(xtable)
-library(xlsx)
-library(nnet)
-library(texreg)
+
+#Given a stream of income in periods 1,...,T
+#  return the discounted sum of future income
+#  from t to T on for each period t
+discounted_earnings<-function(x,r=.05){
+  TT<-length(x)
+  (upper.tri(matrix(1,TT,TT),diag=T)*
+    (1/(1+r))^matrix(rep(0:TT,TT),nrow=TT+1,byrow=T)[-(TT+1),]) %*% x
+}
+
+#Data Import ####
+
+##Import full matched data created
+##  in wisconsin_teacher_data_cleaner.R;
+##  impose sample restrictions to get rid of
+##  teachers bound to cause noise in the
+##  contract fitting procedure, as well
+##  as teachers with multiple positions
+##  by eliminating all but highest-FTE positions
+full_data<-fread(data.path%+%"wisconsin_teacher_data_full.csv",
+                 select=c("year","highest_degree","months_employed","salary",
+                          "fringe","category","position_code","area",
+                          "full_time_equiv","days_of_contract","total_exp_floor",
+                          "teacher_id","school_fill","district_fill",
+                          "district_work_type")
+                 )[highest_degree %in% 4L:5L&category=="1"&
+                     position_code==53L&
+                     (months_employed>=875|year>2004)&
+                     (days_of_contract>=175|year<=2004)&
+                     (substring(area,2,2)%in%2:7|
+                        area%in%c("0050","0910"))&
+                     !is.na(school_fill)&
+                     substring(district_fill,1,1)!="9"&
+                     district_work_type%in%c("04","49")&
+                     !school_fill%in%c("0000","0999")&
+                     total_exp_floor%in%1L:30L,
+                   if(sum(full_time_equiv)==100L).SD,
+                   by=.(teacher_id,year)
+                   ][order(full_time_equiv),.SD[.N],
+                     by=.(teacher_id,year,full_time_equiv)]
+
+##Now, eliminate schools with insufficient coverage
+yrdsdg<-c("year","district_fill","highest_degree")
+###Can't interpolate if there are only 2 or 3 unique experience cells represented
+full_data[,node_count_flag:=uniqueN(total_exp_floor)<7L,keyby=yrdsdg]
+###Nor if there are too few teachers
+full_data[,teach_count_flag:=.N<10L,by=yrdsdg]
+###Also troublesome when there is little variation in salaries like so:
+full_data[,sal_scale_flag:=mean(abs(salary-mean(salary)))<50,by=yrdsdg]
+full_data[,sal_count_flag:=uniqueN(salary)<5L,by=yrdsdg]
+full_data[,fri_scale_flag:=mean(abs(salary-mean(fringe)))<50,by=yrdsdg]
+full_data[,fri_count_flag:=uniqueN(fringe)<5L,by=yrdsdg]
+
+###Discard variables not necessary for interpolation
+full_data<-full_data[!(node_count_flag|teach_count_flag|
+                         sal_scale_flag|sal_count_flag|
+                         fri_scale_flag|fri_count_flag),
+                     .(year,district_fill,highest_degree,
+                       total_exp_floor,salary,fringe)]
+
+full_data[,min_exp:=min(total_exp_floor),by=yrdsdg]
+full_data[,max_exp:=max(total_exp_floor),by=yrdsdg]
 
 # Pay Scale Interpolation ####
 cobs_extrap<-function(total_exp_floor,outcome,min_exp,max_exp,
                       constraint="increase",print.mesg=F,nknots=8,
                       keep.data=F,maxiter=150){
-  #these are passed as vectors
-  min_exp<-min_exp[1]
-  max_exp<-max_exp[1]
   #get in-sample fit
   in_sample<-predict(cobs(x=total_exp_floor,y=outcome,
                           constraint=constraint,
                           print.mesg=print.mesg,nknots=nknots,
                           keep.data=keep.data,maxiter=maxiter),
                      z=min_exp:max_exp)[,"fit"]
+  nin<-length(in_sample)
   if (sum(abs(in_sample))<50){
-    in_sample<-rep(0,length(in_sample))
+    in_sample<-rep(0,nin)
   }
   #append by linear extension below min_exp
-  fit<-c(if (min_exp==1) NULL else in_sample[1]-
-           ((min_exp-1):1)*(in_sample[2]-in_sample[1]),
+  fit<-c(if (min_exp==1L) NULL else in_sample[1L]-
+           ((min_exp-1L):1L)*(in_sample[2L]-in_sample[1L]),
          in_sample,
          #append by linear extension above max_exp
-         if (max_exp==30) NULL else in_sample[length(in_sample)]+
-           (1:(30-max_exp))*(in_sample[length(in_sample)]-
-                               in_sample[length(in_sample)-1]))
+         if (max_exp==30L) NULL else in_sample[nin]+
+           (1L:(30L-max_exp))*(in_sample[nin]-in_sample[nin-1L]))
   #Just force to 0 anything that wants to go negative
   fit[fit<0]<-0
   #Also put a ceiling on how high extrapolation can climb--
   #From original fitted data, more than 99% of year-40 to year-20 ratios are below 45%
-  fit[fit>1.45*max(in_sample)]<-1.45*max(in_sample)
+  mm<-1.45*max(in_sample)
+  fit[fit>mm]<-mm
   fit
 }
 
-setkey(teacher_data,year,agency,highest_degree)
-teacher_data_sub<-teacher_data[,.(year,agency,highest_degree,total_exp_floor,salary,fringe)]
-#Can't interpolate if there are only 2 or 3 unique experience cells represented
-teacher_data_sub[,node_count:=length(unique(total_exp_floor)),by=.(year,agency,highest_degree)]
-#Nor if there are too few teachers
-teacher_data_sub[,teach_count:=.N,by=.(year,agency,highest_degree)]
-#Also troublesome when there is little variation in salaries like so:
-teacher_data_sub[,sal_scale_flag:=mean(abs(salary-mean(salary)))<50,by=.(year,agency,highest_degree)]
-teacher_data_sub[,sal_count_flag:=length(unique(salary))<5,by=.(year,agency,highest_degree)]
-teacher_data_sub[,fri_scale_flag:=mean(abs(salary-mean(fringe)))<50,by=.(year,agency,highest_degree)]
-teacher_data_sub[,fri_count_flag:=length(unique(fringe))<5,by=.(year,agency,highest_degree)]
-
-teacher_data_sub<-
-  teacher_data_sub[node_count>=7&teach_count>=10
-                   &sal_scale_flag==0&sal_count_flag==0
-                   &fri_scale_flag==0&fri_count_flag==0,]
-teacher_data_sub<-teacher_data_sub[,.(year,agency,highest_degree,total_exp_floor,salary,fringe)]
-teacher_data_sub[,min_exp:=min(total_exp_floor),by=.(year,agency,highest_degree)]
-teacher_data_sub[,max_exp:=max(total_exp_floor),by=.(year,agency,highest_degree)]
 #Only send to the cores the necessary data--lots of copying
-cl <- makeCluster(detectCores()); 
-registerDoParallel(cl); 
-clusterExport(cl,c("teacher_data_sub"),envir=environment());
-clusterEvalQ(cl,library("data.table"));
-clusterEvalQ(cl,library("cobs"));
-salary_imp <- foreach(i = 1996:2015) %dopar% {
-  teacher_data_sub[.(i)][,.(total_exp_floor=1:30,
-                            salary=cobs_extrap(total_exp_floor,salary,min_exp,max_exp)),
-                         by=.(year,agency,highest_degree)]
-}
-salary_imp<-setkey(do.call("rbind",salary_imp),year,agency,highest_degree,total_exp_floor)
+system.time({
+  cl <- makeCluster(detectCores())
+  registerDoParallel(cl)
+  clusterExport(cl,"full_data",envir=environment())
+  clusterEvalQ(cl,{library("data.table"); library("cobs")})
+  imputed_scales <- foreach(i = 1996L:2015L) %dopar% {
+    print(i)
+    full_data[.(i)][,{mnx=min_exp[1L]; mxx=max_exp[1L]
+      s=cobs_extrap(total_exp_floor,salary,mnx,mxx)
+      f=cobs_extrap(total_exp_floor,fringe,mnx,mxx)
+      list(salary=s,fringe=f,total_pay=s+f)},
+      by=yrdsdg]
+  }
+  salary_scales<-
+    do.call("rbind",imputed_scales)[,experience:=rep(1L:30L,.N/30L)]
+  setkeyv(salary_scales,c(yrdsdg,"experience"))
+  stopCluster(cl)
+})
 
-fringe_imp <- foreach(i = 1996:2015) %dopar% {
-  teacher_data_sub[.(i)][,.(total_exp_floor=1:30,
-                            fringe=cobs_extrap(total_exp_floor,fringe,min_exp,max_exp)),
-                         by=.(year,agency,highest_degree)]
-}
-fringe_imp<-setkey(do.call("rbind",fringe_imp),year,agency,highest_degree,total_exp_floor)
-rm(teacher_data_sub)
-stopCluster(cl)
+# Post-Fit Clean-up: Real Dollars & Future Values ####
+##Provide deflated wage data
+oct_cpi<-suppressWarnings(getSymbols(
+  "CPIAUCSL",src="FRED",auto.assign=F
+  #Note that data values are recorded at the end
+  #  of September in each academic year, so,
+  #  since I index AY by spring year, we use the
+  #  'prior' year's CPI in October as the base
+  )[seq(from=as.Date("1995-10-01"),
+        to=as.Date("2014-10-01"),by="year")])
+salary_scales[data.table(year=1996L:2015L,
+                         index=c(coredata(oct_cpi)/
+                                   oct_cpi["2014-10-01"][[1]])),
+              `:=`(salary_real=salary/i.index,
+                   fringe_real=fringe/i.index,
+                   total_pay_real=total_pay/i.index),
+              on="year"]
 
-salary_scales<-fringe_imp[salary_imp][,total_pay:=fringe+salary]
-rm(list=ls(pattern="imp"))
+##Nominal future earnings at every point in the career
+salary_scales[,total_pay_future:=
+                discounted_earnings(total_pay),by=yrdsdg]
+salary_scales[,total_pay_future_real:=
+                discounted_earnings(total_pay_real),by=yrdsdg]
 
-#***SOME DISTRICTS STRANGELY HAVE TOO MANY INTERP VALUES--INVESTIGATE***
-salary_scales<-salary_scales[!salary_scales[,.N,by=.(year,agency,highest_degree)][N>30,!"N",with=F],]
-
-#nominal future earnings at every point in the career
-discounted_earnings<-function(x,r=.05){
-  nm1<-length(x)-1
-  (sum(x/(1+r)^(0:nm1))-
-    c(0,cumsum(x/(1+r)^(0:nm1))[1:nm1]))*(1+r)^(0:nm1)
-}
-salary_scales[,total_pay_future:=discounted_earnings(total_pay),
-              by=.(year,agency,highest_degree)]
-##add to teacher data
-setkeyv(teacher_data,key(salary_scales))[salary_scales,total_pay_future:=total_pay_future]
-
-## add forward-looking indicators
-frwd_vars<-c(paste0("move",c("","_school","_district")),"married","quit",
-             "salary","fringe","total_pay","total_pay_future","certified","agency","move_type")
-teacher_data[,paste0(frwd_vars,"_next"):=
-               shift(.SD,type="lead"),by=teacher_id,
-             .SDcols=frwd_vars]
-teacher_data[,paste0(frwd_vars,"_pl5"):=
-               shift(.SD,n=5L,type="lead"),by=teacher_id,
-             .SDcols=frwd_vars]; rm(frwd_vars)
-
-#base wage measures in current district
-teacher_data[setkey(salary_scales[total_exp_floor==1,],year,agency,highest_degree),
-             `:=`(agency_base_salary=i.salary,
-                  agency_base_fringe=i.fringe,
-                  agency_base_total_pay=i.total_pay,
-                  agency_base_total_pay_future=i.total_pay_future)]
-
-#base wage measures at next chosen district
-setkey(teacher_data,year,agency_next,highest_degree
-)[setkey(salary_scales[total_exp_floor==1,],year,agency,highest_degree),
-  `:=`(agency_next_base_salary=i.salary,
-       agency_next_base_fringe=i.fringe,
-       agency_next_base_total_pay=i.total_pay,
-       agency_next_base_total_pay_future=i.total_pay_future)]
-
-#subsequent wage measures at subsequent district
-setkey(teacher_data,year,agency,highest_degree,total_exp_floor
-)[setkey(salary_scales[,.(year,agency,highest_degree,exp=total_exp_floor-1,
-                          salary,fringe,total_pay,total_pay_future)],
-         year,agency,highest_degree,exp),
-  `:=`(agency_salary_next=i.salary,
-       agency_fringe_next=i.fringe,
-       agency_total_pay_next=i.total_pay,
-       agency_total_pay_future_next=i.total_pay_future)]
-
-#provide deflated wage data
-dollar_cols<-c("salary","fringe","total_pay")
-getSymbols("CPIAUCSL",src='FRED')
-infl<-data.table(year=1996:2015,
-                 index=CPIAUCSL[seq(from=as.Date('1995-10-01'),
-                                    by='years',length.out=21)]/
-                   as.numeric(CPIAUCSL['1995-10-01']),key="year")
-setkey(teacher_data,year,agency,highest_degree,total_exp_floor)[infl,index:=index.CPIAUCSL]
-teacher_data[,paste0(dollar_cols,"_real"):=
-               lapply(.SD,function(x){x/teacher_data$index}),
-             .SDcols=dollar_cols][,index:=NULL]
-salary_scales[infl,index:=index.CPIAUCSL]
-salary_scales[,paste0(dollar_cols,"_real"):=
-                lapply(.SD,function(x){x/salary_scales$index}),
-              .SDcols=dollar_cols][,index:=NULL]
-rm(infl,dollar_cols)
-
-write.csv(salary_scales,"wisconsin_salary_scales_imputed.csv",row.names=F)
-salary_scales<-setkey(fread("wisconsin_salary_scales_imputed.csv"),
-                      year,agency,highest_degree,total_exp_floor)
+write.csv(salary_scales,
+          data.path%+%"wisconsin_salary_scales_imputed.csv",
+          row.names=F)

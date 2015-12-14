@@ -1,26 +1,61 @@
+#Wisconsin Teachers Project
+#Background Data Clean-up, organization
+#Michael Chirico
+#August 25, 2015
+
+# Package Setup, Convenient Functions ####
+rm(list=ls(all=T))
+gc()
+setwd("/home/michael/Desktop/research/Wisconsin Bargaining")
+gis.wd<-"/media/data_drive/gis_data/WI/"
+cc.d.wd<-"/media/data_drive/common_core/district/"
+act.wd<-"/media/data_drive/wisconsin/act/"
+library(funchir)
+library(data.table)
+library(maptools)
+
+# ACT data
+## For 1995-96 - 2006-07, similar structure
+act_96_07<-rbindlist(lapply(list.files(
+  act.wd,pattern="act_[0-9]",full.names=T),
+  fread,na.strings=c("--","*"),
+  drop=c("grade","cesa","county","agency_key"))
+  #Seems to be an entry for every school whether there
+  #  were any ACT takers or not (with NAs); also
+  #  drop Agency Type XX (Statewide) numbers until further notice
+  )[!is.na(average_score_composite)&agency_type!="XX"]
+
+act_08_14<-rbindlist(lapply(list.files(
+  act.wd,pattern="act_c",full.names=T),
+  fread,na.strings="*",drop=c("CESA","COUNTY")))[AGENCY_TYPE!=""]
+
 # Spatial Data ####
 
 wi_districts_elem_shp<-
-  readShapeSpatial("/media/data_drive/gis_data/WI/wisconsin_elementary_districts_statewide.shp")
+  readShapeSpatial(gis.wd%+%"wisconsin_elementary_districts_statewide.shp")
 wi_districts_scdy_shp<-
-  readShapeSpatial("/media/data_drive/gis_data/WI/wisconsin_secondary_districts_statewide.shp")
+  readShapeSpatial(gis.wd%+%"wisconsin_secondary_districts_statewide.shp")
 
-elem_nbhd<-nb2mat(poly2nb(wi_districts_elem_shp,row.names=wi_districts_elem_shp$GEOID10),style="B")
+elem_nbhd<-nb2mat(poly2nb(wi_districts_elem_shp,
+                          row.names=wi_districts_elem_shp$GEOID10),
+                  style="B")
 colnames(elem_nbhd)<-rownames(elem_nbhd)
 
-scdy_nbhd<-nb2mat(poly2nb(wi_districts_scdy_shp,row.names=wi_districts_scdy_shp$GEOID10),style="B")
+scdy_nbhd<-nb2mat(poly2nb(wi_districts_scdy_shp,
+                          row.names=wi_districts_scdy_shp$GEOID10),
+                  style="B")
 colnames(scdy_nbhd)<-rownames(scdy_nbhd)
 
 ### Need NCES Common Core Data to map polygon IDs to Agency ID
 #### 2011-12 data (all but 9 districts)
-ccd_id<-setnames(fread("/media/data_drive/common_core/district/universe_2011_12_1a.txt",
-                       select=c("LEAID","STID"),colClasses="character"
-)[substr(LEAID,1,2)=="55",],c("leaid","agency"))
+ccd_id<-fread(cc.d.wd%+%"universe_2011_12_1a.txt",
+              select=c("LEAID","STID"),colClasses="character"
+              )[substr(LEAID,1,2)=="55",]
 #### Add remaining 9 districts via CCD data in 1995-96
 ccd_id<-
   setkey(rbindlist(list(
-    ccd_id,setnames(data.table(read.fwf(
-      "/media/data_drive/common_core/district/universe_1995_96_1a.txt",
+    ccd_id,setnames(setDT(read.fwf(
+      cc.d.wd%+%"universe_1995_96_1a.txt",
       widths=c(7,4)))[substr(V1,1,2)=="55",
                       ][V2 %in% teacher_data[!(agency %in% ccd_id$agency),
                                              unique(agency)],],
@@ -50,7 +85,8 @@ teacher_data[.(rownames(elem_nbhd)),
              total_pay_loc_avg:=area_average("total_pay",agency,year,highest_degree),
              by=.(agency,year,highest_degree)]
 
-#Grouping by agency, year, degree AND experience adds a lot to computation--paralellize by experience.
+#Grouping by agency, year, degree AND experience
+#  adds a lot to computation--paralellize by experience.
 cl <- makeCluster(detectCores()); 
 registerDoParallel(cl);
 teacher_data_sub<-teacher_data[,.(agency,total_pay_future,year,highest_degree,total_exp_floor)]
@@ -77,13 +113,12 @@ teacher_data[,potential_earnings:=total_pay_loc_val-total_pay_future]
 ### ***SHOULD EXPAND TO OTHER YEARS BY AGGREGATING SCHOOL-LEVEL FILES***
 ccd<-setkey(setnames(
   rbindlist(lapply(c("2010_11_2a","2011_12_1a","2012_13_1a"),
-                   function(x){fread(paste0("/media/data_drive/common_core/",
-                                            "district/universe_",x,".txt"),
+                   function(x){fread(cc.d.wd%+%paste0("universe_",x,".txt"),
                                      select=c("FIPST","STID","ULOCAL","HISP","BLACK","MEMBER"),
                                      colClasses=list(character=c("FIPST","STID"),
                                                      factor="ULOCAL",
                                                      integer=c("HISP","BLACK","MEMBER"))
-                   )[FIPST=="55",][,FIPST:=NULL][,year:=2000+as.numeric(substr(x,6,7))]})),
+                   )[FIPST=="55",][,FIPST:=NULL][,year:=2000L+as.integer(substr(x,6,7))]})),
   c("agency","ulocal","n_students","n_hispanic","n_black","year")),year,agency)[n_students>0,]
 
 #Eliminate schools not present all 3 years

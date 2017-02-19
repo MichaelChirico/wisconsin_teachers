@@ -21,24 +21,14 @@ library(zoo)
 #  code edits / sample revisions, etc.
 counts_update<-function(old_counts){
   new_counts<-full_data[,c(.N,uniqueN(teacher_id))]
-  cat("Decrease from ")
-  cat(old_counts[1])
-  cat(" to ")
-  cat(new_counts[1])
-  cat(" observations (difference of ")
-  cat(old_counts[1]-new_counts[1])
-  cat("/")
-  cat(round(100*(1-new_counts[1]/old_counts[1])))
-  cat("%);\n")
-  cat("Decrease from ")
-  cat(old_counts[2])
-  cat(" to ")
-  cat(new_counts[2])
-  cat(" individuals (difference of ")
-  cat(old_counts[2]-new_counts[2])
-  cat("/")
-  cat(round(100*(1-new_counts[2]/old_counts[2])))
-  cat("%)\n")
+  cat("Decrease from ",old_counts[1]," to ",
+      new_counts[1]," observations (difference of ",
+      old_counts[1]-new_counts[1],"/",
+      round(100*(1-new_counts[1]/old_counts[1])),
+      "%);\n","Decrease from ",old_counts[2]," to ",
+      new_counts[2]," individuals (difference of ",
+      old_counts[2]-new_counts[2],"/",
+      round(100*(1-new_counts[2]/old_counts[2])),"%)\n",sep="")
   new_counts
 }
 
@@ -536,9 +526,22 @@ rm(list=ls(pattern="na.to")); rm(jj)
 #Save cleaned data before cutting down to the main sample
 write.csv(full_data,file=wds["write"]%+%
             "wisconsin_teacher_data_full.csv",row.names=F)
-write.csv(full_data[,.(names(full_data),sapply(.SD,class))],
-          wds["write"]%+%"wisconsin_teacher_data_full_colClass.csv",
-          row.names=FALSE,col.names=FALSE)
+write.table(full_data[,.(names(full_data),sapply(.SD,class))],
+            wds["write"]%+%"wisconsin_teacher_data_full_colClass.csv",
+            row.names=FALSE,col.names=FALSE,sep=",")
+
+#Save school-level information
+#  including all variables that are
+#   constant within district*school*year
+sch_cols<-
+  c("year","district","school","district_name",
+    "school_name","grade_level","cesa","county",
+    "district_work_type","school_mail_"%+%1:3,
+    "school_shipping_"%+%1:3,
+    rep(c("mail_","ship_"),each=3)%+%c("city","state","zip"),
+    "telephone","admin_name")
+write.csv(unique(full_data[,sch_cols,with=F]),row.names=F,
+          file=wds["write"]%+%"wisconsin_school_data_full.csv")
 
 # Data consolidation ####
 counts<-full_data[,c(.N,uniqueN(teacher_id))]
@@ -616,6 +619,6 @@ counts<-counts_update(counts)
 write.csv(full_data,
           file=wds["write"]%+%"wisconsin_teacher_data_matched.csv",
           row.names=F)
-write.csv(full_data[,.(names(full_data),sapply(.SD,class))],
-          wds["write"]%+%"wisconsin_teacher_data_matched_colClass.csv",
-          row.names=FALSE,col.names=FALSE)
+write.table(full_data[,.(names(full_data),sapply(.SD,class))],
+            wds["write"]%+%"wisconsin_teacher_data_matched_colClass.csv",
+            row.names=FALSE,col.names=FALSE,sep=",")

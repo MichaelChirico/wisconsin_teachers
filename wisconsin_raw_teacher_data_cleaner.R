@@ -13,11 +13,13 @@ library(funchir)
 
 #Download and extract raw files to data folder
 #  Raw files from here: http://lbstat.dpi.wi.gov/lbstat_newasr
+#  **TO DO: MAKE SURE NEW URL IS WORKING AS EXPECTED            **
+#  **http://dpi.wi.gov/cst/data-collections/staff/published-data**
 urls<-readLines("~/Desktop/research/Wisconsin Bargaining/teacher_data_urls.txt")
-sapply(urls,function(uu){
-  tmp<-tempfile()
-  download.file(uu,tmp)
-  unzip(tmp,exdir=wds["data"])
+sapply(urls, function(uu){
+  tmp <- tempfile()
+  download.file(uu, tmp)
+  unzip(tmp, exdir = wds["data"])
   unlink(tmp)}); rm(urls)
 
 #Remove pesky NUL characters
@@ -27,19 +29,19 @@ sapply(urls,function(uu){
 #   probably is supposed to
 #   correspond to a _single_ space)
 setwd(wds["data"])
-for (fl in list.files(pattern="(?i)(txt|dat)")){
-  r<-readBin(fl, raw(), file.info(fl)$size)
+for (fl in list.files(pattern = "(?i)(txt|dat)")){
+  r <- readBin(fl, raw(), file.info(fl)$size)
   #Remove BOM if it's there:
-  if (any(r[1]==as.raw(0xef))){
-    r<-r[-(1:3)]
+  if (r[1] == as.raw(0xef)){
+    r <- r[-(1:3)]
   }
   #NUL corresponds to as.raw(0)
-  if (any(r==as.raw(0))){
-    idx <- which(r == as.raw(0))
+  if (any(is.NUL <- r == as.raw(0))){
+    idx <- which(is.NUL)
     #only overwrite half with a space (as.raw(0x20))
-    r[idx[seq(1,length(idx),by=2)]] <- as.raw(0x20)
+    r[idx[seq(1L, length(idx), by = 2L)]] <- as.raw(0x20)
     #exclude all remaining NUL and overwrite original file
-    writeBin(r[-idx[seq(2,length(idx),by=2)]], fl)
+    writeBin(r[-idx[seq(2L, length(idx), by = 2L)]], fl)
   } else writeBin(r, fl)
 }; rm(r)
 
@@ -49,7 +51,7 @@ for (fl in list.files(pattern="(?i)(txt|dat)")){
 #  augment these with enough blanks to make each file
 #  flush on its edges.
 for (fl in list.files()){
-  wdth<-fread(wds["key"]%+%substr(fl,1,2)%+%"keys.csv")[,sum(V2)]
+  wdth <- fread(wds["key"] %+% substr(fl,1,2) %+% "keys.csv")[ , sum(V2)]
   #for exploring the files, use a variation on the following:
   #   fread(fl, header = FALSE, sep = "^", strip.white = FALSE
   #         )[,{wd<-nchar(V1); idx<-wd!=wdth
@@ -58,21 +60,22 @@ for (fl in list.files()){
   #           `ID`=substr(V1[idx],1,9))}]
   write.table(
     fread(fl, header = FALSE, sep = "^", strip.white = FALSE,
-          skip = if (grepl("14|13",fl)) 1L else 0L
-          )[nchar(V1)<wdth,V1:=
+          skip = if (grepl("14|13", fl)) 1L else 0L
+          )[nchar(V1) < wdth, V1 :=
               #simply append white space to ragged lines
-              V1%+%sapply(V1,function(x)
-                paste(rep(" ",wdth-nchar(x)),collapse=""))][],
+              V1 %+% sapply(V1, function(x)
+                paste(rep(" ", wdth - nchar(x)), collapse=""))][],
     #overwrite file, mimicking original format as closely as possible
-    file=fl,quote=F,row.names=F,col.names=F)
+    file = fl, quote = FALSE, row.names = FALSE, col.names = FALSE)
 }
 
 #Now, convert all fixed width files to .csv -- a one-time
 #  high-cost operation which pays large dividends because
 #  all future reading via fread is much faster
 for (fl in list.files()){
-  keys<-fread(wds["key"]%+%substr(fl,1,2)%+%"keys.csv")
-  write.table(setnames(setDT(input.file(fl,formatter=dstrfw,
-                            col_types=keys$V3,widths=keys$V2)),
-           keys$V1),file=gsub("[.].*",".csv",fl),row.names=F,sep="\t")
+  keys <- fread(wds["key"] %+% substr(fl, 1L, 2L) %+% "keys.csv")
+  write.table(setnames(setDT(input.file(fl, formatter = dstrfw,
+                            col_types = keys$V3, widths = keys$V2)),
+           keys$V1), file = gsub("[.].*", ".csv", fl), 
+           row.names = FALSE, sep="\t")
 }

@@ -13,14 +13,15 @@ library(data.table)
 library(xtable)
 
 fl<-"wisconsin_teacher_data_matched"
-x<-fread(data.wd%+%fl%+%"_colClass.csv",header=F)
-ccs<-unlist(split(as.character(x$V2),x$V1)); rm(x)
-teacher_data<-fread(data.wd%+%fl%+%".csv",colClasses=ccs); rm(ccs)
-setkey(teacher_data,year,teacher_id)
+teacher_data<-
+  fread(data.wd%+%fl%+%".csv",key="year,teacher_id",
+        colClasses=fread(data.wd%+%fl%+%
+                           "_colClass.csv",header=F)$V2); rm(fl)
 
 ## add forward-looking indicators
-frwd_vars<-c(paste0("move",c("","_school","_district")),"married","quit",
-             "salary","fringe","total_pay","total_pay_future","certified","agency","move_type")
+frwd_vars<-c(paste0("move_",c("school","district")),
+             "married","quit_next","salary","fringe",
+             "total_pay","certified","district")
 teacher_data[,paste0(frwd_vars,"_next"):=
                shift(.SD,type="lead"),by=teacher_id,
              .SDcols=frwd_vars]
@@ -29,11 +30,10 @@ teacher_data[,paste0(frwd_vars,"_pl5"):=
              .SDcols=frwd_vars]; rm(frwd_vars)
 
 #base wage measures in current district
-teacher_data[setkey(salary_scales[total_exp_floor==1,],year,agency,highest_degree),
-             `:=`(agency_base_salary=i.salary,
-                  agency_base_fringe=i.fringe,
-                  agency_base_total_pay=i.total_pay,
-                  agency_base_total_pay_future=i.total_pay_future)]
+teacher_data[setkey(salary_scales[total_exp_floor==1,],year,district,highest_degree),
+             `:=`(district_base_salary=i.salary,
+                  district_base_fringe=i.fringe,
+                  district_base_total_pay=i.total_pay)]
 
 #base wage measures at next chosen district
 setkey(teacher_data,year,agency_next,highest_degree
@@ -187,9 +187,9 @@ par(oma=c(0,0,3,0))
 par(mar=c(0,4.1,4.1,2.1))
 matplot(1:30,dcast.data.table(
   teacher_data[,.(total_exp_floor,move_district,
-                  cut(year,breaks=c(1996,2001,2006,2011,2016),
+                  cut(year,breaks=c(1995,2000,2005,2010,2015),
                       include.lowest=T,
-                      labels=c("96-00","01-05","06-10","11-15"),right=F))
+                      labels=c("95-99","00-04","05-09","10-14"),right=F))
                ][,mean(move_district,na.rm=T),by=.(total_exp_floor,V3)],
   total_exp_floor~V3,value.var="V1")[,!"total_exp_floor",with=F],
   ylab="% Changing Districts",xaxt="n",main="Change Districts",
@@ -199,9 +199,9 @@ matplot(1:30,dcast.data.table(
 par(mar=c(0,4.1,4.1,2.1))
 matplot(1:30,dcast.data.table(
   teacher_data[,.(total_exp_floor,move_school&!move_district,
-                  cut(year,breaks=c(1996,2001,2006,2011,2016),
+                  cut(year,breaks=c(1995,2000,2005,2010,2015),
                       include.lowest=T,
-                      labels=c("96-00","01-05","06-10","11-15"),right=F))
+                      labels=c("95-99","00-04","05-09","10-14"),right=F))
                ][,mean(V2,na.rm=T),by=.(total_exp_floor,V3)],
   total_exp_floor~V3,value.var="V1")[,!"total_exp_floor",with=F],
   ylab="% Changing Schools",xaxt="n",main="Change Schools",
@@ -210,11 +210,11 @@ matplot(1:30,dcast.data.table(
 ##Quit rates
 par(mar=c(5.1,4.1,0,2.1))
 matplot(1:30,dcast.data.table(
-  teacher_data[,.(total_exp_floor,quit,
-                  cut(year,breaks=c(1996,2001,2006,2011,2016),
+  teacher_data[,.(total_exp_floor,quit_next,
+                  cut(year,breaks=c(1995,2000,2005,2010,2015),
                       include.lowest=T,
-                      labels=c("96-00","01-05","06-10","11-15"),right=F))
-               ][,mean(quit,na.rm=T),by=.(total_exp_floor,V3)],
+                      labels=c("95-99","00-04","05-09","10-14"),right=F))
+               ][,mean(quit_next,na.rm=T),by=.(total_exp_floor,V3)],
   total_exp_floor~V3,value.var="V1")[,!"total_exp_floor",with=F],
   xlab="Experience",ylab="% Leaving WI",
   main="\n Leaving WI Public Schools",
@@ -224,9 +224,9 @@ matplot(1:30,dcast.data.table(
 par(mar=c(5.1,4.1,0,2.1))
 matplot(1:30,dcast.data.table(
   teacher_data[year!=1996,.(total_exp_floor,highest_degree,
-                            cut(year,breaks=c(1996,2001,2006,2011,2016),
+                            cut(year,breaks=c(1995,2000,2005,2010,2015),
                                 include.lowest=T,
-                                labels=c("96-00","01-05","06-10","11-15"),right=F))
+                                labels=c("95-99","00-04","05-09","10-14"),right=F))
                ][,.(mean(highest_degree=="4",na.rm=T),
                     mean(highest_degree=="5",na.rm=T)),by=.(total_exp_floor,V3)],
   total_exp_floor~V3,value.var=c("V1","V2"))[,!"total_exp_floor",with=F],
@@ -237,20 +237,22 @@ legend("left",legend=c("MA","BA"),lty=c(2,1),lwd=3,bty="n",cex=.5)
 
 par(mar=c(0,0,0,0))
 plot(1,type="n",axes=F,xlab="",ylab="")
-legend("top",legend=c("96-00","01-05","06-10","11-15"),lty=1,lwd=2,
+legend("top",legend=c("95-99","00-04","05-09","10-14"),lty=1,lwd=2,
        col=c("black","blue","red","green"),horiz=T,inset=0)
 mtext("WI Turnover Moments",side=3,line=-1.5,outer=T)
 dev.off2()
 
 # Total turnover by year
 pdf2("wisconsin_turnover_by_year.pdf")
-matplot(1997:2015,teacher_data[year>1996,
-                               .(sum(move),sum(move&!move_district),
-                                 sum(move_district)),by=year][,!"year",with=F],
-        type="l",lty=1,lwd=3,xlab="Year",ylab="# Moves",
-        main="Number of Moves\nBy Year and Type")
-legend("topleft",legend=c("Total","School","District"),lwd=3,lty=1,
-       col=c("black","red","green"),cex=.7)
+teacher_data[year>1995,
+             .(sum(move_school,na.rm=T),
+               sum(move_school&!move_district,na.rm=T),
+               sum(move_district,na.rm=T)),by=year
+             ][,matplot(year,.SD[,V1:V3,with=F],
+                        type="l",lty=1,lwd=3,xlab="Year",ylab="# Moves",
+                        main="Number of Moves\nBy Year and Type")]
+legend("topleft",legend=c("Total","School","District"),
+       lwd=3,lty=1,col=c("black","red","green"),cex=.7)
 dev.off2()
 
 #plotting the salary schedules for the 5 most populous agencies over the first 30 years
@@ -310,7 +312,7 @@ one_time_movers[,mean(total_pay),by=year_rel][order(year_rel)][,plot(year_rel,V1
 
 #now make some summary plots
 ##teacher wages, teacher experience, and proportion of 1st-year teachers
-postscript('wage_exp_series_avg_1996-2015.ps')
+pdf('wage_exp_series_avg_1996-2015.pdf')
 par(mfrow=c(2,2))
 teacher_data[,.(mean(salary),mean(salary_real)),by=year
              ][,matplot(year,cbind(V1,V2),type="l",xlab="Year",ylab="Nominal Wage",

@@ -1,0 +1,187 @@
+\documentclass[]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \ifxetex
+    \usepackage{mathspec}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\hypersetup{unicode=true,
+            pdftitle={Estimation of Contract Schedules using Constrained B-Splines},
+            pdfauthor={Michael Chirico},
+            pdfborder={0 0 0},
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+\IfFileExists{parskip.sty}{%
+\usepackage{parskip}
+}{% else
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{0}
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+\let\oldsubparagraph\subparagraph
+\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+%%% Use protect on footnotes to avoid problems with footnotes in titles
+\let\rmarkdownfootnote\footnote%
+\def\footnote{\protect\rmarkdownfootnote}
+
+%%% Change title format to be more compact
+\usepackage{titling}
+
+% Create subtitle command for use in maketitle
+\newcommand{\subtitle}[1]{
+  \posttitle{
+    \begin{center}\large#1\end{center}
+    }
+}
+
+\setlength{\droptitle}{-2em}
+  \title{Estimation of Contract Schedules using Constrained B-Splines}
+  \pretitle{\vspace{\droptitle}\centering\huge}
+  \posttitle{\par}
+  \author{Michael Chirico}
+  \preauthor{\centering\large\emph}
+  \postauthor{\par}
+  \predate{\centering\large\emph}
+  \postdate{\par}
+  \date{February 18, 2017}
+
+\usepackage{theapa}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+Most unionized teachers are paid according to a salary schedule
+(specifying wages as an increasing function of tenure and certification)
+explicated in contracts collectively bargained at the district level.
+With this in hand, teachers are able to infer their future potential
+wage trajectories at their own and other potential district employers.
+Lacking the physical contract faced by the teachers, an econometrician
+armed only with administrative data reporting actual wages in a given
+year must use some imputation techniques to deduce the wage structure.
+We explore the utility of natural Constrained B-Splines (COBS) to this
+end. COBS are an enhanced version of the traditional semiparametric
+splines technique enhanced by the ability to impose a monotonicity
+constraint on the resultant curve.
+\end{abstract}
+
+\section{Introduction}\label{introduction}
+
+For many years, the ubiquitous characteristic of collectively bargained
+teachers' contracts has been the salary table, which gives a mapping
+from the calendar year, a teacher's experience (their length of tenure
+at the current district), and their certification (typically Master's
+vs.~Bachelor's degree) to their wage. This table gives current teachers
+a clear understanding of how their pay will advance as a function of
+their labor inputs, and thereby gives forward-looking potential teachers
+and potential migrant teachers a clear understanding of their potential
+pay arcs under a district-switching decision-making framework,
+especially given that this information is typically openly available.
+
+It would behoove an econometrician seeking to understand education labor
+market dynamics, then, to incorporate this information on future pay
+into their statistical modeling framework. Unfortunately, this data is
+typically not available in a format lending itself to easy analysis at
+scale -- whether locked inside idiosyncratically formatted and
+sporadically-available contract PDFs or hidden behind large-scale
+freedom of information act inquiries, the temporal and financial costs
+of scraping such data into a usable form can be substantial.
+
+Much more common in empirical settings is access to teacher-year-level
+salary data of the form
+\(y_{i, t} = y(\tau_{i, t}, c_{i, t}, d_{i, t}) + \varepsilon_{i, t}\),
+where \(\tau_{i,t}\), \(c_{i, t}\) and \(d_{i, t}\) are the tenure,
+certification, and district of teacher \(i\) in year \(t\), and
+\(\varepsilon_{i, t}\) represents unaccount factors affecting the wage
+(e.g., not all teachers work full time, and many teachers supplement
+their income with additional duties like coaching). The goal of this
+paper is to give one approach and some empirical lessons for trying to
+estimate the underlying mapping \(y(\tau, c, d)\) from such data.
+
+\section{Method}\label{method}
+
+There are a multitude of inference/imputation techniques suitable to the
+inference of a latent function of unknown parametric form available in
+the statistician/econometrician's palette. The powerful flexibility of
+nonparametric approaches (local regression, splines, Random Fourier
+Feature expansions) is a double-edged sword; as it happens, in this
+particular setting, even if we know linearity is not a reasonable
+functional form restriction, we do know some very basic properties of
+the underlying tenure-wage curves that will be violated in general by
+uninformed estimation techniques. In particular, we know that such
+tenure-wage curves are non-decreasing and that they are non-negative,
+i.e., \(y(\tau', c, d) >= y(\tau, c, d)\) whenever \(\tau' >= \tau\),
+and \(y(0, c, d) \geq 0\).
+
+He and Ng (\protect\hyperlink{ref-he}{1999}) introduce a linear
+programming approach to incorporating monotonicity and curvature
+restraints to quantile regression spline estimation techniques, and Ng
+and Maechler (\protect\hyperlink{ref-ng}{2007}) present an overview of
+the R package \texttt{cobs} which gives an efficient implementation of
+this approach (COBS standing for Constrained B-Splines). The basic idea
+of quantile regression spline estimation is to swap out the standard
+squared loss function for a quantile-dependent weighted absolute loss
+function to target conditional quantiles instead of conditional means.
+Monotonicity, point, and curvature restrictions enter as penalized terms
+to the objective function; \texttt{cobs} expresses this in a fashion
+which facilitates the application of standard linear programming
+techniques for efficiency, and handles internally the issues of knot
+selection and penalty parameter assignment through cross-validation.
+
+\section{Data}\label{data}
+
+\section{References}\label{references}
+
+\bibliographystyle{theapa}\bibliography{references}
+
+\hypertarget{refs}{}
+\hypertarget{ref-he}{}
+He, Xuming, and Pin Ng. 1999. ``COBS: Qualitatively Constrained
+Smoothing via Linear Programming.'' \emph{Computational Statistics} 14
+(3). Heidelberg: Physica-Verlag,{[}1992-: 315--38.
+
+\hypertarget{ref-ng}{}
+Ng, Pin, and Martin Maechler. 2007. ``A Fast and Efficient
+Implementation of Qualitatively Constrained Quantile Smoothing
+Splines.'' \emph{Statistical Modelling} 7 (4). Sage Publications India
+Pvt. Ltd, B-42, Panchsheel Enclave, New Delhi: 315--28.
+
+
+\end{document}

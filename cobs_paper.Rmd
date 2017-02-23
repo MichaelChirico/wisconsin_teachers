@@ -32,6 +32,8 @@ There are a multitude of inference/imputation techniques suitable to the inferen
 
 # Data
 
+The state of Wisconsin's Department of Public Instruction (DPI) releases annual Salary, Position & Demographic reports through the WISEstaff data collection system, and these reports represent "a point-in-time collection of all staff members in public schools as of the 3rd Friday of September..." [@dpi]. The crucial data elements from each report are the Highest Degree Code (certification), Total Experience in Education (tenure), Total Salary, Total Fringe/Employee Benefits, and Agency of Work Location Code (district). We pull data from the 1994-95 academic year (AY) through AY2015-16.
+
 # References
 
 \bibliographystyle{theapa}

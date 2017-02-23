@@ -3,24 +3,40 @@
 #Michael Chirico
 #August 23, 2015
 
-rm(list=ls(all=T))
+rm(list = ls(all = TRUE))
 gc()
-wds<-c(data="/media/data_drive/wisconsin/teacher_raw_data/data_files/",
-       key="/media/data_drive/wisconsin/teacher_raw_data/fwf_keys/")
+raw_data_f = "/media/data_drive/wisconsin/teacher_raw_data/"
+wds = c(data = paste0(raw_data_f, 'data_files'),
+        key = paste0(raw_data_f, "fwf_keys/"))
 
-library(data.table)
+#access at github.com/MichaelChirico/funchir
 library(funchir)
+#for scraping URLs
+library(rvest)
+#for fast FWF input
+library(iotools)
+#for everything else
+library(data.table)
+
+# Identify all data file URLs
+URL = 'https://dpi.wi.gov/cst/data-collections/staff/published-data'
+## links identified by being .zip (since 2012-13)
+##   or .exe (all earlier years)
+URL_xp = '//a[contains(@href, ".zip") or contains(@href, ".exe")]'
+data_urls = read_html(URL) %>% 
+  html_nodes(xpath = URL_xp) %>% html_attr('href') %>%
+  paste0('https://dpi.wi.gov', .)
 
 #Download and extract raw files to data folder
 #  Raw files from here: http://lbstat.dpi.wi.gov/lbstat_newasr
 #  **TO DO: MAKE SURE NEW URL IS WORKING AS EXPECTED            **
 #  **http://dpi.wi.gov/cst/data-collections/staff/published-data**
-urls<-readLines("~/Desktop/research/Wisconsin Bargaining/teacher_data_urls.txt")
-sapply(urls, function(uu){
-  tmp <- tempfile()
-  download.file(uu, tmp)
-  unzip(tmp, exdir = wds["data"])
-  unlink(tmp)}); rm(urls)
+sapply(data_urls, 
+       function(uu){
+         tmp <- tempfile()
+         download.file(uu, tmp)
+         unzip(tmp, exdir = wds["data"])
+         unlink(tmp)})
 
 #Remove pesky NUL characters
 #  (having checked manually that,
@@ -28,54 +44,80 @@ sapply(urls, function(uu){
 #   each _pair_ of NUL characters
 #   probably is supposed to
 #   correspond to a _single_ space)
-setwd(wds["data"])
-for (fl in list.files(pattern = "(?i)(txt|dat)")){
-  r <- readBin(fl, raw(), file.info(fl)$size)
+txt_fls = 
+  list.files(wds['data'], full.names = TRUE,
+             # (?i) -- case-insensitive
+             pattern = "(?i)(txt|dat)")
+for (fl in txt_fls){
+  r = readBin(fl, raw(), file.info(fl)$size)
   #Remove BOM if it's there:
-  if (r[1] == as.raw(0xef)){
-    r <- r[-(1:3)]
-  }
+  if (r[1L] == as.raw(0xef)){
+    r = r[-(1L:3L)]
+    #don't waste time overwriting file
+    #  if we don't find any BOM or
+    #  NUL characters
+    needToWrite = TRUE
+  } else needToWrite = FALSE
   #NUL corresponds to as.raw(0)
   if (any(is.NUL <- r == as.raw(0))){
-    idx <- which(is.NUL)
+    #force into matrix with each column
+    #  representing a pair
+    idx = matrix(which(is.NUL), nrow = 2L)
+    if (any(apply(idx, 2L, diff) != 1L))
+      stop('unpaired NUL detected!')
     #only overwrite half with a space (as.raw(0x20))
-    r[idx[seq(1L, length(idx), by = 2L)]] <- as.raw(0x20)
+    r[idx[1L, ]] = as.raw(0x20)
     #exclude all remaining NUL and overwrite original file
-    writeBin(r[-idx[seq(2L, length(idx), by = 2L)]], fl)
-  } else writeBin(r, fl)
-}; rm(r)
+    writeBin(r[-idx[2L, ]], fl)
+    rm(r)
+    next
+  }
+  if (needToWrite) writeBin(r, fl)
+  rm(r)
+}
+rm(fl)
 
 #Now, fix all irregular files -- for the most part,
 #  there are certain lines which appear to have been
 #  stripped of trailing white space, so simply
 #  augment these with enough blanks to make each file
 #  flush on its edges.
-for (fl in list.files()){
-  wdth <- fread(wds["key"] %+% substr(fl,1,2) %+% "keys.csv")[ , sum(V2)]
+keys = fread(paste0(raw_data_f, 'fwf_keys.csv'))
+for (fl in txt_fls){
+  fl_yr = gsub('[^0-9]', '', fl)
+  #keys file constructed by hand from the
+  #  Documentation files on DPI website
+  width = keys[year == fl_yr, sum(width)]
   #for exploring the files, use a variation on the following:
   #   fread(fl, header = FALSE, sep = "^", strip.white = FALSE
   #         )[,{wd<-nchar(V1); idx<-wd!=wdth
   #         table(wd)
   #         .(`Line #`=.I[idx],`Width`=wd[idx],
   #           `ID`=substr(V1[idx],1,9))}]
-  write.table(
-    fread(fl, header = FALSE, sep = "^", strip.white = FALSE,
-          skip = if (grepl("14|13", fl)) 1L else 0L
-          )[nchar(V1) < wdth, V1 :=
-              #simply append white space to ragged lines
-              V1 %+% sapply(V1, function(x)
-                paste(rep(" ", wdth - nchar(x)), collapse=""))][],
+  #sep = "\n" reads each line as a whole into one variable
+  DT = fread(fl, header = FALSE, sep = "\n", strip.white = FALSE,
+             #these two years have a header (+ to force integer)
+             skip = +grepl("14|13", fl), col.names = 'line')
+  if (length(idx <- DT[nchar(line) < width, which = TRUE])) {
+    #simply append white space to ragged lines, see
+    # http://stackoverflow.com/questions/9261961/
+    DT[idx, line := sprintf(paste0('%-', width, 's'), line)]
     #overwrite file, mimicking original format as closely as possible
-    file = fl, quote = FALSE, row.names = FALSE, col.names = FALSE)
+    fwrite(DT, fl, quote = FALSE, row.names = FALSE, col.names = FALSE)
+  }
 }
 
 #Now, convert all fixed width files to .csv -- a one-time
 #  high-cost operation which pays large dividends because
 #  all future reading via fread is much faster
-for (fl in list.files()){
-  keys <- fread(wds["key"] %+% substr(fl, 1L, 2L) %+% "keys.csv")
-  write.table(setnames(setDT(input.file(fl, formatter = dstrfw,
-                            col_types = keys$V3, widths = keys$V2)),
-           keys$V1), file = gsub("[.].*", ".csv", fl), 
-           row.names = FALSE, sep="\t")
+for (fl in txt_fls){
+  fl_yr = gsub('[^0-9]', '', fl)
+  with(keys[year == fl_yr], {
+    DT = setDT(input.file(fl, formatter = dstrfw,
+                          col_types = type, widths = width))
+    setnames(DT, vname)
+  })
+  fwrite(DT, file = gsub("[.].*", ".csv", fl), 
+         #use tab -- embedded , common
+         row.names = FALSE, sep = "\t")
 }

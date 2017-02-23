@@ -118,7 +118,6 @@ for (fl in txt_fls){
 
 #Now, convert all fixed width files to .csv
 for (fl in txt_fls){
-  print(fl)
   fl_yr = gsub('[^0-9]', '', fl)
   with(keys[year == fl_yr], {
     DT = setDT(input.file(fl, formatter = dstrfw,

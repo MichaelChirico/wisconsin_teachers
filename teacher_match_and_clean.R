@@ -4,36 +4,34 @@
 #August 23, 2015
 
 # Package setup & Convenient Functions ####
-rm(list=ls(all=T))
+rm(list = ls(all = TRUE))
 gc()
-setwd("/home/michael/Desktop/research/Wisconsin Bargaining")
-wds<-c(data="/media/data_drive/wisconsin/teacher_raw_data/data_files/",
-       keys="/media/data_drive/wisconsin/teacher_raw_data/fwf_keys/",
-       write="/media/data_drive/wisconsin/")
+external_path = '/media/data_drive/wisconsin/'
+wds = c(data = paste0(external_path, 'teacher_raw_data/data_files/'),
+        keys = paste0(external_path, 'teacher_raw_data/fwf_keys/'),
+        write = external_path)
 library(funchir)
 library(data.table)
-library(iotools)
-library(stringr)
 library(zoo)
 
 #For data consolidation stage & keeping better track of
 #  effects of sample restrictions given any future 
 #  code edits / sample revisions, etc.
-counts_update<-function(old_counts){
-  new_counts<-full_data[,c(.N,uniqueN(teacher_id))]
-  cat("Decrease from ",old_counts[1]," to ",
-      new_counts[1]," observations (difference of ",
-      old_counts[1]-new_counts[1],"/",
-      round(100*(1-new_counts[1]/old_counts[1])),
-      "%);\n","Decrease from ",old_counts[2]," to ",
-      new_counts[2]," individuals (difference of ",
-      old_counts[2]-new_counts[2],"/",
-      round(100*(1-new_counts[2]/old_counts[2])),"%)\n",sep="")
+counts_update = function(old_counts) {
+  new_counts = full_data[ , c(.N, uniqueN(teacher_id))]
+  cat("Decrease from ", old_counts[1L], " to ",
+      new_counts[1L], " observations (difference of ",
+      old_counts[1L]-new_counts[1L], "/",
+      round(100*(1-new_counts[1L]/old_counts[1L])),
+      "%);\n", "Decrease from ", old_counts[2L], " to ",
+      new_counts[2L], " individuals (difference of ",
+      old_counts[2L]-new_counts[2L], "/",
+      round(100*(1-new_counts[2L]/old_counts[2L])), "%)\n", sep="")
   new_counts
 }
 
 # Data import ####
-#   Raw data available here: http://lbstat.dpi.wi.gov/lbstat_newasr
+#   see 
 nnames<-c("first_name","last_name","nee")
 full_data<-
   rbindlist(lapply(list.files(wds["data"],pattern="csv"),function(fl){

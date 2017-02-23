@@ -15,6 +15,8 @@ library(funchir)
 library(rvest)
 #for fast FWF input
 library(iotools)
+#for Excel conversion
+library(readxl)
 #for everything else
 library(data.table)
 
@@ -82,12 +84,11 @@ rm(fl)
 #  stripped of trailing white space, so simply
 #  augment these with enough blanks to make each file
 #  flush on its edges.
-keys = fread(paste0(raw_data_f, 'fwf_keys.csv'))
+keys = fread(paste0(raw_data_f, 'fwf_keys.csv'),
+             colClasses = c('character', 'character', 'integer', 'character'))
 for (fl in txt_fls){
   fl_yr = gsub('[^0-9]', '', fl)
-  #keys file constructed by hand from the
-  #  Documentation files on DPI website
-  width = keys[year == fl_yr, sum(width)]
+  header_yr = grepl("14|13", fl)
   #for exploring the files, use a variation on the following:
   #   fread(fl, header = FALSE, sep = "^", strip.white = FALSE
   #         )[,{wd<-nchar(V1); idx<-wd!=wdth
@@ -97,27 +98,46 @@ for (fl in txt_fls){
   #sep = "\n" reads each line as a whole into one variable
   DT = fread(fl, header = FALSE, sep = "\n", strip.white = FALSE,
              #these two years have a header (+ to force integer)
-             skip = +grepl("14|13", fl), col.names = 'line')
+             skip = +header_yr, col.names = 'line')
+  
+  #keys file constructed by hand from the
+  #  Documentation files on DPI website
+  width = keys[year == fl_yr, sum(width)]
+  
   if (length(idx <- DT[nchar(line) < width, which = TRUE])) {
     #simply append white space to ragged lines, see
     # http://stackoverflow.com/questions/9261961/
     DT[idx, line := sprintf(paste0('%-', width, 's'), line)]
     #overwrite file, mimicking original format as closely as possible
     fwrite(DT, fl, quote = FALSE, row.names = FALSE, col.names = FALSE)
+  } else if (header_yr) {
+    #these files need to have their header removed
+    fwrite(DT, fl, quote = FALSE, row.names = FALSE, col.names = FALSE)
   }
 }
 
-#Now, convert all fixed width files to .csv -- a one-time
-#  high-cost operation which pays large dividends because
-#  all future reading via fread is much faster
+#Now, convert all fixed width files to .csv
 for (fl in txt_fls){
+  print(fl)
   fl_yr = gsub('[^0-9]', '', fl)
   with(keys[year == fl_yr], {
     DT = setDT(input.file(fl, formatter = dstrfw,
-                          col_types = type, widths = width))
-    setnames(DT, vname)
+                          col_types = setNames(type, vname),
+                          widths = width))
   })
-  fwrite(DT, file = gsub("[.].*", ".csv", fl), 
-         #use tab -- embedded , common
-         row.names = FALSE, sep = "\t")
+  #use tab -- embedded , is common
+  fwrite(DT, file = gsub("[.].*", ".csv", fl), sep = "\t")
+}
+
+#Lastly, convert all excel files to .csv
+for (fl in list.files(wds['data'], pattern = '\\.xls', full.names = TRUE)) {
+  #which sheet has the data?
+  sheet = grep('Staff', excel_sheets(fl), fixed = TRUE, value = TRUE)
+  fl_yr = gsub('.*AllStaff[0-9]{2}([0-9]{2}).*', '\\1', fl)
+  vname = keys[year == fl_yr, vname]
+  vtype = c('skip', rep('text', length(vname) - 1L))
+  DT = setDT(read_excel(fl, sheet = sheet, skip = 4L,
+                        col_names = vname, col_types = vtype))
+  fwrite(DT, file = paste0(wds['data'], '/', fl_yr, 'staff.csv'),
+         sep = '\t')
 }

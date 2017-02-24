@@ -499,90 +499,95 @@ full_data[district == "0000", district := NA]
 ##  being substitutes (but listed at the same district)
 full_data[ , school_fill := na.locf(na.locf(school, na.rm = FALSE), 
                                     fromLast = TRUE, na.rm = FALSE),
-          by = .(teacher_id, district)]
+           by = .(teacher_id, district)]
 full_data[ , district_fill := na.locf(na.locf(district, na.rm = FALSE),
                                       fromLast = TRUE, na.rm = FALSE),
-          by = .(teacher_id, hire_district)]
+           by = .(teacher_id, hire_district)]
 
 #Adding all lead/lag-based variables
-shifts<-c("school_fill","district_fill","married",
-          "highest_degree","position_code")
-shift.s<-c("sch","dis","mrd","deg","pos")
-shifts2<-c("mv.sch","mv.dis","crt","mv.pos")
-shifts2.s<-c("msc","mds","crt","mps")
+shifts = c("school_fill", "district_fill", "married",
+           "highest_degree", "position_code")
+shift.s = c("sch", "dis", "mrd", "deg", "pos")
+shifts2 = c("mv.sch", "mv.dis", "crt", "mv.pos")
+shifts2.s = c("msc", "mds", "crt", "mps")
+
 ##Essential to focus on "main" positions only
 ##  (as defined by highest (or tied-for-highest) FTE
-full_data_main<-
-  unique(full_data[,c("teacher_id","year",shifts),with=F],
-                fromLast=T
-         #Get lags of all variables in shifts
-         )[,paste0(shift.s,".prv"):=
-             lapply(.SD,shift),
-           by=teacher_id,.SDcols=shifts
-           #get leads of all variables in shifts
-           ][,paste0(shift.s,".nxt"):=
-               lapply(.SD,shift,type="lead"),
-             by=teacher_id,.SDcols=shifts
-             ][,`:=`(mv.dis=district_fill!=dis.prv,
-                     mv.dis.nx=district_fill!=dis.nxt,
-                     #take care defining move school--
-                     #  some teachers move to school
-                     #  in new district with same school #
-                     mv.sch=school_fill!=sch.prv|
-                       district_fill!=dis.prv,
-                     mv.sch.nx=school_fill!=sch.nxt|
-                       district_fill!=dis.nxt,
-                     #any increase in degree counted
-                     #  as certification; not perfect,
-                     #  but works well for 
-                     #  bachelor's->masters
-                     crt=highest_degree>deg.prv|
-                       is.na(deg.prv)&!is.na(highest_degree)&
-                       year!=min(year),
-                     crt.nx=highest_degree<deg.nxt|
-                       is.na(highest_degree)&!is.na(deg.nxt),
-                     #will be imperfect for teachers
-                     #  holding positions whose
-                     #  encoding changes over time,
-                     #  but full-time teachers are always 53
-                     mv.pos=position_code!=pos.prv,
-                     mv.pos.nx=position_code!=pos.nxt)
-               #needed to wait to define shifts on these
-               #  until the above were defined
-               ][,paste0(shifts2.s,".prv"):=
-                   lapply(.SD,shift),
-                 by=teacher_id,.SDcols=shifts2
-                 #need this complicated approach to
-                 #  define cumulative moves because
-                 #  initial mv.sch is NA
-                 ][,mv.sch.cum:="[<-"(mv.sch,!is.na(mv.sch),
-                                      cumsum(na.omit(mv.sch))),
-                   by=teacher_id
-                   ][,mv.sch.tot:=max(max(mv.sch.cum,na.rm=T),0),
-                     by=teacher_id]
-rm(list=ls(pattern="shift"))
+full_data_main = 
+  unique(full_data[ , c("teacher_id", "year", shifts)], fromLast = TRUE)
+
+#Get lags of all variables in shifts
+full_data_main[ , paste0(shift.s, ".prv") :=
+                  lapply(.SD, shift), by = teacher_id, .SDcols = shifts]
+
+#get leads of all variables in shifts
+full_data_main[ , paste0(shift.s, ".nxt") :=
+                  lapply(.SD, shift, type = "lead"),
+                by = teacher_id, .SDcols = shifts]
+
+full_data_min[ , `:=`(mv.dis = district_fill != dis.prv,
+                      mv.dis.nx = district_fill != dis.nxt,
+                      #take care defining move school--
+                      #  some teachers move to school
+                      #  in new district with same school #
+                      mv.sch = school_fill != sch.prv |
+                        district_fill != dis.prv,
+                      mv.sch.nx = school_fill != sch.nxt |
+                        district_fill != dis.nxt,
+                      #any increase in degree counted
+                      #  as certification; not perfect,
+                      #  but works well for 
+                      #  bachelor's->masters
+                      crt = highest_degree > deg.prv |
+                        is.na(deg.prv) & !is.na(highest_degree) &
+                        year != yr0,
+                      crt.nx = highest_degree < deg.nxt |
+                        is.na(highest_degree) & !is.na(deg.nxt),
+                      #will be imperfect for teachers
+                      #  holding positions whose
+                      #  encoding changes over time,
+                      #  but full-time teachers are always 53
+                      mv.pos = position_code != pos.prv,
+                      mv.pos.nx = position_code != pos.nxt)]
+
+#needed to wait to define shifts on these
+#  until the above were defined
+full_data_main[ , paste0(shifts2.s, ".prv") :=
+                  lapply(.SD, shift),
+                by = teacher_id, .SDcols = shifts2]
+#need this complicated approach to
+#  define cumulative moves because
+#  initial mv.sch is NA
+full_data_main[ , mv.sch.cum := 
+                  "[<-"(mv.sch, !is.na(mv.sch),
+                        cumsum(na.omit(mv.sch))),
+                by = teacher_id]
+full_data_main[ , mv.sch.tot := 
+                  max(max(mv.sch.cum, na.rm = TRUE), 0),
+                by = teacher_id]
+rm(list = ls(pattern = "shift"))
 
 full_data[full_data_main,
-          `:=`(school_prev_main=i.sch.prv,
-               school_next_main=i.sch.nxt,
-               district_prev_main=i.dis.prv,
-               district_next_main=i.dis.nxt,
-               move_school=i.mv.sch,
-               move_school_next=i.mv.sch.nx,
-               move_school_prev=i.msc.prv,
-               move_district=i.mv.dis,
-               move_district_next=i.mv.dis.nx,
-               move_district_prev=i.mds.prv,
-               cumulative_move_school=i.mv.sch.cum,
-               total_move_school=i.mv.sch.tot,
-               married_prev=i.mrd.prv,
-               married_next=i.mrd.nxt,
-               certified=i.crt,
-               certified_next=i.crt.nx,
-               certified_prev=i.crt.prv,
-               move_position=i.mv.pos,
-               move_position_next=i.mv.pos.nx,
-               move_position_prev=i.mps.prv)]
+          `:=`(school_prev_main = i.sch.prv,
+               school_next_main = i.sch.nxt,
+               district_prev_main = i.dis.prv,
+               district_next_main = i.dis.nxt,
+               move_school = i.mv.sch,
+               move_school_next = i.mv.sch.nx,
+               move_school_prev = i.msc.prv,
+               move_district = i.mv.dis,
+               move_district_next = i.mv.dis.nx,
+               move_district_prev = i.mds.prv,
+               cumulative_move_school = i.mv.sch.cum,
+               total_move_school = i.mv.sch.tot,
+               married_prev = i.mrd.prv,
+               married_next = i.mrd.nxt,
+               certified = i.crt,
+               certified_next = i.crt.nx,
+               certified_prev = i.crt.prv,
+               move_position = i.mv.pos,
+               move_position_next = i.mv.pos.nx,
+               move_position_prev = i.mps.prv)]
 rm(full_data_main)
 
 #Synergize birth_year for those matched in the final two steps
@@ -590,166 +595,177 @@ rm(full_data_main)
 #    In case of duplicates, use the birth year that
 #      implies an age closest to the full data median age
 #  Define age now that birth_year noise is eliminated
-med_age<-full_data[,median(year-birth_year,na.rm=T)]
-full_data[.(full_data[,if(any(mismatch_yob,na.rm=T))teacher_id,
-                      by=teacher_id]$teacher_id),
-          c("birth_year","yob_flag"):={
-            x<-table2(birth_year,ord="dec",useNA="ifany")
-            list(if(x[1]>x[2]|length(x)==1)as.integer(names(x)[1])
-                 else{mxs<-names(x==max(x))
-                 inds<-birth_year%in%mxs
-                 mx.yrs<-year[inds]
-                 mx.yob<-birth_year[inds]
-                 mx.yob[which.min(abs(mx.yrs-mx.yob-med_age))]},T)},
-          by=teacher_id
-          ][,age:=year-birth_year]; rm(med_age)
+med_age = full_data[ , median(year - birth_year, na.rm = TRUE)]
+full_data[.(full_data[ , if(any(mismatch_yob, na.rm = TRUE)) teacher_id,
+                       by = teacher_id]$teacher_id),
+          c("birth_year", "yob_flag") := {
+            tbl = table2(birth_year, ord = "dec", useNA = "ifany")
+            list(if(tbl[1L] > tbl[2L] || length(tbl) == 1L)
+              as.integer(names(tbl)[1L])
+              else {
+                mxs = names(tbl == max(tbl))
+                inds = birth_year %in% mxs
+                mx.yrs = year[inds]
+                mx.yob = birth_year[inds]
+                mx.yob[which.min(abs(mx.yrs - mx.yob - med_age))]}, TRUE)},
+          by = teacher_id]
+full_data[ , age := year - birth_year]; rm(med_age)
 
 #Add identifier for three common patterns of substitution
 #  I) "Ease-in" period: begin career with some years as a sub
 #  II) "Soft retirement" period: end career with some years as a sub
 #  III) "Maternity" period: transition to subbing for some years mid-career
 ##I)
-full_data[,sub_ease_in:=all(unique(position_code[year==year[1]])==43)&
-            uniqueN(position_code)>1,by=teacher_id]
+full_data[ , sub_ease_in :=
+             all(unique(position_code[year == year[1L]]) == 43) &
+             uniqueN(position_code) > 1L, by = teacher_id]
 ##II)
-full_data[,sub_soft_retd:=all(unique(position_code[year==year[.N]])==43)&
-            uniqueN(position_code)>1&max(age,na.rm=T)>=50,by=teacher_id]
+full_data[ , sub_soft_retd := 
+             all(unique(position_code[year == year[.N]]) == 43) &
+            uniqueN(position_code) > 1L & max(age, na.rm = TRUE) >= 50
+           by = teacher_id]
 ##III)
-full_data[full_data[,all(position_code==43),
-                    by=.(teacher_id,year)][,.(sub_yr=any(V1)&!all(V1)),
-                                           keyby=teacher_id],
-          sub_maternity:=i.sub_yr&!(sub_ease_in|sub_soft_retd)]
+full_data[full_data[ , .(all_sub = all(position_code == 43)),
+                     by = .(teacher_id, year)
+                     ][ , .(sub_yr = any(all_sub) &! all(all_sub)),
+                        keyby = teacher_id],
+          sub_maternity := i.sub_yr &! (sub_ease_in | sub_soft_retd)]
 
 #Add first/last observation and
 #  new teacher/retirement or quit flags
 mx.yr<-full_data[,max(year)]
 mn.yr<-full_data[,min(year)]
-full_data[,c("first_obs","last_obs"):=
-            .(year==min(year),
-              year==max(year)),
-          by=teacher_id
-          ][,c("new_teacher","quit_next"):=
-              .(first_obs,last_obs)]
+full_data[ , c("first_obs", "last_obs") :=
+            .(year == min(year), year == max(year)),
+          by = teacher_id]
+full_data[ , c("new_teacher", "quit_next") :=
+             .(first_obs, last_obs)]
 ## Erase new_teacher and quit_next
 ##   in earliest and lastest years
-full_data[first_obs==T&year==mn.yr,new_teacher:=NA]
-full_data[last_obs==T&year==mx.yr,quit_next:=NA]
+full_data[(first_obs) & year == yr0, new_teacher := NA]
+full_data[(last_obs) & year == yrN, quit_next := NA]
 rm(mx.yr,mn.yr)
 
 #Set NA to F, 0, or NA as appropriate, in three steps:
 ## I) All NA are F for these columns:
-na.to.f<-c("married","mismatch_inits","mismatch_yob",
-           "ethnicity_flag","highest_degree_flag",
-           "gender_flag","yob_flag","certified","move_position")
-for (jj in na.to.f)set(full_data,which(is.na(full_data[[jj]])),jj,F)
+na.to.f = c("married", "mismatch_inits", "mismatch_yob",
+            "ethnicity_flag", "highest_degree_flag",
+            "gender_flag", "yob_flag", "certified", "move_position")
+for (jj in na.to.f)
+  set(full_data, which(is.na(full_data[[jj]])), jj, FALSE)
 ## II) All NA are 0 for these columns:
-na.to.0<-c("step","cumulative_move_school","total_move_school")
-for (jj in na.to.0)set(full_data,which(is.na(full_data[[jj]])),jj,0L)
+na.to.0 = c("step", "cumulative_move_school", "total_move_school")
+for (jj in na.to.0)
+  set(full_data, which(is.na(full_data[[jj]])), jj, 0L)
 ## III) Need to take care when _some_ NA should be NA, others F
 ### IIIa) NA when in the first year, F otherwise
-na.to.f2<-paste0(c("married","certified","move_position"),"_prev")
-for (jj in na.to.f2)full_data[is.na(get(jj))&first_obs==F,(jj):=F]
+na.to.f2 = paste0(c("married", "certified", "move_position"), "_prev")
+for (jj in na.to.f2)
+  full_data[is.na(get(jj)) & (first_obs), (jj) := FALSE]
 ### IIIb) NA when in the last year, F otherwise
-na.to.f3<-gsub("prev","next",na.to.f2)
-for (jj in na.to.f2)full_data[is.na(get(jj))&last_obs==F,(jj):=F]
-rm(list=ls(pattern="na.to")); rm(jj)
+na.to.f3 = gsub("prev", "next", na.to.f2)
+for (jj in na.to.f2)
+  full_data[is.na(get(jj)) & (last_obs), (jj) := FALSE]
+rm(list = ls(pattern = "na.to")); rm(jj)
 
 #Save cleaned data before cutting down to the main sample
-write.csv(full_data,file=wds["write"]%+%
-            "wisconsin_teacher_data_full.csv",row.names=F)
-write.table(full_data[,.(names(full_data),sapply(.SD,class))],
-            wds["write"]%+%"wisconsin_teacher_data_full_colClass.csv",
-            row.names=FALSE,col.names=FALSE,sep=",")
+fwrite(full_data, wds['write'] %+% "wisconsin_teacher_data_full.csv")
+fwrite(full_data[ , .(names(full_data), sapply(.SD, class))],
+       wds["write"] %+% "wisconsin_teacher_data_full_colClass.csv",
+       col.names = FALSE)
 
 #Save school-level information
 #  including all variables that are
 #   constant within district*school*year
-sch_cols<-
-  c("year","district","school","district_name",
-    "school_name","grade_level","cesa","county",
-    "district_work_type","school_mail_"%+%1:3,
-    "school_shipping_"%+%1:3,
-    rep(c("mail_","ship_"),each=3)%+%c("city","state","zip"),
-    "telephone","admin_name")
-write.csv(unique(full_data[,sch_cols,with=F]),row.names=F,
-          file=wds["write"]%+%"wisconsin_school_data_full.csv")
+sch_cols = 
+  c("year", "district", "school", "district_name",
+    "school_name", "grade_level", "cesa", "county",
+    "district_work_type", "school_mail_" %+% 1L:3L,
+    "school_shipping_" %+% 1L:3L,
+    rep(c("mail_", "ship_"), each = 3L) %+% c("city", "state", "zip"),
+    "telephone", "admin_name")
+fwrite(unique(full_data[ , sch_cols]),
+       wds["write"] %+% "wisconsin_school_data_full.csv")
 
 # Data consolidation ####
-counts<-full_data[,c(.N,uniqueN(teacher_id))]
-cat(paste0("Step 0): ",counts[1],
-           " Observations, ",counts[2],
+counts = full_data[ , c(.N, uniqueN(teacher_id))]
+cat(paste0("Step 0): ", counts[1L],
+           " Observations, ", counts[2L],
            " Individuals\n"))
 
 ## 1) Position Code: 53 = full-time teacher
 ##    Eliminate 1,321,081 observations (41%) / 184,163 individuals (56%)
-full_data<-full_data[.(full_data[position_code==53,unique(teacher_id)])]
+full_data = full_data[.(full_data[position_code==53, unique(teacher_id)])]
 cat("Step 1):")
-counts<-counts_update(counts)
+counts = counts_update(counts)
 
 ## 2) Area Code: 0050 (all-purpose elementary teachers)
 ##               0300 (English, typically middle/high school)
 ##               0400 (Mathematics, typically mid/high school)
 ##    Eliminate 930,321 observations (49%) / 66,778 individuals (46%)
-full_data<-full_data[.(full_data[area%in%c("0050","0300","0400"),unique(teacher_id)])]
+full_data = full_data[.(full_data[area %in% c("0050","0300","0400"), 
+                                  unique(teacher_id)])]
 cat("Step 2):")
-counts<-counts_update(counts)
+counts = counts_update(counts)
 
 ## 3) Highest Degree: 4 (Bachelor's Degree)
 ##                    5 (Master's Degree)
 ##    Eliminate 3,661 observations (0%) / 643 individuals (1%)
-full_data<-full_data[.(full_data[highest_degree%in%4:5,unique(teacher_id)])]
+full_data = full_data[.(full_data[highest_degree %in% 4L:5L,
+                                  unique(teacher_id)])]
 cat("Step 3):")
-counts<-counts_update(counts)
+counts = counts_update(counts)
 
 ## 4) District Code: 99xx are all CESA positions
 ##    Eliminate 561 observations (0%) / 44 individuals (0%)
-full_data<-full_data[.(full_data[substring(district,1,2)!="99",unique(teacher_id)])]
+full_data = full_data[.(full_data[substring(district, 1L, 2L) != "99",
+                                  unique(teacher_id)])]
 cat("Step 4):")
-counts<-counts_update(counts)
+counts = counts_update(counts)
 
 ## 5) Total Experience: Eliminate teachers with
 ##   more than 30 and less than 1 (seems to
 ##   be a typo) years' experience
 ##   Eliminate 80,875 observations (9%) / 1707 individuals (2%)
-full_data<-full_data[total_exp>=1&total_exp<=30,]
+full_data = full_data[total_exp >= 1 & total_exp <= 30]
 cat("Step 5):")
-counts<-counts_update(counts)
+counts = counts_update(counts)
 
 ## 6) Work District Type: 04 are regular public schools
 ##    Eliminate 5,779 observations (1%) / 1256 individuals (2%)
-full_data<-full_data[.(full_data[district_work_type=="04",unique(teacher_id)])]
+full_data = full_data[.(full_data[district_work_type == "04",
+                                  unique(teacher_id)])]
 cat("Step 6):")
-counts<-counts_update(counts)
+counts = counts_update(counts)
 
 ## 7) Months Employed / Days of Contract
 ##    Through 2003-04, months used, days thereafter
 ##      *Eliminate those who never worked >=8.75 months
 ##      *Eliminate those who never worked >=175 days
 ##    Eliminate 3,354 observations (0%) / 838 individuals (1%)
-full_data<-full_data[,if(any(months_employed[year<=2004]>=875,na.rm=T)|
-                         any(days_of_contract[year>2004]>=175,na.rm=T)).SD,
-                     by=teacher_id]
+full_data =
+  full_data[ , if (any(months_employed[year <= 2004] >= 875, na.rm = TRUE) ||
+                   any(days_of_contract[year > 2004] >= 175, na.rm = TRUE))
+    .SD, by = teacher_id]
 cat("Step 7):")
-counts<-counts_update(counts)
+counts = counts_update(counts)
 
 ## 8) Instability in ethnicity/gender
 ##    Eliminate 1480 observations (1%) / 144 individuals (0%)
-full_data<-full_data[.(full_data[,teacher_id[uniqueN(ethnicity)==1&
-                                               uniqueN(gender)==1],
-                                 by=teacher_id]$V1)]
+full_data = full_data[.(full_data[ , teacher_id[uniqueN(ethnicity) == 1L &
+                                                  uniqueN(gender) == 1L],
+                                 by = teacher_id]$V1)]
 cat("Step 8):")
-counts<-counts_update(counts)
+counts = counts_update(counts)
 
 ## 9) Category code: 1 are professional, regular education teachers
 ##    Eliminate 6230 observations (1%) / 422 individuals (1%)
-full_data<-full_data[.(full_data[category=="1",unique(teacher_id)])]
+full_data = full_data[.(full_data[category == "1", unique(teacher_id)])]
 cat("Step 9):")
-counts<-counts_update(counts)
+counts = counts_update(counts)
 
 #Finally, write the data:
-write.csv(full_data,
-          file=wds["write"]%+%"wisconsin_teacher_data_matched.csv",
-          row.names=F)
-write.table(full_data[,.(names(full_data),sapply(.SD,class))],
-            wds["write"]%+%"wisconsin_teacher_data_matched_colClass.csv",
-            row.names=FALSE,col.names=FALSE,sep=",")
+fwrite(full_data, wds["write"] %+% "wisconsin_teacher_data_matched.csv")
+fwrite(full_data[ , .(names(full_data), sapply(.SD, class))],
+       wds["write"] %+% "wisconsin_teacher_data_matched_colClass.csv",
+       col.names=FALSE)

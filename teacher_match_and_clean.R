@@ -698,7 +698,7 @@ cat(paste0("Step 0): ", counts[1L],
 ## 1) Position Code: 53 = full-time teacher
 ##    Eliminate 1,321,081 observations (41%) / 184,163 individuals (56%)
 full_data = full_data[.(full_data[position_code==53, unique(teacher_id)])]
-cat("Step 1):")
+cat("Step 1): Keep full-time teachers\n")
 counts = counts_update(counts)
 
 ## 2) Area Code: 0050 (all-purpose elementary teachers)
@@ -707,7 +707,7 @@ counts = counts_update(counts)
 ##    Eliminate 930,321 observations (49%) / 66,778 individuals (46%)
 full_data = full_data[.(full_data[area %in% c("0050","0300","0400"), 
                                   unique(teacher_id)])]
-cat("Step 2):")
+cat("Step 2): Keep English/Math/all-purpose elementary teachers\n")
 counts = counts_update(counts)
 
 ## 3) Highest Degree: 4 (Bachelor's Degree)
@@ -715,14 +715,14 @@ counts = counts_update(counts)
 ##    Eliminate 3,661 observations (0%) / 643 individuals (1%)
 full_data = full_data[.(full_data[highest_degree %in% 4L:5L,
                                   unique(teacher_id)])]
-cat("Step 3):")
+cat("Step 3): Keep Bachelor's/Master's degrees\n")
 counts = counts_update(counts)
 
 ## 4) District Code: 99xx are all CESA positions
 ##    Eliminate 561 observations (0%) / 44 individuals (0%)
 full_data = full_data[.(full_data[substring(district, 1L, 2L) != "99",
                                   unique(teacher_id)])]
-cat("Step 4):")
+cat("Step 4): Eliminate teachers with only CESA positions\n")
 counts = counts_update(counts)
 
 ## 5) Total Experience: Eliminate teachers with
@@ -730,14 +730,14 @@ counts = counts_update(counts)
 ##   be a typo) years' experience
 ##   Eliminate 80,875 observations (9%) / 1707 individuals (2%)
 full_data = full_data[total_exp >= 1 & total_exp <= 30]
-cat("Step 5):")
+cat("Step 5): Keep teachers with between 1 & 30 years' experience\n")
 counts = counts_update(counts)
 
 ## 6) Work District Type: 04 are regular public schools
 ##    Eliminate 5,779 observations (1%) / 1256 individuals (2%)
 full_data = full_data[.(full_data[district_work_type == "04",
                                   unique(teacher_id)])]
-cat("Step 6):")
+cat("Step 6): Keep regular public school teachers")
 counts = counts_update(counts)
 
 ## 7) Months Employed / Days of Contract
@@ -749,7 +749,7 @@ full_data =
   full_data[ , if (any(months_employed[year <= 2004] >= 875, na.rm = TRUE) ||
                    any(days_of_contract[year > 2004] >= 175, na.rm = TRUE))
     .SD, by = teacher_id]
-cat("Step 7):")
+cat("Step 7): Drop teachers always working less than 8.75 months/175 days\n")
 counts = counts_update(counts)
 
 ## 8) Instability in ethnicity/gender
@@ -757,13 +757,13 @@ counts = counts_update(counts)
 full_data = full_data[.(full_data[ , teacher_id[uniqueN(ethnicity) == 1L &
                                                   uniqueN(gender) == 1L],
                                  by = teacher_id]$V1)]
-cat("Step 8):")
+cat("Step 8): Drop teachers with noise remaining in gender/ethnicity")
 counts = counts_update(counts)
 
 ## 9) Category code: 1 are professional, regular education teachers
 ##    Eliminate 6230 observations (1%) / 422 individuals (1%)
 full_data = full_data[.(full_data[category == "1", unique(teacher_id)])]
-cat("Step 9):")
+cat("Step 9): Keep category code 1 (profession/regular education)")
 counts = counts_update(counts)
 
 #Finally, write the data:

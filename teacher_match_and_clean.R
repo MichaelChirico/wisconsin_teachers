@@ -16,6 +16,7 @@ library(funchir)
 library(data.table)
 library(stringr)
 library(zoo)
+library(RPushbullet)
 
 #For data consolidation stage & keeping better track of
 #  effects of sample restrictions given any future 
@@ -107,8 +108,8 @@ rm(nnames)
 #  year of birth
 full_data = 
   full_data[ , if (uniqueN(id) == 1L) .SD,
-             by = .(first_name_clean, last_name_clean,
-                    birth_year, year)]
+             keyby = .(first_name_clean, last_name_clean,
+                       birth_year, year)]
 full_data[is.na(fringe), fringe := 0]
 
 #Will also use a different cleaned version of the first name--
@@ -175,7 +176,7 @@ get_id = function(yr, key_prev, key_crnt = key_prev, step, ...){
   #Merge, reset keys
   setkeyv(full_data, key_crnt)
   full_data[year == yr & is.na(teacher_id),
-            (update_cols) := unmatched[.SD, update_cols]]
+            (update_cols) := unmatched[.SD, ..update_cols]]
   setkey(full_data, year)
 
   #assign the ID and flags to all observations of matched teachers in the
@@ -184,9 +185,6 @@ get_id = function(yr, key_prev, key_crnt = key_prev, step, ...){
               lapply(.SD, function(x) na.omit(x)[1L]),
             by = id, .SDcols = update_cols]
 }
-
-#sort by FTE to be sure the most-intensive position comes last
-setkey(full_data, year, full_time_equiv)
 
 #add indices to hopefully facilitate the process
 setindex(full_data, year)
@@ -211,7 +209,7 @@ setindexv(full_data,
           c("first_name_clean", "nee_clean", "birth_year"))
 #Used in Step 7
 setindexv(full_data,
-          c("first_name_clean", "nee2_clean"
+          c("first_name_clean", "nee2_clean",
             "birth_year", "district", "school"))
 #Used in Step 8
 setindexv(full_data,
@@ -248,9 +246,11 @@ setindexv(full_data,
 #Used in Step 20
 setindexv(full_data,
           c("first_name_clean", "last_name_clean", "district", "position_code"))
+#Finally, sort by FTE to be sure the most-intensive position comes last
+setkey(full_data, year, full_time_equiv)
 
 system.time({
-  for (yy in full_data[,(min(year)+1L):max(year)]){
+  for (yy in (yr0+1L):yrN){
     print(yy)
     #1) First match anyone who stayed in the same school
     #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | DISTRICT | SCHOOL ID
@@ -383,7 +383,7 @@ system.time({
     setkey(full_data, year)
   }
 }); rm(yy, current_max, new_ids)
-
+pbPost('note', 'Matching Algorithm Completed')
 
 ###############################################################################
 #                          Post-Match Cleanup                                 #
@@ -502,7 +502,7 @@ full_data[ , school_fill := na.locf(na.locf(school, na.rm = FALSE),
            by = .(teacher_id, district)]
 full_data[ , district_fill := na.locf(na.locf(district, na.rm = FALSE),
                                       fromLast = TRUE, na.rm = FALSE),
-           by = .(teacher_id, hire_district)]
+           by = .(teacher_id, district_hire)]
 
 #Adding all lead/lag-based variables
 shifts = c("school_fill", "district_fill", "married",
@@ -514,7 +514,8 @@ shifts2.s = c("msc", "mds", "crt", "mps")
 ##Essential to focus on "main" positions only
 ##  (as defined by highest (or tied-for-highest) FTE
 full_data_main = 
-  unique(full_data[ , c("teacher_id", "year", shifts)], fromLast = TRUE)
+  unique(full_data[ , c("teacher_id", "year", shifts), with = FALSE],
+         fromLast = TRUE)
 
 #Get lags of all variables in shifts
 full_data_main[ , paste0(shift.s, ".prv") :=
@@ -525,30 +526,30 @@ full_data_main[ , paste0(shift.s, ".nxt") :=
                   lapply(.SD, shift, type = "lead"),
                 by = teacher_id, .SDcols = shifts]
 
-full_data_min[ , `:=`(mv.dis = district_fill != dis.prv,
-                      mv.dis.nx = district_fill != dis.nxt,
-                      #take care defining move school--
-                      #  some teachers move to school
-                      #  in new district with same school #
-                      mv.sch = school_fill != sch.prv |
-                        district_fill != dis.prv,
-                      mv.sch.nx = school_fill != sch.nxt |
-                        district_fill != dis.nxt,
-                      #any increase in degree counted
-                      #  as certification; not perfect,
-                      #  but works well for 
-                      #  bachelor's->masters
-                      crt = highest_degree > deg.prv |
-                        is.na(deg.prv) & !is.na(highest_degree) &
-                        year != yr0,
-                      crt.nx = highest_degree < deg.nxt |
-                        is.na(highest_degree) & !is.na(deg.nxt),
-                      #will be imperfect for teachers
-                      #  holding positions whose
-                      #  encoding changes over time,
-                      #  but full-time teachers are always 53
-                      mv.pos = position_code != pos.prv,
-                      mv.pos.nx = position_code != pos.nxt)]
+full_data_main[ , `:=`(mv.dis = district_fill != dis.prv,
+                       mv.dis.nx = district_fill != dis.nxt,
+                       #take care defining move school--
+                       #  some teachers move to school
+                       #  in new district with same school #
+                       mv.sch = school_fill != sch.prv |
+                         district_fill != dis.prv,
+                       mv.sch.nx = school_fill != sch.nxt |
+                         district_fill != dis.nxt,
+                       #any increase in degree counted
+                       #  as certification; not perfect,
+                       #  but works well for 
+                       #  bachelor's->masters
+                       crt = highest_degree > deg.prv |
+                         is.na(deg.prv) & !is.na(highest_degree) &
+                         year != yr0,
+                       crt.nx = highest_degree < deg.nxt |
+                         is.na(highest_degree) & !is.na(deg.nxt),
+                       #will be imperfect for teachers
+                       #  holding positions whose
+                       #  encoding changes over time,
+                       #  but full-time teachers are always 53
+                       mv.pos = position_code != pos.prv,
+                       mv.pos.nx = position_code != pos.nxt)]
 
 #needed to wait to define shifts on these
 #  until the above were defined
@@ -622,7 +623,7 @@ full_data[ , sub_ease_in :=
 ##II)
 full_data[ , sub_soft_retd := 
              all(unique(position_code[year == year[.N]]) == 43) &
-            uniqueN(position_code) > 1L & max(age, na.rm = TRUE) >= 50
+            uniqueN(position_code) > 1L & max(age, na.rm = TRUE) >= 50,
            by = teacher_id]
 ##III)
 full_data[full_data[ , .(all_sub = all(position_code == 43)),
@@ -633,8 +634,6 @@ full_data[full_data[ , .(all_sub = all(position_code == 43)),
 
 #Add first/last observation and
 #  new teacher/retirement or quit flags
-mx.yr<-full_data[,max(year)]
-mn.yr<-full_data[,min(year)]
 full_data[ , c("first_obs", "last_obs") :=
             .(year == min(year), year == max(year)),
           by = teacher_id]
@@ -644,7 +643,6 @@ full_data[ , c("new_teacher", "quit_next") :=
 ##   in earliest and lastest years
 full_data[(first_obs) & year == yr0, new_teacher := NA]
 full_data[(last_obs) & year == yrN, quit_next := NA]
-rm(mx.yr,mn.yr)
 
 #Set NA to F, 0, or NA as appropriate, in three steps:
 ## I) All NA are F for these columns:

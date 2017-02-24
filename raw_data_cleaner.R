@@ -24,7 +24,9 @@ library(data.table)
 URL = 'https://dpi.wi.gov/cst/data-collections/staff/published-data'
 ## links identified by being .zip (since 2012-13)
 ##   or .exe (all earlier years)
-URL_xp = '//a[contains(@href, ".zip") or contains(@href, ".exe")]'
+URL_xp = paste('//a[contains(@href, ".zip") or', 
+               'contains(@href, ".ZIP") or',
+               'contains(@href, ".exe")]')
 data_urls = read_html(URL) %>% 
   html_nodes(xpath = URL_xp) %>% html_attr('href') %>%
   paste0('https://dpi.wi.gov', .)

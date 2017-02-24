@@ -18,22 +18,6 @@ library(stringr)
 library(zoo)
 library(RPushbullet)
 
-#For data consolidation stage & keeping better track of
-#  effects of sample restrictions given any future 
-#  code edits / sample revisions, etc.
-counts_update = function(old_counts) {
-  new_counts = full_data[ , c(.N, uniqueN(teacher_id))]
-  cat("Decrease from ", old_counts[1L], " to ",
-      new_counts[1L], " observations (difference of ",
-      old_counts[1L]-new_counts[1L], "/",
-      round(100*(1-new_counts[1L]/old_counts[1L])),
-      "%);\n", "Decrease from ", old_counts[2L], " to ",
-      new_counts[2L], " individuals (difference of ",
-      old_counts[2L]-new_counts[2L], "/",
-      round(100*(1-new_counts[2L]/old_counts[2L])), "%)\n", sep="")
-  new_counts
-}
-
 ###############################################################################
 #                             Data import                                     #
 ###############################################################################
@@ -666,6 +650,8 @@ for (jj in na.to.f2)
   full_data[is.na(get(jj)) & (last_obs), (jj) := FALSE]
 rm(list = ls(pattern = "na.to")); rm(jj)
 
+pbPost('note', 'Ex Post Cleanup Completed')
+
 #Save cleaned data before cutting down to the main sample
 fwrite(full_data, wds['write'] %+% "wisconsin_teacher_data_full.csv")
 fwrite(full_data[ , .(names(full_data), sapply(.SD, class))],
@@ -685,7 +671,25 @@ sch_cols =
 fwrite(unique(full_data[ , sch_cols]),
        wds["write"] %+% "wisconsin_school_data_full.csv")
 
-# Data consolidation ####
+###############################################################################
+#                           Data Consolidation                                #
+###############################################################################
+
+#For keeping better track of effects of sample
+# restrictions given any future code edits / sample revisions, etc.
+counts_update = function(old_counts) {
+  new_counts = full_data[ , c(.N, uniqueN(teacher_id))]
+  cat("Decrease from ", old_counts[1L], " to ",
+      new_counts[1L], " observations (difference of ",
+      old_counts[1L]-new_counts[1L], "/",
+      round(100*(1-new_counts[1L]/old_counts[1L])),
+      "%);\n", "Decrease from ", old_counts[2L], " to ",
+      new_counts[2L], " individuals (difference of ",
+      old_counts[2L]-new_counts[2L], "/",
+      round(100*(1-new_counts[2L]/old_counts[2L])), "%)\n", sep="")
+  new_counts
+}
+
 counts = full_data[ , c(.N, uniqueN(teacher_id))]
 cat(paste0("Step 0): ", counts[1L],
            " Observations, ", counts[2L],

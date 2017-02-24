@@ -112,8 +112,10 @@ for (fl in txt_fls){
     DT[idx, line := sprintf(paste0('%-', width, 's'), line)]
     #overwrite file, mimicking original format as closely as possible
     fwrite(DT, fl, quote = FALSE, row.names = FALSE, col.names = FALSE)
-  } else if (header_yr) {
-    #these files need to have their header removed
+  } else if (header_yr || grepl('"', readLines(fl, n = 1L))) {
+    #these files need to have their header removed,
+    #  or have lines wrapped in quotation marks
+    #  (which throws off the fixed-width dictionary)
     fwrite(DT, fl, quote = FALSE, row.names = FALSE, col.names = FALSE)
   }
   rm(width)

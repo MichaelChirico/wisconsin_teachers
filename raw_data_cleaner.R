@@ -84,7 +84,7 @@ rm(fl)
 #  stripped of trailing white space, so simply
 #  augment these with enough blanks to make each file
 #  flush on its edges.
-keys = fread(paste0(raw_data_f, 'fwf_keys.csv'),
+keys = fread(paste0(raw_data_f, 'fwf_keys.csv'), key = 'year',
              colClasses = c('character', 'character', 'integer', 'character'))
 for (fl in txt_fls){
   fl_yr = gsub('[^0-9]', '', fl)
@@ -102,7 +102,7 @@ for (fl in txt_fls){
   
   #keys file constructed by hand from the
   #  Documentation files on DPI website
-  width = keys[year == fl_yr, sum(width)]
+  width = keys[.(fl_yr), sum(width)]
   
   if (length(idx <- DT[nchar(line) < width, which = TRUE])) {
     #simply append white space to ragged lines, see
@@ -114,16 +114,14 @@ for (fl in txt_fls){
     #these files need to have their header removed
     fwrite(DT, fl, quote = FALSE, row.names = FALSE, col.names = FALSE)
   }
+  rm(width)
 }
 
 #Now, convert all fixed width files to .csv
 for (fl in txt_fls){
   fl_yr = gsub('[^0-9]', '', fl)
-  with(keys[year == fl_yr], {
-    DT = setDT(input.file(fl, formatter = dstrfw,
-                          col_types = setNames(type, vname),
-                          widths = width))
-  })
+  DT = with(keys[.(fl_yr)], 
+            setDT(input.file(fl, dstrfw, setNames(type, vname), width)))
   #use tab -- embedded , is common
   fwrite(DT, file = gsub("[.].*", ".csv", fl), sep = "\t")
 }

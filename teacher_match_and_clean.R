@@ -4,7 +4,7 @@
 #August 23, 2015
 
 ###############################################################################
-#                   Package setup & Convenient Functions                      #
+#                             Package Setup                                   #
 ###############################################################################
 rm(list = ls(all = TRUE))
 gc()
@@ -19,7 +19,7 @@ library(zoo)
 library(RPushbullet)
 
 ###############################################################################
-#                             Data import                                     #
+#                             Data Import                                     #
 ###############################################################################
 #   see raw_data_cleaner for raw input sourcing & tidying
 nnames = c("first_name", "last_name", "nee")

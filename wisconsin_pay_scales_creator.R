@@ -3,7 +3,9 @@
 #Michael Chirico
 #August 23, 2015
 
-# Package Setup, Convenient Functions ####
+###############################################################################
+#                   Package Setup & Convenient Functions                      #
+###############################################################################
 rm(list = ls(all = TRUE))
 gc()
 data.path = "/media/data_drive/wisconsin/"
@@ -23,15 +25,14 @@ discounted_earnings = function(x, r = .05){
                        nrow = TT+1L, byrow = TRUE)[-(TT+1L), ]) %*% x
 }
 
-#Data Import ####
+###############################################################################
+#                        Data Import & Subset                                 #
+###############################################################################
 
-##Import full matched data created
-##  in wisconsin_teacher_data_cleaner.R;
-##  impose sample restrictions to get rid of
-##  teachers bound to cause noise in the
-##  contract fitting procedure, as well
-##  as teachers with multiple positions
-##  by eliminating all but highest-FTE positions
+#Import full matched data created in wisconsin_teacher_data_cleaner.R;
+#  impose sample restrictions to get rid of teachers bound to
+#  cause noise in the contract fitting procedure, as well as teachers
+#  with multiple positions by eliminating all but their highest-FTE positions
 full_data = 
   fread(data.path %+% "wisconsin_teacher_data_full.csv",
         select = c("year", "highest_degree", "months_employed", "salary",
@@ -40,14 +41,13 @@ full_data =
                    "teacher_id", "school_fill", "district_fill",
                    "district_work_type"))
 full_data = 
-  full_data[highest_degree %in% 4L:5L & category == "1"&
+  full_data[highest_degree %in% 4L:5L & category == "1" &
               position_code == 53L &
               (months_employed >= 875 | year > 2004) &
               (days_of_contract >= 175 | year <= 2004) &
               (substring(area, 2L, 2L) %in% 2:7 |
                  area %in% c("0050", "0910")) &
-              !is.na(school_fill) &
-              substring(district_fill, 1L, 1L) != "9" &
+              !is.na(school_fill) & !grepl('^9', district_fill) &
               district_work_type %in% c("04", "49") &
               !school_fill %in% c("0000", "0999") &
               total_exp_floor %in% 1L:30L,
@@ -56,61 +56,68 @@ full_data =
             ][order(full_time_equiv), .SD[.N],
               by = .(teacher_id, year, full_time_equiv)]
 
-##Now, eliminate schools with insufficient coverage
+#Now, eliminate schools with insufficient coverage
 yrdsdg = c("year", "district_fill", "highest_degree")
-###Can't interpolate if there are only 2 or 3 unique experience cells represented
+yrds = c('year', 'district_fill')
+setkeyv(full_data, yrdsdg)
+setindexv(full_data, yrds)
+          
+#Can't interpolate if there are only 2 or 3
+#  unique experience cells represented
 full_data[ , node_count_flag := 
-             uniqueN(total_exp_floor) < 7L, keyby = yrdsdg]
-###Nor if there are too few teachers
+             uniqueN(total_exp_floor) < 7L, by = yrdsdg]
+
+#Nor if there are too few teachers
 full_data[ , teach_count_flag := .N < 10L, by = yrdsdg]
-###Also troublesome when there is little variation in salaries like so:
+
+#Also troublesome when there is little variation in salaries like so:
 full_data[ , sal_scale_flag :=
              mean(abs(salary - mean(salary))) < 50, by = yrdsdg]
 full_data[ , sal_count_flag := uniqueN(salary) < 5L, by = yrdsdg]
-full_data[ , fri_scale_flag := 
+full_data[ , frn_scale_flag := 
              mean(abs(salary - mean(fringe))) < 50, by = yrdsdg]
-full_data[ , fri_count_flag := uniqueN(fringe) < 5L, by = yrdsdg]
+full_data[ , frn_count_flag := uniqueN(fringe) < 5L, by = yrdsdg]
 
-###Discard variables not necessary for interpolation
+# Impose the flag on both certification tracks
+#   whenever partially violated
+flgs = paste0(c('node_count', 'teach_count', 'sal_scale',
+                'sal_count', 'frn_scale', 'frn_count'), '_flag')
+full_data[ , (flgs) := lapply(.SD, any), by = yrds, .SDcols = flgs]
+
+#Discard variables not necessary for interpolation
 full_data = 
   full_data[!(node_count_flag | teach_count_flag |
-                sal_scale_flag | sal_count_flag|
-                fri_scale_flag | fri_count_flag),
+                sal_scale_flag | sal_count_flag |
+                frn_scale_flag | frn_count_flag),
             .(year, district_fill, highest_degree,
               total_exp_floor, salary, fringe)]
 
-full_data[ , min_exp := min(total_exp_floor), by = yrdsdg]
-full_data[ , max_exp := max(total_exp_floor), by = yrdsdg]
+full_data[ , min_exp := min(total_exp_floor), by = yrds]
+full_data[ , max_exp := max(total_exp_floor), by = yrds]
 
-# Pay Scale Interpolation ####
-cobs_extrap = function(total_exp_floor, outcome, min_exp, max_exp,
-                      constraint = "increase", print.mesg = FALSE, nknots = 8,
-                      keep.data = FALSE, maxiter = 150L){
-  #get in-sample fit
-  in_sample = predict(cobs(x = total_exp_floor, y = outcome,
-                           constraint = constraint,
-                           print.mesg = print.mesg, nknots = nknots,
-                           keep.data = keep.data, maxiter = maxiter),
-                      z = min_exp:max_exp)[ , "fit"]
-  nin = length(in_sample)
-  if (sum(abs(in_sample)) < 50){
-    in_sample = rep(0, nin)
-  }
-  #append by linear extension below min_exp
-  fit = c(if (min_exp==1L) NULL else in_sample[1L] -
-            ((min_exp - 1L):1L) * (in_sample[2L] - in_sample[1L]),
-          in_sample,
-          #append by linear extension above max_exp
-          if (max_exp == 30L) NULL else in_sample[nin] +
-            (1L:(30L - max_exp)) * (in_sample[nin] - in_sample[nin-1L]))
-  #Just force to 0 anything that wants to go negative
-  fit[fit < 0] = 0
-  #Also put a ceiling on how high extrapolation can climb--
-  #From original fitted data, more than 99% of year-40 to year-20 ratios are below 45%
-  mm = 1.45*max(in_sample)
-  fit[fit>mm] = mm
-  fit
-}
+###############################################################################
+#                             Interpolation                                   #
+###############################################################################
+#to cut out predict.cobs overhead
+fpr = function(cb) with(cb, cobs:::.splValue(2, knots, coef, zs))
+
+#constants
+sal_max = full_data[ , max(salary)]
+zs = seq_len(30L)
+#salary @ 0 >= 0; salary @ 30 at most sal_max
+end_cons = rbind(c(1, 0, 0),
+                 c(-1, 30, sal_max))
+fit = mlw[highest_degree == 4,
+  .(zs, fpr(cobs(total_exp_floor, salary,
+       constraint = 'increase', lambda = -1,
+       knots.add = TRUE, repeat.delete.add = TRUE,
+       pointwise = end_cons, lambda.length = 50))),
+  by = .(year, highest_degree)]
+
+fit = mlw.09.4[, cobs(total_exp_floor, salary,
+                      constraint = 'increase', lambda = -1,
+                      knots.add = TRUE, repeat.delete.add = TRUE,
+                      pointwise = end_cons, lambda.length = 50)]
 
 #Only send to the cores the necessary data--lots of copying
 system.time({

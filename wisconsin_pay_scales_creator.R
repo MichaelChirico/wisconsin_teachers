@@ -12,8 +12,9 @@ data.path = "/media/data_drive/wisconsin/"
 library(funchir)
 library(data.table)
 library(cobs)
-library(doParallel)
+library(parallel)
 library(quantmod)
+library(RPushbullet)
 
 #Given a stream of income in periods 1,...,T
 #  return the discounted sum of future income
@@ -41,20 +42,22 @@ full_data =
                    "teacher_id", "school_fill", "district_fill",
                    "district_work_type"))
 full_data = 
-  full_data[highest_degree %in% 4L:5L & category == "1" &
-              position_code == 53L &
-              (months_employed >= 875 | year > 2004) &
-              (days_of_contract >= 175 | year <= 2004) &
-              (substring(area, 2L, 2L) %in% 2:7 |
-                 area %in% c("0050", "0910")) &
-              !is.na(school_fill) & !grepl('^9', district_fill) &
-              district_work_type %in% c("04", "49") &
-              !school_fill %in% c("0000", "0999") &
-              total_exp_floor %in% 1L:30L,
-            if (sum(full_time_equiv) == 100L) .SD,
-            by = .(teacher_id, year)
-            ][order(full_time_equiv), .SD[.N],
-              by = .(teacher_id, year, full_time_equiv)]
+  full_data[ , if (sum(full_time_equiv, na.rm = TRUE) == 100) .SD,
+             by = .(teacher_id, year)
+             ][highest_degree %in% 4L:5L & category == "1" &
+                 position_code == 53L &
+                 (months_employed >= 875 | year > 2004) &
+                 (days_of_contract >= 175 | year <= 2004) &
+                 (substring(area, 2L, 2L) %in% 2:7 |
+                    area %in% c("0050", "0910")) &
+                 !is.na(school_fill) & !grepl('^9', district_fill) &
+                 district_work_type %in% c("04", "49") &
+                 !school_fill %in% c("0000", "0999") &
+                 total_exp_floor %in% 1L:30L
+               ][order(full_time_equiv), .SD[.N],
+                 by = .(teacher_id, year, full_time_equiv)
+                 ][ , if(uniqueN(highest_degree) == 2L) .SD,
+                    by = district_fill]
 
 #Now, eliminate schools with insufficient coverage
 yrdsdg = c("year", "district_fill", "highest_degree")
@@ -92,13 +95,10 @@ full_data =
             .(year, district_fill, highest_degree,
               total_exp_floor, salary, fringe)]
 
-full_data[ , min_exp := min(total_exp_floor), by = yrds]
-full_data[ , max_exp := max(total_exp_floor), by = yrds]
-
 ###############################################################################
 #                             Interpolation                                   #
 ###############################################################################
-#to cut out predict.cobs overhead
+#fast prediction - to cut out predict.cobs overhead
 fpr = function(cb) with(cb, cobs:::.splValue(2, knots, coef, zs))
 
 #constants
@@ -107,37 +107,78 @@ zs = seq_len(30L)
 #salary @ 0 >= 0; salary @ 30 at most sal_max
 end_cons = rbind(c(1, 0, 0),
                  c(-1, 30, sal_max))
-fit = mlw[highest_degree == 4,
-  .(zs, fpr(cobs(total_exp_floor, salary,
-       constraint = 'increase', lambda = -1,
-       knots.add = TRUE, repeat.delete.add = TRUE,
-       pointwise = end_cons, lambda.length = 50))),
-  by = .(year, highest_degree)]
 
-fit = mlw.09.4[, cobs(total_exp_floor, salary,
-                      constraint = 'increase', lambda = -1,
-                      knots.add = TRUE, repeat.delete.add = TRUE,
-                      pointwise = end_cons, lambda.length = 50)]
+ba_data = full_data[highest_degree == 4]
+ma_data = full_data[highest_degree == 5]
 
-#Only send to the cores the necessary data--lots of copying
-system.time({
-  cl <- makeCluster(detectCores())
-  registerDoParallel(cl)
-  clusterExport(cl, "full_data", envir = environment())
-  clusterEvalQ(cl, {library("data.table"); library("cobs")})
-  imputed_scales = foreach(i = 1996L:2015L) %dopar% {
-    print(i)
-    full_data[.(i)][ , {mnx = min_exp[1L]; mxx=max_exp[1L]
-      s = cobs_extrap(total_exp_floor, salary, mnx, mxx)
-      f = cobs_extrap(total_exp_floor, fringe, mnx, mxx)
-      list(salary = s, fringe = f, total_pay = s+f)},
-      by = yrdsdg]
-  }
-  salary_scales =
-    do.call("rbind", imputed_scales)[ , experience := rep(1L:30L, .N/30L)]
-  setkeyv(salary_scales, c(yrdsdg, "experience"))
-  stopCluster(cl)
-})
+yrs = setNames(nm = full_data[ , unique(year)])
+#to monitor mclapply progress, can use
+#  tail -f on this file
+(out_monitor = tempfile())
+
+t0 = proc.time()["elapsed"]
+cl <- makeCluster(detectCores())
+clusterExport(cl, c('full_data', 'end_cons', 'out_monitor',
+                    'fpr', 'zs', 'yrs'),
+              envir = environment())
+clusterEvalQ(cl, {library("data.table"); library("cobs")})
+imputed_scales = rbindlist(mclapply(yrs, function(yr) {
+  cat(yr, '\n', file = out_monitor, append = TRUE)
+  full_data[.(yr), {
+    ba = highest_degree == 4
+    wage_ba = fpr(cobs(
+      total_exp_floor[ba], salary[ba], print.warn = FALSE,
+      maxiter = 1000, print.mesg = FALSE,
+      constraint = 'increase', lambda = -1,
+      knots.add = TRUE, repeat.delete.add = TRUE,
+      pointwise = end_cons, lambda.length = 50
+    ))
+    #some regressions support the hypothesis
+    #  that fringe benefits are monotonically
+    #  increasing with tenure, even though
+    #  there's not strong theoretical support for this
+    fringe_ba = fpr(cobs(
+      total_exp_floor[ba], fringe[ba], print.warn = FALSE,
+      maxiter = 1000, print.mesg = FALSE,
+      constraint = 'increase', lambda = -1,
+      knots.add = TRUE, repeat.delete.add = TRUE,
+      pointwise = end_cons, lambda.length = 50
+    ))
+    #some regressions support the hypothesis
+    #  that the MA vs. BA premium (difference, not ratio)
+    #  is increasing with tenure; this is in line
+    #  with the finding that many MA lanes are simply
+    #  fixed percentage premiums over the BA lane,
+    #  so that the raw difference will increase as BA does
+    ## **TO DO: FIX FAILURE OF EXTRAPOLATION**
+    wif = is.finite(wage_ba)
+    premium_ma = 
+      .SD[(!ba)][data.table(total_exp_floor = zs[wif], 
+                            wage_ba = wage_ba[wif]),
+                 fpr(cobs(
+                   total_exp_floor, salary - i.wage_ba, 
+                   print.warn = FALSE,  maxiter = 1000,
+                   print.mesg = FALSE, constraint = 'increase',
+                   lambda = -1, knots.add = TRUE,
+                   repeat.delete.add = TRUE, 
+                   pointwise = end_cons, lambda.length = 50
+                 )), on = 'total_exp_floor']
+    wage_ma = wage_ba + premium_ma
+    fringe_ma = fpr(cobs(
+      total_exp_floor[!ba], fringe[!ba], print.warn = FALSE,
+      maxiter = 1000, print.mesg = FALSE,
+      constraint = 'increase', lambda = -1,
+      knots.add = TRUE, repeat.delete.add = TRUE,
+      pointwise = end_cons, lambda.length = 50
+    ))
+    .(tenure = zs, wage_ba = wage_ba, fringe_ba = fringe_ba, 
+      wage_ma = wage_ma, fringe_ma = fringe_ma)}, 
+    by = district_fill]}), idcol = 'year')
+stopCluster(cl)
+
+pbPost('note', paste('Imputation Done;',
+                     proc.time()["elapsed"] - t0,
+                     'elapsed.'))
 
 # Post-Fit Clean-up: Real Dollars & Future Values ####
 ##Provide deflated wage data

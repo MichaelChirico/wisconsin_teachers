@@ -74,7 +74,7 @@ full_data[ , node_count_flag :=
              uniqueN(total_exp_floor) < 7L, by = yrdsdg]
 
 #Nor if there are too few teachers
-full_data[ , teach_count_flag := .N < 10L, by = yrdsdg]
+full_data[ , teach_count_flag := .N < 20L, by = yrdsdg]
 
 #Also troublesome when there is little variation in salaries like so:
 full_data[ , sal_scale_flag :=
@@ -143,7 +143,7 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
       #  but should in principle be specifying lambda = -1
       constraint = c('increase', 'concave'),
       knots.add = TRUE, repeat.delete.add = TRUE,
-      pointwise = end_cons, lambda.length = 50
+      pointwise = end_cons
     ))
     #using .01 -- numerical issues cause
     #  linear_extend logic to fail otherwise
@@ -158,9 +158,16 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
       total_exp_floor[ba], fringe[ba], print.warn = FALSE,
       maxiter = 5000, print.mesg = FALSE,
       keep.data = FALSE, keep.x.ps = FALSE,
+      #despite concavity imposition, which is
+      #  evidently valid in most cases, some schedules are
+      #  returned linear, and this appears to be valid as well --
+      #  see for example of seemingly linear schedules:
+      #  District: 2625, Years: 2010-2013
+      #  District: 2541, Years: 2014
+      #  District: 4557, Years: 2012-2013
       constraint = c('increase', 'concave'),
       knots.add = TRUE, repeat.delete.add = TRUE,
-      pointwise = end_cons, lambda.length = 50
+      pointwise = end_cons
     ))
     if (length(idx <- which(diff(fringe_ba) < -1e-2) + 1L)) {
       fringe_ba = linear_extend(fringe_ba, idx)
@@ -183,7 +190,7 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
                    keep.data = FALSE, keep.x.ps = FALSE,
                    print.mesg = FALSE, constraint = 'increase',
                    knots.add = TRUE, repeat.delete.add = TRUE, 
-                   pointwise = end_cons, lambda.length = 50
+                   pointwise = end_cons
                  )), on = 'total_exp_floor', nomatch = 0L]
     wage_ma = wage_ba + premium_ma
     fringe_ma = fpr(cobs(
@@ -192,7 +199,7 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
       keep.data = FALSE, keep.x.ps = FALSE,
       constraint = c('increase', 'concave'),
       knots.add = TRUE, repeat.delete.add = TRUE,
-      pointwise = end_cons, lambda.length = 50
+      pointwise = end_cons
     ))
     if (length(idx <- which(diff(fringe_ma) < -1e-2) + 1L)) {
       fringe_ma = linear_extend(fringe_ma, idx)

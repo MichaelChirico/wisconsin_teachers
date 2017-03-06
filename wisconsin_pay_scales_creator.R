@@ -104,6 +104,13 @@ full_data =
 #fast prediction - to cut out predict.cobs overhead
 fpr = function(cb) with(cb, cobs:::.splValue(2, knots, coef, zs))
 
+#when predicting beyond the range of data, cobs no longer enforces
+#  the monotonicity constraint; so extend linearly for all later points
+linear_extend = function(x, idx) {
+  x[idx] = x[idx[1L] - 1L] + diff(x[idx[1L] - 2L:1L]) * seq_len(length(idx))
+  x
+}
+
 #constants
 sal_max = full_data[ , max(salary)]
 zs = seq_len(30L)
@@ -112,9 +119,6 @@ zs = seq_len(30L)
 # end_cons = rbind(c(1, 0, 0),
 #                  c(-1, 30, sal_max))
 end_cons = cbind(1, 0, 0)
-
-ba_data = full_data[highest_degree == 4]
-ma_data = full_data[highest_degree == 5]
 
 yrs = setNames(nm = full_data[ , unique(year)])
 #to monitor mclapply progress, can use
@@ -141,6 +145,9 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
       knots.add = TRUE, repeat.delete.add = TRUE,
       pointwise = end_cons, lambda.length = 50
     ))
+    if (length(idx <- which(diff(wage_ba) < 0) + 1L)) {
+      wage_ba = linear_extend(wage_ba, idx)
+    }
     #some regressions support the hypothesis
     #  that fringe benefits are monotonically
     #  increasing with tenure, even though
@@ -164,21 +171,14 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
     premium_ma = 
       .SD[(!ba)][data.table(total_exp_floor = zs[wif], 
                             wage_ba = wage_ba[wif]), 
-                 {
-                   ## **TO DO: This is sub-optimal...
-                   if (uniqueN(total_exp_floor) == 1L) {
-                     message('Overlapping Support Failure')
-                     rep(NA_real_, length(zs))
-                   } else {
-                     fpr(cobs(
-                       total_exp_floor, salary - i.wage_ba, 
-                       print.warn = FALSE,  maxiter = 1000,
-                       keep.data = FALSE, keep.x.ps = FALSE,
-                       print.mesg = FALSE, constraint = 'increase',
-                       knots.add = TRUE, repeat.delete.add = TRUE, 
-                       pointwise = end_cons, lambda.length = 50
-                     ))
-                   }}, on = 'total_exp_floor', nomatch = 0L]
+                 fpr(cobs(
+                   total_exp_floor, salary - i.wage_ba, 
+                   print.warn = FALSE,  maxiter = 1000,
+                   keep.data = FALSE, keep.x.ps = FALSE,
+                   print.mesg = FALSE, constraint = 'increase',
+                   knots.add = TRUE, repeat.delete.add = TRUE, 
+                   pointwise = end_cons, lambda.length = 50
+                 )), on = 'total_exp_floor', nomatch = 0L]
     wage_ma = wage_ba + premium_ma
     fringe_ma = fpr(cobs(
       total_exp_floor[!ba], fringe[!ba], print.warn = FALSE,
@@ -196,6 +196,7 @@ stopCluster(cl)
 pbPost('note', paste('Imputation Done;',
                      proc.time()["elapsed"] - t0,
                      'elapsed.'))
+unlink(out_monitor)
 
 # Post-Fit Clean-up: Real Dollars & Future Values ####
 ##Provide deflated wage data

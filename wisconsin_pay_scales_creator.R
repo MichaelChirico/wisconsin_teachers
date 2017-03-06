@@ -145,7 +145,9 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
       knots.add = TRUE, repeat.delete.add = TRUE,
       pointwise = end_cons, lambda.length = 50
     ))
-    if (length(idx <- which(diff(wage_ba) < 0) + 1L)) {
+    #using .01 -- numerical issues cause
+    #  linear_extend logic to fail otherwise
+    if (length(idx <- which(diff(wage_ba) < -1e-2) + 1L)) {
       wage_ba = linear_extend(wage_ba, idx)
     }
     #some regressions support the hypothesis
@@ -160,7 +162,7 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
       knots.add = TRUE, repeat.delete.add = TRUE,
       pointwise = end_cons, lambda.length = 50
     ))
-    if (length(idx <- which(diff(fringe_ba) < 0) + 1L)) {
+    if (length(idx <- which(diff(fringe_ba) < -1e-2) + 1L)) {
       fringe_ba = linear_extend(fringe_ba, idx)
     }
     #some regressions support the hypothesis
@@ -171,6 +173,7 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
     #  so that the raw difference will increase as BA does
     ## **TO DO: FIX FAILURE OF EXTRAPOLATION**
     wif = is.finite(wage_ba)
+    if (!all(wif)) cat('Still Infs in District: ', .BY[[1L]], '\n')
     premium_ma = 
       .SD[(!ba)][data.table(total_exp_floor = zs[wif], 
                             wage_ba = wage_ba[wif]), 
@@ -191,7 +194,7 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
       knots.add = TRUE, repeat.delete.add = TRUE,
       pointwise = end_cons, lambda.length = 50
     ))
-    if (length(idx <- which(diff(fringe_ma) < 0) + 1L)) {
+    if (length(idx <- which(diff(fringe_ma) < -1e-2) + 1L)) {
       fringe_ma = linear_extend(fringe_ma, idx)
     }
     .(tenure = zs, wage_ba = wage_ba, fringe_ba = fringe_ba, 

@@ -40,12 +40,15 @@ full_data =
                    "fringe", "category", "position_code", "area",
                    "full_time_equiv", "days_of_contract", "total_exp_floor",
                    "teacher_id", "school_fill", "district_fill",
-                   "district_work_type"))
+                   "district_work_type"),
+        #otherwise assumes integer and truncates
+        colClasses = list(character = 'area'))
 full_data = 
   full_data[ , if (sum(full_time_equiv, na.rm = TRUE) == 100) .SD,
              by = .(teacher_id, year)
-             ][highest_degree %in% 4L:5L & category == "1" &
+             ][highest_degree %in% 4L:5L & category == 1L &
                  position_code == 53L &
+                 #encoding of total activity changed from 2005
                  (months_employed >= 875 | year > 2004) &
                  (days_of_contract >= 175 | year <= 2004) &
                  (substring(area, 2L, 2L) %in% 2:7 |
@@ -57,7 +60,7 @@ full_data =
                ][order(full_time_equiv), .SD[.N],
                  by = .(teacher_id, year, full_time_equiv)
                  ][ , if(uniqueN(highest_degree) == 2L) .SD,
-                    by = district_fill]
+                    by = .(district_fill, year)]
 
 #Now, eliminate schools with insufficient coverage
 yrdsdg = c("year", "district_fill", "highest_degree")
@@ -104,9 +107,11 @@ fpr = function(cb) with(cb, cobs:::.splValue(2, knots, coef, zs))
 #constants
 sal_max = full_data[ , max(salary)]
 zs = seq_len(30L)
-#salary @ 0 >= 0; salary @ 30 at most sal_max
-end_cons = rbind(c(1, 0, 0),
-                 c(-1, 30, sal_max))
+## ** ? somehow having a very high top-end constraint breaks cobs
+# #salary @ 0 >= 0; salary @ 30 at most sal_max
+# end_cons = rbind(c(1, 0, 0),
+#                  c(-1, 30, sal_max))
+end_cons = cbind(1, 0, 0)
 
 ba_data = full_data[highest_degree == 4]
 ma_data = full_data[highest_degree == 5]
@@ -119,8 +124,8 @@ yrs = setNames(nm = full_data[ , unique(year)])
 t0 = proc.time()["elapsed"]
 cl <- makeCluster(detectCores())
 clusterExport(cl, c('full_data', 'end_cons', 'out_monitor',
-                    'fpr', 'zs', 'yrs'),
-              envir = environment())
+                   'fpr', 'zs', 'yrs'),
+             envir = environment())
 clusterEvalQ(cl, {library("data.table"); library("cobs")})
 imputed_scales = rbindlist(mclapply(yrs, function(yr) {
   cat(yr, '\n', file = out_monitor, append = TRUE)
@@ -129,7 +134,10 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
     wage_ba = fpr(cobs(
       total_exp_floor[ba], salary[ba], print.warn = FALSE,
       maxiter = 1000, print.mesg = FALSE,
-      constraint = 'increase', lambda = -1,
+      keep.data = FALSE, keep.x.ps = FALSE,
+      #lambda selection led to strange fits and caused errors,
+      #  but should in principle be specifying lambda = -1
+      constraint = c('increase', 'concave'),
       knots.add = TRUE, repeat.delete.add = TRUE,
       pointwise = end_cons, lambda.length = 50
     ))
@@ -140,7 +148,8 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
     fringe_ba = fpr(cobs(
       total_exp_floor[ba], fringe[ba], print.warn = FALSE,
       maxiter = 1000, print.mesg = FALSE,
-      constraint = 'increase', lambda = -1,
+      keep.data = FALSE, keep.x.ps = FALSE,
+      constraint = c('increase', 'concave'),
       knots.add = TRUE, repeat.delete.add = TRUE,
       pointwise = end_cons, lambda.length = 50
     ))
@@ -154,20 +163,28 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
     wif = is.finite(wage_ba)
     premium_ma = 
       .SD[(!ba)][data.table(total_exp_floor = zs[wif], 
-                            wage_ba = wage_ba[wif]),
-                 fpr(cobs(
-                   total_exp_floor, salary - i.wage_ba, 
-                   print.warn = FALSE,  maxiter = 1000,
-                   print.mesg = FALSE, constraint = 'increase',
-                   lambda = -1, knots.add = TRUE,
-                   repeat.delete.add = TRUE, 
-                   pointwise = end_cons, lambda.length = 50
-                 )), on = 'total_exp_floor']
+                            wage_ba = wage_ba[wif]), 
+                 {
+                   ## **TO DO: This is sub-optimal...
+                   if (uniqueN(total_exp_floor) == 1L) {
+                     message('Overlapping Support Failure')
+                     rep(NA_real_, length(zs))
+                   } else {
+                     fpr(cobs(
+                       total_exp_floor, salary - i.wage_ba, 
+                       print.warn = FALSE,  maxiter = 1000,
+                       keep.data = FALSE, keep.x.ps = FALSE,
+                       print.mesg = FALSE, constraint = 'increase',
+                       knots.add = TRUE, repeat.delete.add = TRUE, 
+                       pointwise = end_cons, lambda.length = 50
+                     ))
+                   }}, on = 'total_exp_floor', nomatch = 0L]
     wage_ma = wage_ba + premium_ma
     fringe_ma = fpr(cobs(
       total_exp_floor[!ba], fringe[!ba], print.warn = FALSE,
       maxiter = 1000, print.mesg = FALSE,
-      constraint = 'increase', lambda = -1,
+      keep.data = FALSE, keep.x.ps = FALSE,
+      constraint = c('increase', 'concave'),
       knots.add = TRUE, repeat.delete.add = TRUE,
       pointwise = end_cons, lambda.length = 50
     ))

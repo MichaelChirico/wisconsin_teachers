@@ -137,7 +137,7 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
     ba = highest_degree == 4
     wage_ba = fpr(cobs(
       total_exp_floor[ba], salary[ba], print.warn = FALSE,
-      maxiter = 1000, print.mesg = FALSE,
+      maxiter = 5000, print.mesg = FALSE,
       keep.data = FALSE, keep.x.ps = FALSE,
       #lambda selection led to strange fits and caused errors,
       #  but should in principle be specifying lambda = -1
@@ -154,12 +154,15 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
     #  there's not strong theoretical support for this
     fringe_ba = fpr(cobs(
       total_exp_floor[ba], fringe[ba], print.warn = FALSE,
-      maxiter = 1000, print.mesg = FALSE,
+      maxiter = 5000, print.mesg = FALSE,
       keep.data = FALSE, keep.x.ps = FALSE,
       constraint = c('increase', 'concave'),
       knots.add = TRUE, repeat.delete.add = TRUE,
       pointwise = end_cons, lambda.length = 50
     ))
+    if (length(idx <- which(diff(fringe_ba) < 0) + 1L)) {
+      fringe_ba = linear_extend(fringe_ba, idx)
+    }
     #some regressions support the hypothesis
     #  that the MA vs. BA premium (difference, not ratio)
     #  is increasing with tenure; this is in line
@@ -173,7 +176,7 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
                             wage_ba = wage_ba[wif]), 
                  fpr(cobs(
                    total_exp_floor, salary - i.wage_ba, 
-                   print.warn = FALSE,  maxiter = 1000,
+                   print.warn = FALSE,  maxiter = 5000,
                    keep.data = FALSE, keep.x.ps = FALSE,
                    print.mesg = FALSE, constraint = 'increase',
                    knots.add = TRUE, repeat.delete.add = TRUE, 
@@ -182,12 +185,15 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
     wage_ma = wage_ba + premium_ma
     fringe_ma = fpr(cobs(
       total_exp_floor[!ba], fringe[!ba], print.warn = FALSE,
-      maxiter = 1000, print.mesg = FALSE,
+      maxiter = 5000, print.mesg = FALSE,
       keep.data = FALSE, keep.x.ps = FALSE,
       constraint = c('increase', 'concave'),
       knots.add = TRUE, repeat.delete.add = TRUE,
       pointwise = end_cons, lambda.length = 50
     ))
+    if (length(idx <- which(diff(fringe_ma) < 0) + 1L)) {
+      fringe_ma = linear_extend(fringe_ma, idx)
+    }
     .(tenure = zs, wage_ba = wage_ba, fringe_ba = fringe_ba, 
       wage_ma = wage_ma, fringe_ma = fringe_ma)}, 
     by = district_fill]}), idcol = 'year')

@@ -56,7 +56,12 @@ full_data =
                  !is.na(school_fill) & !grepl('^9', district_fill) &
                  district_work_type %in% c("04", "49") &
                  !school_fill %in% c("0000", "0999") &
-                 total_exp_floor %in% 1L:30L
+                 total_exp_floor %in% 1L:30L & 
+                 #seems like a reasonable floor below which
+                 #  no teacher should have been scheduled
+                 #  to have received (accounting for
+                 #  potential data errors)
+                 salary + fringe >= 10000
                ][order(full_time_equiv), .SD[.N],
                  by = .(teacher_id, year, full_time_equiv)
                  ][ , if(uniqueN(highest_degree) == 2L) .SD,
@@ -106,6 +111,9 @@ fpr = function(cb) with(cb, cobs:::.splValue(2, knots, coef, zs))
 
 #when predicting beyond the range of data, cobs no longer enforces
 #  the monotonicity constraint; so extend linearly for all later points
+## _could also do this to cover very low predicted wages at very low
+##  levels of tenure for sparsely-populated districts, but the
+##  implications of this for a model are not as dire_
 linear_extend = function(x, idx) {
   x[idx] = x[idx[1L] - 1L] + diff(x[idx[1L] - 2L:1L]) * seq_len(length(idx))
   x

@@ -1,3 +1,4 @@
+#!/usr/bin/env Rscript
 #Wisconsin Teacher Project
 #Teacher Data Matching, Cleaning
 #Michael Chirico
@@ -772,4 +773,4 @@ counts = counts_update(counts)
 fwrite(full_data, wds["write"] %+% "wisconsin_teacher_data_matched.csv")
 fwrite(full_data[ , .(names(full_data), sapply(.SD, class))],
        wds["write"] %+% "wisconsin_teacher_data_matched_colClass.csv",
-       col.names=FALSE)
+       col.names = FALSE)

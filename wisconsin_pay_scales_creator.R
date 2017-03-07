@@ -1,3 +1,4 @@
+#!/usr/bin/env Rscript
 #Wisconsin Teacher Project
 #District-Level Pay Scales Fitting
 #Michael Chirico

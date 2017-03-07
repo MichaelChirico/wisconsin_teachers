@@ -129,9 +129,6 @@ zs = seq_len(30L)
 end_cons = cbind(1, 0, 0)
 
 yrs = setNames(nm = full_data[ , unique(year)])
-#to monitor mclapply progress, can use
-#  tail -f on this file
-(out_monitor = tempfile())
 
 t0 = proc.time()["elapsed"]
 cl <- makeCluster(detectCores())
@@ -140,7 +137,6 @@ clusterExport(cl, c('full_data', 'end_cons', 'out_monitor',
              envir = environment())
 clusterEvalQ(cl, {library("data.table"); library("cobs")})
 imputed_scales = rbindlist(mclapply(yrs, function(yr) {
-  cat(yr, '\n', file = out_monitor, append = TRUE)
   full_data[.(yr), {
     ba = highest_degree == 4
     wage_ba = fpr(cobs(
@@ -186,20 +182,20 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
     #  with the finding that many MA lanes are simply
     #  fixed percentage premiums over the BA lane,
     #  so that the raw difference will increase as BA does
-    ## **TO DO: FIX FAILURE OF EXTRAPOLATION**
-    wif = is.finite(wage_ba)
-    if (!all(wif)) cat('Still Infs in District: ', .BY[[1L]], '\n')
     premium_ma = 
-      .SD[(!ba)][data.table(total_exp_floor = zs[wif], 
-                            wage_ba = wage_ba[wif]), 
-                 fpr(cobs(
-                   total_exp_floor, salary - i.wage_ba, 
-                   print.warn = FALSE,  maxiter = 5000,
-                   keep.data = FALSE, keep.x.ps = FALSE,
-                   print.mesg = FALSE, constraint = 'increase',
-                   knots.add = TRUE, repeat.delete.add = TRUE, 
-                   pointwise = end_cons
-                 )), on = 'total_exp_floor', nomatch = 0L]
+      fpr(cobs(
+        total_exp_floor[!ba], 
+        #wage premium is salary (for MA holders) minus
+        #  wage_ba corresponding to their experience level
+        #  (don't need to adjust indexing since, e.g.,
+        #   total_exp_floor == 2 means we need wage_ba[2])
+        salary[!ba] - wage_ba[total_exp_floor[!ba]], 
+        print.warn = FALSE,  maxiter = 5000,
+        keep.data = FALSE, keep.x.ps = FALSE,
+        print.mesg = FALSE, constraint = 'increase',
+        knots.add = TRUE, repeat.delete.add = TRUE, 
+        pointwise = end_cons
+      ))
     wage_ma = wage_ba + premium_ma
     fringe_ma = fpr(cobs(
       total_exp_floor[!ba], fringe[!ba], print.warn = FALSE,
@@ -214,38 +210,37 @@ imputed_scales = rbindlist(mclapply(yrs, function(yr) {
     }
     .(tenure = zs, wage_ba = wage_ba, fringe_ba = fringe_ba, 
       wage_ma = wage_ma, fringe_ma = fringe_ma)}, 
+    #note: this approach leads year to be assigned as a character
     by = district_fill]}), idcol = 'year')
 stopCluster(cl)
+
+imputed_scales[ , year := as.integer(year)]
 
 pbPost('note', paste('Imputation Done;',
                      proc.time()["elapsed"] - t0,
                      'elapsed.'))
-unlink(out_monitor)
 
 # Post-Fit Clean-up: Real Dollars & Future Values ####
 ##Provide deflated wage data
-oct_cpi = suppressWarnings(getSymbols(
-  "CPIAUCSL", src = "FRED", auto.assign = FALSE
-  #Note that data values are recorded at the end
-  #  of September in each academic year, so,
-  #  since I index AY by spring year, we use the
-  #  'prior' year's CPI in October as the base
-  )[seq(from = as.Date("1995-10-01"),
-      to = as.Date("2014-10-01"), by = "year")])
-salary_scales[data.table(year = 1996L:2015L,
-                         index = c(coredata(oct_cpi)/
-                                   oct_cpi["2014-10-01"][[1L]])),
-              `:=`(salary_real = salary/i.index,
-                   fringe_real = fringe/i.index,
-                   total_pay_real = total_pay/i.index),
-              on = "year"]
+#Note that data values are recorded at the end
+#  of September in each academic year, so,
+#  since I index AY by spring year, we use the
+#  'prior' year's CPI in October as the base
+#Also perpetual reminder: YYstaff.txt is the data for
+#  the (YY-1)-YY academic year
+oct1s = as.Date(paste0(yrs - 1L, '-10-01'))
+oct_cpi = suppressWarnings(
+  getSymbols("CPIAUCSL", src = "FRED", auto.assign = FALSE)[oct1s]
+)
+inflation_index = 
+  data.table(year = yrs,
+             #coredata returns the "column" as a matrix, so drop it
+             index = drop(coredata(oct_cpi))/oct_cpi[[length(oct_cpi)]])
+imputed_scales[inflation_index,
+               `:=`(wage_ba_real = wage_ba/i.index,
+                    wage_ma_real = wage_ma/i.index,
+                    fringe_ba_real = fringe_ba/i.index,
+                    fringe_ma_real = fringe_ma/i.index),
+               on = "year"]
 
-##Nominal future earnings at every point in the career
-salary_scales[ , total_pay_future :=
-                discounted_earnings(total_pay), by = yrdsdg]
-salary_scales[ , total_pay_future_real :=
-                discounted_earnings(total_pay_real), by = yrdsdg]
-
-write.csv(salary_scales,
-          data.path %+% "wisconsin_salary_scales_imputed.csv",
-          row.names = FALSE)
+fwrite(imputed_scales, data.path %+% "wisconsin_salary_scales_imputed.csv")

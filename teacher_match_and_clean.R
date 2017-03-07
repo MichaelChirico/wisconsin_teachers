@@ -40,6 +40,8 @@ full_data = #simultaneously read, concatenate all 20 years' data files
           colClasses = keys[.(gsub('[^0-9]', '', fl)), type])), fill = TRUE)
 close(pb)
 
+#Perpetual reminder: YYstaff.txt is the data for the (YY-1)-YY academic year;
+#  year_session is encoded as YYYYR (so applies to Spring)
 full_data[ , year := as.integer(substr(year_session, 1L, 4L))]
 #storage of some fields inconsistent across time; start unifying here
 full_data[year<2004, area := str_pad(area, width=4L, pad="0")]

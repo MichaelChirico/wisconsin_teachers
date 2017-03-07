@@ -17,6 +17,10 @@ library(parallel)
 library(quantmod)
 library(RPushbullet)
 
+#data created in pay_scales_data_cleaner.R
+full_data = fread(data.path %+% 'wisconsin_teacher_data_for_payscales.csv',
+                  colClasses =  list(character = 'district_fill'))
+
 ###############################################################################
 #                             Interpolation                                   #
 ###############################################################################

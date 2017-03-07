@@ -26,11 +26,10 @@ full_data =
         select = c("year", "highest_degree", "months_employed", "salary",
                    "fringe", "category", "position_code", "area",
                    "full_time_equiv", "days_of_contract", "total_exp_floor",
-                   "teacher_id", "school_fill", "district_fill",
-                   "district_work_type"),
+                   "teacher_id", "district_fill", "district_work_type"),
         #otherwise assumes integer and truncates
         colClasses = 
-          list(character = c('area', 'school_fill', 'district_fill')))
+          list(character = c('area', 'district_fill')))
 
 #Only want full-time teachers
 #  (eliminate 1,924,483 = 46%)

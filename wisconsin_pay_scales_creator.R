@@ -133,8 +133,7 @@ yrs = setNames(nm = full_data[ , unique(year)])
 
 t0 = proc.time()["elapsed"]
 cl <- makeCluster(detectCores())
-clusterExport(cl, c('full_data', 'end_cons', 'out_monitor',
-                   'fpr', 'zs', 'yrs'),
+clusterExport(cl, c('full_data', 'end_cons', 'fpr', 'zs', 'yrs'),
              envir = environment())
 clusterEvalQ(cl, {library("data.table"); library("cobs")})
 imputed_scales = rbindlist(mclapply(yrs, function(yr) {

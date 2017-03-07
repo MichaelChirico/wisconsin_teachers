@@ -671,7 +671,7 @@ sch_cols =
     "school_shipping_" %+% 1L:3L,
     rep(c("mail_", "ship_"), each = 3L) %+% c("city", "state", "zip"),
     "telephone", "admin_name")
-fwrite(unique(full_data[ , sch_cols]),
+fwrite(unique(full_data[ , sch_cols, with = FALSE]),
        wds["write"] %+% "wisconsin_school_data_full.csv")
 
 ###############################################################################

@@ -103,9 +103,9 @@ full_data[is.na(fringe), fringe := 0]
 #  Delete everything after the first space
 full_data[ , first_name2 := gsub("\\s.*", "", first_name)]
 
-#Experience defined as 10ths of a year in raw data
+#Experience defined as 10ths of a year in raw data (except in Excel files)
 div10 = c("local_exp", "total_exp")
-full_data[ , (div10) := lapply(.SD, `/`, 10), .SDcols = div10]; rm(div10)
+full_data[year < 2015L, (div10) := lapply(.SD, `/`, 10), .SDcols = div10]; rm(div10)
 
 #Reformat/create some variables
 #  * birth_year, highest_degre --> integer

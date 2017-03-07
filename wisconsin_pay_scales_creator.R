@@ -45,29 +45,61 @@ full_data =
         #otherwise assumes integer and truncates
         colClasses = 
           list(character = c('area', 'school_fill', 'district_fill')))
-full_data = 
-  full_data[ , if (sum(full_time_equiv, na.rm = TRUE) == 100) .SD,
-             #eliminate teachers splitting time among districts
-             #  since they're likely to have different pay scales
+
+#Only want full-time teachers
+#  (eliminate 1,924,483 = 46%)
+#   *Mostly categorized as:
+#   "Other Support Staff" [98], "Program Aide" [97],
+#   "Short-term Substitute Teacher" [43], or in major
+#   administrative/staff positions, e.g.
+#   Athletic Coach [77]/Program Coordinator [64]/
+#   Principal [51]/Speech-Language Pathologist [84]/
+#   Plant Maintenance Personnel [72]/Guidance Counselor [54]/
+#   Cafeteria Worker [73]/Clerical Support Staff [68])
+full_data = full_data[position_code == 53L]
+#Focusing on BA/MA scales; eliminate other degrees
+#  (eliminate 21,872 = 1.34%)
+full_data = full_data[highest_degree %in% 4L:5L]
+#Category 1 - Professional, Regular Education
+#  (eliminate 225,186 = 14.94%)
+#  Vast majority dropped are 0: Professional, Special Education
+full_data = full_data[category == 1L]
+#Teachers whose total FTE load is not 100 within a year/district,
+#  and who only taught at one district (some teachers listed as
+#  full-time equivalent 100 at more than one district in a year;
+#  such teachers are quite rare, and perhaps represent some
+#  phasing in phenomenon--they tend to be very young)
+#  (eliminate 152,176 = 10.94%)
+fte100 =
+  full_data[ , if (sum(full_time_equiv, na.rm = TRUE) == 100) TRUE,
              by = .(teacher_id, year, district_fill)
-             ][highest_degree %in% 4L:5L & category == 1L &
-                 position_code == 53L &
-                 #encoding of total activity changed from 2005
-                 (months_employed >= 875 | year > 2004) &
-                 (days_of_contract >= 175 | year <= 2004) &
-                 (substring(area, 2L, 2L) %in% 2:7 |
-                    area %in% c("0050", "0910")) &
-                 nzchar(school_fill) & !grepl('^9', district_fill) &
-                 district_work_type %in% c("04", "49") &
-                 !school_fill %in% c("0000", "0999") &
-                 total_exp_floor %in% 1L:30L & 
-                 #seems like a reasonable floor below which
-                 #  no teacher should have been scheduled
-                 #  to have received (accounting for
-                 #  potential data errors)
-                 salary + fringe >= 10000
-               ][order(full_time_equiv), .SD[.N],
-                 by = .(teacher_id, year)]
+             ][ , if (uniqueN(district_fill) == 1L) .SD, 
+                by = .(teacher_id, year)][ , .(teacher_id, year)]
+full_data = full_data[fte100, on = c('teacher_id', 'year')]
+rm(fte100)
+#Eliminate all but the highest-FTE position
+#  (eliminate 228,710 = 18%)
+full_data = full_data[order(full_time_equiv), .SD[.N],
+                      by = .(teacher_id, year)]
+#Focus on Wisconsin Public Schools
+#  (eliminate 14,222 = 1.4%)
+full_data = full_data[district_work_type == '04']
+#Despite efforts to focus on full-time teachers, some,
+#  as per the months_employed construct (used pre-2003)
+#  or the days_of_contract construct (used since), still enter
+#  with what must be less than full-time contracts;
+#  examining, e.g., boxplots of salary against this variable
+#  suggest there is still a systemic deficiency in pay for
+#  those working less than the "full year"; this increasing
+#  relationship appears to stabilize between 8.75 and 10.5 months 
+#  (or 175-195 days contracted), so eliminate those outside these bounds
+#  (eliminate 14,284 = 1.4%)
+full_data = 
+  full_data[(months_employed %between% c(875, 1050) | year > 2003) &
+              (days_of_contract %between% c(175, 195) | year <= 2003)]
+#Seems unlikely a full-time teacher should be
+#  making <10k in a year, so this should be eliminated as erroneous
+#  (eliminate 807 = .08%)
 
 #Now, eliminate schools with insufficient coverage
 yrdsdg = c("year", "district_fill", "highest_degree")

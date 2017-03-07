@@ -43,10 +43,13 @@ full_data =
                    "teacher_id", "school_fill", "district_fill",
                    "district_work_type"),
         #otherwise assumes integer and truncates
-        colClasses = list(character = 'area'))
+        colClasses = 
+          list(character = c('area', 'school_fill', 'district_fill')))
 full_data = 
   full_data[ , if (sum(full_time_equiv, na.rm = TRUE) == 100) .SD,
-             by = .(teacher_id, year)
+             #eliminate teachers splitting time among districts
+             #  since they're likely to have different pay scales
+             by = .(teacher_id, year, district_fill)
              ][highest_degree %in% 4L:5L & category == 1L &
                  position_code == 53L &
                  #encoding of total activity changed from 2005
@@ -54,7 +57,7 @@ full_data =
                  (days_of_contract >= 175 | year <= 2004) &
                  (substring(area, 2L, 2L) %in% 2:7 |
                     area %in% c("0050", "0910")) &
-                 !is.na(school_fill) & !grepl('^9', district_fill) &
+                 nzchar(school_fill) & !grepl('^9', district_fill) &
                  district_work_type %in% c("04", "49") &
                  !school_fill %in% c("0000", "0999") &
                  total_exp_floor %in% 1L:30L & 
@@ -64,9 +67,7 @@ full_data =
                  #  potential data errors)
                  salary + fringe >= 10000
                ][order(full_time_equiv), .SD[.N],
-                 by = .(teacher_id, year, full_time_equiv)
-                 ][ , if(uniqueN(highest_degree) == 2L) .SD,
-                    by = .(district_fill, year)]
+                 by = .(teacher_id, year)]
 
 #Now, eliminate schools with insufficient coverage
 yrdsdg = c("year", "district_fill", "highest_degree")
@@ -74,10 +75,13 @@ yrds = c('year', 'district_fill')
 setkeyv(full_data, yrdsdg)
 setindexv(full_data, yrds)
           
+#In order to use the paired approach to fitting, need
+#  both degree scales represented
+full_data[ , degree_count_flag := uniqueN(highest_degree) == 2L, by = yrds]
+
 #Can't interpolate if there are only 2 or 3
 #  unique experience cells represented
-full_data[ , node_count_flag := 
-             uniqueN(total_exp_floor) < 7L, by = yrdsdg]
+full_data[ , node_count_flag := uniqueN(total_exp_floor) < 7L, by = yrdsdg]
 
 #Nor if there are too few teachers
 full_data[ , teach_count_flag := .N < 20L, by = yrdsdg]

@@ -19,7 +19,9 @@ library(RPushbullet)
 
 #data created in pay_scales_data_cleaner.R
 full_data = fread(data.path %+% 'wisconsin_teacher_data_for_payscales.csv',
-                  colClasses =  list(character = 'district_fill'))
+                  colClasses =  list(character = 'district_fill'),
+                  key = 'year,district_fill,highest_degree')
+setindex(full_data, year, district_fill)
 
 ###############################################################################
 #                             Interpolation                                   #

@@ -155,13 +155,17 @@ full_data[ , frn_count_flag := uniqueN(fringe) < 5L, by = yrdsdg]
 flg = paste0(c('node_count', 'teach_count', 'sal_count', 'frn_count'), '_flag')
 full_data[ , (flg) := lapply(.SD, any), by = yrds, .SDcols = flg]
 
-#Discard variables not necessary for interpolation
+#Discard any variables hit by a flag
 #  (eliminate 189,440 = 21.5%, almost all from teach_count_flag)
 full_data = 
   full_data[!(degree_count_flag | node_count_flag | teach_count_flag |
-                sal_count_flag | frn_count_flag),
-            .(year, district_fill, highest_degree,
-              total_exp_floor, salary, fringe)]
+                sal_count_flag | frn_count_flag)]
+
+#Discard variables not necessary for interpolation
+n_teachers = full_data[ , uniqueN(teacher_id)]
+full_data = 
+  full_data[, .(year, district_fill, highest_degree, 
+                total_exp_floor, salary, fringe)]
 
 NN = c(NN, nrow(full_data))
 ## @knitr stop_read

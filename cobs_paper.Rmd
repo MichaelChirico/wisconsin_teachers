@@ -13,7 +13,8 @@ link-citations: true
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, results = 'hide')
+knitr::read_chunk('pay_scales_data_cleaner.R')
 ```
 
 # Introduction
@@ -31,10 +32,58 @@ There are a multitude of inference/imputation techniques suitable to the inferen
 @he introduce a linear programming approach to incorporating monotonicity and curvature restraints to quantile regression spline estimation techniques, and @ng present an overview of the R package \texttt{cobs} which gives an efficient implementation of this approach (COBS standing for Constrained B-Splines). The basic idea of quantile regression spline estimation is to swap out the standard squared loss function for a quantile-dependent weighted absolute loss function to target conditional quantiles instead of conditional means. Monotonicity, point, and curvature restrictions enter as penalized terms to the objective function; \texttt{cobs} expresses this in a fashion which facilitates the application of standard linear programming techniques for efficiency, and handles internally the issues of knot selection and penalty parameter assignment through cross-validation.
 
 # Data
+```{r start_read, cache = TRUE, include = FALSE}
+```
 
-The state of Wisconsin's Department of Public Instruction (DPI) releases annual Salary, Position & Demographic reports through the WISEstaff data collection system, and these reports represent "a point-in-time collection of all staff members in public schools as of the 3rd Friday of September..." [@dpi]. The crucial data elements from each report are the Highest Degree Code (certification), Total Experience in Education (tenure), Total Salary, Total Fringe/Employee Benefits, and Agency of Work Location Code (unique identifier of district). We pull data from the 1994-95 academic year (AY) through AY2015-16 for a total of `r prettyNum(as.integer(system('wc -l /media/data_drive/wisconsin/teacher_raw_data/data_files/*.csv | grep total | awk \'{gsub("[^0-9]", "")}1\'', intern = TRUE)) - as.integer(system('ls /media/data_drive/wisconsin/teacher_raw_data/data_files/*.csv | wc -l', intern = TRUE)), big.mark = ',')` teacher-position-year observations (many teachers serve in multiple roles within a school/district, and each of these is filed separately in the DPI system).
+```{r sample_restrictions}
+library(data.table) #since sourcing a chunk doesn't bring the libraries here
+to.pct = function(x, dig = Inf) round(100 * x, digits = dig)
+pn = function(x) prettyNum(x, big.mark = ',')
 
-Data are first fed through the matching algorithm described in further detail in a companion paper. As a consequence, 26,302 (0.7%) observations are lost on account of belonging to teachers who could not be uniquely identified in a given year of data due to sharing a first name, last name, and birth year with another teacher in the data. Specific to the exercise at hand, with data reliability and precision in mind, we make a series of further restrictions on the data. 
+#use some command line utilities to automatically
+#  generate some counts for the pre-cleaning counts
+raw_file_pattern = 
+  '/media/data_drive/wisconsin/teacher_raw_data/data_files/*.csv'
+count_all_lines = 
+  paste0('wc -l ', raw_file_pattern, ' | ',
+         'grep total | awk \'{gsub("[^0-9]", "")}1\'')
+count_headers = paste('ls', raw_file_pattern, '| wc -l')
+full_N = as.integer(system(count_all_lines, intern = TRUE)) - 
+  as.integer(system(count_headers, intern = TRUE))
+```
+
+The state of Wisconsin's Department of Public Instruction (DPI) releases annual Salary, Position & Demographic reports through the WISEstaff data collection system, and these reports represent "a point-in-time collection of all staff members in public schools as of the 3rd Friday of September..." [@dpi]. The crucial data elements from each report are the Highest Degree Code (certification), Total Experience in Education (tenure), Total Salary, Total Fringe/Employee Benefits, and Agency of Work Location Code (unique identifier of district). We pull data from the 1994-95 academic year (AY) through AY2015-16 for a total of `r pn(full_N)` teacher-position-year observations (many teachers serve in multiple roles within a school/district, and each of these is filed separately in the DPI system).
+
+Data are first fed through the matching algorithm described in further detail in a companion paper. As a consequence, `r pn(full_N - NN[1L])` (`r to.pct(1 - NN[1L]/full_N, 1L)`%) observations are lost on account of belonging to teachers who could not be uniquely identified in a given year of data due to sharing a first name, last name, and birth year with another teacher in the data. Specific to the exercise at hand, with data reliability and precision in mind, we make a series of further restrictions on the data, as depicted in Figure \ref{fig:samp_res}.
+
+To wit, from the full staff file are first eliminated all non-teaching positions; most common among the dropped observations are "Other Support Staff", "Program Aide", and "Short-term Substitute Teacher," all of whom are likely to have their pay structured in ways that differ substantially from teachers (e.g., these positions are often part of a separately-bargained contract). We then remove all teachers whose highest degree is neither a Bachelor's nor a Master's degree, a minor restriction which allows substantial clarity in understanding districts' pay structure. For more precision, we next eliminate teachers not categorized as professionals in regular education (as opposed by and large to those in special education)^[Sensitivity analyses to this and other restrictions are given in the Appendix.].
+
+The next two restrictions are related to a teacher's full-time equivalency. Full-time equivalency is for the most part used to break down the relative use of staff's time on various duties (for example, non-teaching time), or to place substitute teachers on a pay grade commensurate with their work load. Given the possibility of split duties to dilute the contribution of a teacher's classroom role to their pay, we eliminate teachers whose full-time equivalency across teaching roles is not 100; we then select only the highest-intensity (highest-FTE) role for each teacher in a given year^[With a very small number of likely-erroneous exceptions, each teacher's observation at a given district in a given year is associated with exactly one value for their pay (so that pay is not broken down by position), which means that neither can we "scale up" less-than-full-time teachers' pay to full time values, nor is it particularly important to select the highest-intensity role for each teacher.].
+
+The next three restrictions have only a minor effect on sample size, and they are to eliminate districts not categorized as Wisconsin Public Schools (for the most part, observations failing this test are teachers employed by CESAs, Wisconsin's supra-district administrative unit), to eliminate teachers recorded as having worked a period of time different from a full school year, and to eliminate a small number of teachers whose pay was implausibly small for a full time staff member (less than \$10,000 in a year). After this, we cut teachers outside 1-30 years' experience for clarity and precision (sample sizes begin to drop off around 25 years of teaching), after which we eliminate teachers assigned to non-teaching subjects (health, academic support, gifted & talented support, etc.).
+
+Finally, we make a series of cuts which are either required for COBS to function, or else increase the reliability of its output substantially. The most noteworthy/far-reaching of these numerical restrictions is to eliminate any teachers working in districts where there are not at least 20 total teachers in each degree track. While ultimately arbitrary, this number is reasonable to limit the potential effect of an individual teacher given the function to be fit to 30 levels of experience with minimal functional form restrictions. The other numerical flags require both the BA & MA track to be represented at a district, for at least 7 different levels of experience to be represented within a degree track, and for at least 5 unique values of the two measures of pay (salary and fringe benefits) to be available in each degree track; any teacher at a district failing these tests is dropped.
+
+The sum total of all of these restrictions leaves us with an analysis sample of `r pn(NN[length(NN)])` teacher-year observations, made up of `r pn(n_teachers)` individual teachers in `r full_data[ , uniqueN(district_fill)]` districts over `r full_data[ , uniqueN(year)]` years.
+
+```{r drop_plot, fig.cap = '\\label{fig:samp_res}Sample Restrictions'}
+barmat = rbind(rev(NN), c(rev(-diff(NN)), 0))
+colnames(barmat) = 
+  c('Numerical Stability Flag', 'Taught Regular Subject',
+    '1-30 Years\' Experience', 'Total Pay Plausible', 
+    'Full-Year Employment', 'District Type', 
+    'Highest-Intensity Post', 'Full-Time', 
+    'Staff Category', 'MA/BA Holders', 'Teachers', 'All Staff')
+par(mar = c(5.1, 6.1, 4.1, 2.1))
+barplot(barmat, col = c('blue', 'red'), horiz = TRUE, las = 1L,
+        main = 'Effect of Successive Restrictions on Sample Size',
+        xlab = 'Sample Size', cex.names = .6)
+```
+
+```{r overall_pay}
+full_data[ , median(salary), keyby = total_exp_floor][ , plot(total_exp_floor, V1, type = 'l')]
+```
+
 
 # References
 

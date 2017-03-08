@@ -151,19 +151,75 @@ i.e., \(y(\tau', c, d) >= y(\tau, c, d)\) whenever \(\tau' >= \tau\),
 and \(y(0, c, d) \geq 0\).
 
 He and Ng (\protect\hyperlink{ref-he}{1999}) introduce a linear
-programming approach to incorporating monotonicity and curvature
-restraints to quantile regression spline estimation techniques, and Ng
-and Maechler (\protect\hyperlink{ref-ng}{2007}) present an overview of
-the R package \texttt{cobs} which gives an efficient implementation of
-this approach (COBS standing for Constrained B-Splines). The basic idea
-of quantile regression spline estimation is to swap out the standard
-squared loss function for a quantile-dependent weighted absolute loss
-function to target conditional quantiles instead of conditional means.
-Monotonicity, point, and curvature restrictions enter as penalized terms
-to the objective function; \texttt{cobs} expresses this in a fashion
-which facilitates the application of standard linear programming
-techniques for efficiency, and handles internally the issues of knot
-selection and penalty parameter assignment through cross-validation.
+programming approach to incorporating monotonicity, curvature, and
+pointwise restraints to quantile regression spline estimation
+techniques, and Ng and Maechler (\protect\hyperlink{ref-ng}{2007})
+present an overview of the R package \texttt{cobs} which gives an
+efficient implementation of this approach (COBS standing for Constrained
+B-Splines). The basic idea of quantile regression spline estimation is
+to swap out the standard squared loss function for a quantile-dependent
+weighted absolute loss function to target conditional quantiles instead
+of conditional means. Monotonicity, point, and curvature restrictions
+enter as penalized terms to the objective function; \texttt{cobs}
+expresses this in a fashion which facilitates the application of
+standard linear programming techniques for efficiency, and handles
+internally the issues of knot selection and penalty parameter assignment
+through cross-validation.
+
+We implement and fine-tune this general approach with an eye to being as
+minimally-invasive as possible. The first innovation is required by the
+poor performance of standard COBS fit in extrapolation. Data sparsity in
+smaller districts means that it is often the case that only a small
+range of interesting \(\tau\) values are observed in a given
+year-certification-district. Monotonicty constraints are only built into
+the B-spline routine internally; the underlying basis functions may
+produce decreasing fits outside the observed range of data. To overcome
+this, we take a cue from the literature tackling Runge's Phenomenon
+(Runge \protect\hyperlink{ref-runge}{1901}), wherein polynomial
+approximations tend to exhibit extreme oscillations in extrapolation.
+This issue is one of the motivations behind natural cubic/smoothing
+splines (see, e.g., Friedman, Hastie, and Tibshirani
+\protect\hyperlink{ref-friedman}{2001}; Wahba
+\protect\hyperlink{ref-wahba}{1990}; Green and Silverman
+\protect\hyperlink{ref-green}{1993}; or de Boor
+\protect\hyperlink{ref-deboor}{1978}), which handle this issue by using
+a simple linear basis function outside the outermost interpolating
+knots. We incorporate this technique of linear extension only when
+necessary by testing the COBS fit for monotonicity; \(\tau\) values
+failing this constraint are replaced by extending the final
+non-decreasing fit values through the end of the range of extrapolation.
+
+Next, a major shortcoming of COBS for this context is its limit to
+one-dimensional spline fits; while techniques for nonparametric B-spline
+fits are available in arbitrary dimensions (see de Boor
+\protect\hyperlink{ref-deboor}{1978}), at present COBS is only capable
+of imposing monotonicity on one dimension of a curve. In our context,
+however, \(y(\tau, c)\) is increasing not only with respect to \(\tau\),
+but also with respect to \(c\) (as, without fail until only very
+recently in Wisconsin, certification was rewarded with a Master's
+premium, typically a percentage increase in wage). One solution would be
+to generalize the implementation of COBS to handle a second dimension by
+simply adding penalty terms along this dimesion. We abandon this
+approach because of the categorical nature of the certification
+dimension -- there are not numerical units to the difference between
+having a Master's vs.~Bachelor's degree; the assignment of such a number
+required by this approach would itself become an implementation
+hyperparameter, meaning that the ultimate fit would itself be sensitive
+to the choice of continuous representation.
+
+Instead, we use a two-step procedure to fit the Bachelor's and Master's
+pay tracks in serial. In the first step, we fit the Bachelor's career
+track as a typical one-dimensional COBS fit. In the second step, we
+first construct Master's premia for each observation by subtracting out
+the predicted Bachelor's pay corresponding to each observed level of
+tenure for a teacher with a Master's degree. We then use COBS to fit a
+non-decreasing Master's premium curve over all tenure levels on these
+residuals, before finally adding the Master's premium and Bachelor's fit
+curves to get the overal Master's fit curve. Monotonicity of the result
+is guaranteed by forcing upwards monotonicity on the Master's premium, a
+restriction in line with the empirical observation that Master's degree
+pay is often simply a fixed-percentage rise over the corresponding
+Bachelor's pay.
 
 \section{Data}\label{data}
 
@@ -171,15 +227,15 @@ The state of Wisconsin's Department of Public Instruction (DPI) releases
 annual Salary, Position \& Demographic reports through the WISEstaff
 data collection system, and these reports represent ``a point-in-time
 collection of all staff members in public schools as of the 3rd Friday
-of September\ldots{}'' (DPI \protect\hyperlink{ref-dpi}{2017}). The
-crucial data elements from each report are the Highest Degree Code
-(certification), Total Experience in Education (tenure), Total Salary,
-Total Fringe/Employee Benefits, and Agency of Work Location Code (unique
-identifier of district). We pull data from the 1994-95 academic year
-(AY) through AY2015-16 for a total of 3,588,614 teacher-position-year
-observations (many teachers serve in multiple roles within a
-school/district, and each of these is filed separately in the DPI
-system).
+of September\ldots{}'' (Public Instruction
+\protect\hyperlink{ref-dpi}{2017}). The crucial data elements from each
+report are the Highest Degree Code (certification), Total Experience in
+Education (tenure), Total Salary, Total Fringe/Employee Benefits, and
+Agency of Work Location Code (unique identifier of district). We pull
+data from the 1994-95 academic year (AY) through AY2015-16 for a total
+of 3,588,614 teacher-position-year observations (many teachers serve in
+multiple roles within a school/district, and each of these is filed
+separately in the DPI system).
 
 Data are first fed through the matching algorithm described in further
 detail in a companion paper. As a consequence, 26,302 (0.7\%)
@@ -189,6 +245,12 @@ name, last name, and birth year with another teacher in the data.
 Specific to the exercise at hand, with data reliability and precision in
 mind, we make a series of further restrictions on the data, as depicted
 in Figure \ref{fig:samp_res}.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics{cobs_paper_files/figure-latex/drop_plot-1.pdf}
+\caption{\label{fig:samp_res}Sample Restrictions}
+\end{figure}
 
 To wit, from the full staff file are first eliminated all non-teaching
 positions; most common among the dropped observations are ``Other
@@ -248,24 +310,82 @@ district failing these tests is dropped.
 
 The sum total of all of these restrictions leaves us with an analysis
 sample of 689,678 teacher-year observations, made up of 94,370
-individual teachers in 242 districts over 22 years.
+individual teachers in 242 districts over 22 years. In total, there is
+sufficient data to fit 7,476 \(y_t(\tau, c, d)\) curves, an average of
+roughly 100 observations per curve.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics{cobs_paper_files/figure-latex/drop_plot-1.pdf}
-\caption{\label{fig:samp_res}Sample Restrictions}
+\includegraphics{cobs_paper_files/figure-latex/milwaukee-1.pdf}
+\caption{\label{fig:mwk}Pay in Milwaukee, 2003-2006}
 \end{figure}
 
-\includegraphics{cobs_paper_files/figure-latex/overall_pay-1.pdf}
+As an illustrative example of the patterns in the data we wish to
+quantify and formalize, we turn briefly now to Milwaukee Public Schools,
+the largest district in Wisconsin. Figure \ref{fig:mwk} depicts key
+moments of the empirical distribution of salary in 4 years at Milwaukee
+Public Schools, broken down by tenure and certification. The central
+lines on each plot (Bachelor's pay track in blue, Master's pay track in
+red) are the empirical median levels of pay, and thus give a rough
+approximation to \(y(\tau, c)\). The dashed-line intervals on either
+side represent the 25th and 75th percentiles.
+
+Notably, these intervals and the medians themselves tend to get quite
+noisy at later stages in the career, especially for the Bachelor's
+track. This fact that reflects the almost universal certification of
+teachers by about 15 years into their career. This is reflected in the
+bar graph below each set of curves, which shows the distribution of
+teachers in each certification track by tenure. Almost all new teachers
+start with only a Bachelor's degree; the relative presence of Master's
+degrees grows over time as more teachers certify mid-career.
+
+We can also note two more key empirical facts from this plot. First, the
+vanishing presence of teachers in both certification tracks leads the
+empirical median to be a poor approximation of \(y(\tau, c)\) since it
+frequently fails to respect the fundamental monotonicity constraint
+discussed above. With respect to tenure, this tends to affect the
+Bachelor's track later in the career as more teachers certify, and the
+Master's track very early in the career before teachers certify. The
+monotonicity with respect to \(c\) is maintained here for Milwaukee, but
+this is not always the case; our estimation procedure is thus careful to
+impose these restrictions internally.
+
+Second, structural breaks are an important empirical phenomenon in this
+context. Each time a contract is renegotiated at a district, the
+tenure-wage curves can potentially change shape dramatically. It is with
+this in mind that we refrain, given our ignorance with respect to when
+such structural breaks occur, from combining information from adjacent
+years in fitting a given year's curve, an approach which would
+substantially enhance the statistical power avaiable to
+sparsely-populated districts. Such a structural break is apparent in
+Milwaukee, for example, between 2003 and 2004 and between 2005 and 2006,
+where the shape of the Master's pay scale has shifted notably. While we
+eschew, for example, full Bayesian estimation of structural breaks in a
+given district, such techniques are applicable; instead, we settle for
+the purposes at hand with investigating evidence for such breaks
+\emph{ex post}.
+
+\section{Results}\label{results}
+
+\section{Conclusion}\label{conclusion}
 
 \section{References}\label{references}
 
 \bibliographystyle{theapa}\bibliography{references}
 
 \hypertarget{refs}{}
-\hypertarget{ref-dpi}{}
-DPI. 2017. ``School Staff: Salary, Position \& Demographic Reports.''
-\url{https://dpi.wi.gov/cst/data-collections/staff/published-data}.
+\hypertarget{ref-deboor}{}
+de Boor, Carl. 1978. \emph{A Practical Guide to Splines}. Vol. 27.
+Springer-Verlag New York.
+
+\hypertarget{ref-friedman}{}
+Friedman, Jerome, Trevor Hastie, and Robert Tibshirani. 2001. \emph{The
+Elements of Statistical Learning}. Vol. 1. Springer.
+
+\hypertarget{ref-green}{}
+Green, Peter J, and Bernard W Silverman. 1993. \emph{Nonparametric
+Regression and Generalized Linear Models: A Roughness Penalty Approach}.
+CRC Press.
 
 \hypertarget{ref-he}{}
 He, Xuming, and Pin Ng. 1999. ``COBS: Qualitatively Constrained
@@ -277,6 +397,19 @@ Ng, Pin, and Martin Maechler. 2007. ``A Fast and Efficient
 Implementation of Qualitatively Constrained Quantile Smoothing
 Splines.'' \emph{Statistical Modelling} 7 (4). Sage Publications India
 Pvt. Ltd, B-42, Panchsheel Enclave, New Delhi: 315--28.
+
+\hypertarget{ref-dpi}{}
+Public Instruction, Wisconsin Department of. 2017. ``School Staff:
+Salary, Position \& Demographic Reports.''
+\url{https://dpi.wi.gov/cst/data-collections/staff/published-data}.
+
+\hypertarget{ref-runge}{}
+Runge, Carl. 1901. ``Über Empirische Funktionen Und Die Interpolation
+Zwischen Äquidistanten Ordinaten.'' \emph{Zeitschrift Für Mathematik Und
+Physik} 46 (224-243): 20.
+
+\hypertarget{ref-wahba}{}
+Wahba, Grace. 1990. \emph{Spline Models for Observational Data}. SIAM.
 
 
 \end{document}

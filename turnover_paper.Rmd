@@ -1,0 +1,32 @@
+---
+title: "Teacher Turnover in Wisconsin"
+author: "Michael Chirico"
+date: "March 17, 2017"
+output:
+  pdf_document:
+    keep_tex: yes
+header-includes:
+  - \usepackage{theapa}
+abstract: 'Turnover in Wisconsin'
+bibliography: references.bib
+link-citations: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, results = 'hide')
+```
+
+# Introduction
+
+# Data
+
+# Results
+
+```{r table_1}
+
+```
+
+
+# Conclusion
+
+# References

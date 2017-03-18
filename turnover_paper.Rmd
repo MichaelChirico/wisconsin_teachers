@@ -16,6 +16,40 @@ link-citations: true
 knitr::opts_chunk$set(echo = FALSE, results = 'hide')
 ```
 
+```{r data_import, include = FALSE}
+library(data.table)
+library(funchir)
+
+wds = c(data = '/media/data_drive/wisconsin/')
+
+colClasses = fread(wds['data'] %+% 
+                     'wisconsin_teacher_data_matched_colClass.csv',
+                   header = FALSE)
+teachers = fread(wds['data'] %+% 'wisconsin_teacher_data_matched.csv',
+                 colClasses = colClasses$V2)
+
+teachers = teachers[year %between% c(2000, 2008)]
+
+teachers = 
+  unique(teachers[order(-full_time_equiv)], by = c('teacher_id', 'year'))
+
+teachers[is.na(move_school_next), move_school_next := FALSE]
+teachers[is.na(move_district_next), move_district_next := FALSE]
+
+schools = fread(wds['data'] %+% 'school_demographics.csv',
+                colClasses = c('integer', rep('character', 3L)), 
+                na.strings = '')
+schools[ , urbanicity := 
+           factor(urbanicity, levels = 
+                    c('Large Urban', 'Small Urban', 'Suburban', 'Rural'))]
+teachers[schools, urbanicity := i.urbanicity, 
+         on = c('district', 'school', 'year')]
+teachers[schools, urbanicity_next := i.urbanicity, 
+         on = c(district_next_main = 'district', 
+                school_next_main = 'school', 'year')]
+```
+
+
 # Introduction
 
 # Data
@@ -23,7 +57,48 @@ knitr::opts_chunk$set(echo = FALSE, results = 'hide')
 # Results
 
 ```{r table_1}
+teachers[ , .(`Remain in Same School` = sum(!move_school_next, na.rm = TRUE)/.N,
+              `Change Schools Within District` = 
+                sum(move_school_next & !move_district_next, na.rm = TRUE)/.N,
+              `Switch Districts` = sum(move_district_next, na.rm = TRUE)/.N,
+              `Exit Wisconsin Public School` = sum(quit_next, na.rm = TRUE)/.N,
+              `Number of Teachers` = .N),
+          keyby = .(`Teacher Experience` = {
+            f = factor(total_exp_floor)
+            levels(f) = list(`0-2 years` = 1:3,
+                             `3-5 years` = 4:6,
+                             `6-10 years` = 7:11,
+                             `11-30 years` = 12:30)
+            f})]
+#table 1b
+teachers[ , .(`Teacher Experience` = 'All',
+              `Remain in Same School` = sum(!move_school_next, na.rm = TRUE)/.N,
+              `Change Schools Within District` = 
+                sum(move_school_next & !move_district_next, na.rm = TRUE)/.N,
+              `Switch Districts` = sum(move_district_next, na.rm = TRUE)/.N,
+              `Exit Wisconsin Public School` = sum(quit_next, na.rm = TRUE)/.N,
+              `Number of Teachers` = .N)]
+```
 
+```{r table_2}
+#table 2a
+## to do: WTF is going on with missing urbanicity, in particular in WI
+teachers[(move_district_next & !is.na(urbanicity)), 
+         c(as.list(table2(urbanicity_next, prop = TRUE)),
+           list(`# Changing Districts` = .N, 
+                `% of origin teachers` =
+                  .N/teachers[!is.na(urbanicity)
+                              ][.BY, .N, on = 'urbanicity'])),
+         keyby = urbanicity]
+
+#table 2b
+teachers[(move_district_next & !is.na(urbanicity) & total_exp_floor < 3), 
+         c(as.list(table2(urbanicity_next, prop = TRUE)),
+           list(`# Changing Districts` = .N, 
+                `% of origin teachers` =
+                  .N/teachers[!is.na(urbanicity) & total_exp_floor < 3
+                              ][.BY, .N, on = 'urbanicity'])),
+         keyby = urbanicity]
 ```
 
 

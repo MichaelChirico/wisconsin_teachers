@@ -40,6 +40,8 @@ Next, a major shortcoming of COBS for this context is its limit to one-dimension
 
 Instead, we use a two-step procedure to fit the Bachelor's and Master's pay tracks in serial. In the first step, we fit the Bachelor's career track as a typical one-dimensional COBS fit. In the second step, we first construct Master's premia for each observation by subtracting out the predicted Bachelor's pay corresponding to each observed level of tenure for a teacher with a Master's degree. We then use COBS to fit a non-decreasing Master's premium curve over all tenure levels on these residuals, before finally adding the Master's premium and Bachelor's fit curves to get the overal Master's fit curve. Monotonicity of the result is guaranteed by forcing upwards monotonicity on the Master's premium, a restriction in line with the empirical observation that Master's degree pay is often simply a fixed-percentage rise over the corresponding Bachelor's pay.
 
+Our implementation was also aided by the imposition of concavity on the $y(\tau, BA)$. While not a theoretically-assured functional form restriction, concavity improves the goodness of fit notably. Small-sample district-level observations and simple reduced-form regressions of wages versus quadratic forms in experience support this shape's validity. A variety of contracts obtained from a database for teachers in nearby Michigan also meet this condition, and the decrease in marginal returns to experience is also commonly found in the wider study of labor markets. We do not impose this restriction on the fit for the Master's premium (the only restrictions there being non-negativity at 0 and, as mentioned, an increasing relationship with tenure). 
+
 # Data
 
 ```{r sample_restrictions, include = FALSE}
@@ -143,6 +145,8 @@ Second, structural breaks are an important empirical phenomenon in this context.
 scales = fread('/media/data_drive/wisconsin/wisconsin_salary_scales_imputed.csv')
 ```
 
+## Goodness of Fit
+
 Returning to the motivating example illustrated in Figure \ref{fig:mwk}, we turn first to the performance in Milwaukee, where, given the relative sample size, performance is expected to be very good. Indeed this is the case, as seen in Figure \ref{fig:mwk_fit}. The COBS fit has retained all the salient features of the empirical median return to experience and certification, while simultaneously improving over this nonparametric conditional median by ironing out nonmonotonicities found empirically as a result of small-sample bias. 
 
 ```{r milwaukee_fit, fig.cap = '\\label{fig:mwk_fit}Estimation Results for Milwaukee, 2003-2006'}
@@ -177,7 +181,7 @@ mtext('Comparison of Fit Schedule and Empirical Median in Milwaukee\n' %+%
         'By Certification', outer = TRUE, side = 3)
 ```
 
-Perhaps more telling is the goodness of fit in minimally small districts. Four such examples are featured in Figure \ref{fig:small_fit}.
+Perhaps more telling is the goodness of fit in minimally small districts. Four such examples are featured in Figure \ref{fig:small_fit}. These four districts just barely satisfy the sample restriction that at least 20 teachers be present in both the BA and MA pay track (Melrose-Mindoro and Shell Lake have exactly 20 in each); for this reason, rather than plot the empirical median, we simply present the full distribution of wage and experience in these districts. Here again the COBS fit captures the essence of the wage-tenure curve even in these sparsely-staffed districts. While one can imagine Shell Lake or Waterford Union's actual contract schedule to feature the sort of late-career leveling that we have seen elsewhere, the power to identify and separate such features distinctly from those captured is strongly limited by the lack of data.
 
 ```{r small_dist_fit, fig.cap = '\\label{fig:small_fit}Estimation Results for Sparse Districts'}
 par(mfrow = c(2, 2),
@@ -212,6 +216,8 @@ legend('bottomright', c('COBS Fit, BA', 'COBS Fit, MA', 'Observed Pairs'),
 mtext('Comparison of Fit Schedule and Observed Wages in Small Districts\n' %+%
         'By Certification', outer = TRUE, side = 3)
 ```
+
+## Characteristics of Wage Contracts in Wisconsin
 
 # Conclusion
 

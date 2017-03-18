@@ -221,6 +221,18 @@ restriction in line with the empirical observation that Master's degree
 pay is often simply a fixed-percentage rise over the corresponding
 Bachelor's pay.
 
+Our implementation was also aided by the imposition of concavity on the
+\(y(\tau, BA)\). While not a theoretically-assured functional form
+restriction, concavity improves the goodness of fit notably.
+Small-sample district-level observations and simple reduced-form
+regressions of wages versus quadratic forms in experience support this
+shape's validity. A variety of contracts obtained from a database for
+teachers in nearby Michigan also meet this condition, and the decrease
+in marginal returns to experience is also commonly found in the wider
+study of labor markets. We do not impose this restriction on the fit for
+the Master's premium (the only restrictions there being non-negativity
+at 0 and, as mentioned, an increasing relationship with tenure).
+
 \section{Data}\label{data}
 
 The state of Wisconsin's Department of Public Instruction (DPI) releases
@@ -367,6 +379,8 @@ the purposes at hand with investigating evidence for such breaks
 
 \section{Results}\label{results}
 
+\subsection{Goodness of Fit}\label{goodness-of-fit}
+
 Returning to the motivating example illustrated in Figure \ref{fig:mwk},
 we turn first to the performance in Milwaukee, where, given the relative
 sample size, performance is expected to be very good. Indeed this is the
@@ -384,13 +398,26 @@ a result of small-sample bias.
 
 Perhaps more telling is the goodness of fit in minimally small
 districts. Four such examples are featured in Figure
-\ref{fig:small_fit}.
+\ref{fig:small_fit}. These four districts just barely satisfy the sample
+restriction that at least 20 teachers be present in both the BA and MA
+pay track (Melrose-Mindoro and Shell Lake have exactly 20 in each); for
+this reason, rather than plot the empirical median, we simply present
+the full distribution of wage and experience in these districts. Here
+again the COBS fit captures the essence of the wage-tenure curve even in
+these sparsely-staffed districts. While one can imagine Shell Lake or
+Waterford Union's actual contract schedule to feature the sort of
+late-career leveling that we have seen elsewhere, the power to identify
+and separate such features distinctly from those captured is strongly
+limited by the lack of data.
 
 \begin{figure}[htbp]
 \centering
 \includegraphics{cobs_paper_files/figure-latex/small_dist_fit-1.pdf}
 \caption{\label{fig:small_fit}Estimation Results for Sparse Districts}
 \end{figure}
+
+\subsection{Characteristics of Wage Contracts in
+Wisconsin}\label{characteristics-of-wage-contracts-in-wisconsin}
 
 \section{Conclusion}\label{conclusion}
 

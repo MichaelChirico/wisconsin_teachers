@@ -28,7 +28,9 @@ colClasses = fread(wds['data'] %+%
 teachers = fread(wds['data'] %+% 'wisconsin_teacher_data_matched.csv',
                  colClasses = colClasses$V2)
 
-teachers = teachers[year %between% c(2000, 2008)]
+incl_yrs = 2000:2008
+incl_rng = range(incl_yrs)
+teachers = teachers[year %between% incl_rng]
 
 teachers = 
   unique(teachers[order(-full_time_equiv)], by = c('teacher_id', 'year'))
@@ -47,6 +49,19 @@ teachers[schools, urbanicity := i.urbanicity,
 teachers[schools, urbanicity_next := i.urbanicity, 
          on = c(district_next_main = 'district', 
                 school_next_main = 'school', 'year')]
+
+payscales = fread(wds['data'] %+% 'wisconsin_salary_scales_imputed.csv',
+                  colClasses = list(character = 'district_fill'))
+payscales = payscales[year %between% incl_rng]
+payscales[districts, `:=`(n_students = i.member, pct_hisp = pct_hisp,
+                          pct_black = pct_black, pct_frl = pct_frl,
+                          pct_prof = (n_prof + n_advn)/n_tested),
+          on = c(district_fill = 'district', 'year')]
+#confirmed: 1-1 mapping b/w district & cesa (even across years)
+cesa_map = unique(teachers[ , .(district_fill, cesa)])
+payscales[cesa_map, cesa := cesa, on = 'district_fill']
+payscales[ , lwage_ba_resid := 
+             lm(log(wage_ba) ~ 
 ```
 
 
@@ -99,6 +114,10 @@ teachers[(move_district_next & !is.na(urbanicity) & total_exp_floor < 3),
                   .N/teachers[!is.na(urbanicity) & total_exp_floor < 3
                               ][.BY, .N, on = 'urbanicity'])),
          keyby = urbanicity]
+```
+
+```{r table_3}
+
 ```
 
 

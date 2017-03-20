@@ -48,7 +48,7 @@ fwrite(schools, wds['data'] %+% 'school_demographics.csv')
 districts = rbindlist(lapply(sf, function(ff) {
   DT = fread(ff)
   incl_cols = grep('STID|SEASCH|MEMBER|^HISP|^BLACK|LCH', names(DT))
-  DT = DT[FIPST == '55', incl_cols, with = FALSE]
+  DT = DT[FIPST == '55', ..incl_cols]
   DT[ , (names(DT)) := lapply(.SD, function(x) {x[x < 0] = NA; x})]
   setnames(DT, c('district', 'school', 'free', 
                  'reduced', 'member', 'hisp', 'black'))
@@ -137,5 +137,32 @@ grades2 = rbindlist(lapply(wsas2, function(ff) {
 
 districts[grades2, c('n_tested', 'n_prof', 'n_advn') :=
             .(i.n, i.n_prof, i.n_advn), on = c('year', 'district')]
+
+# Urbanicity, district-level
+df = grep('.*_0[1-8]_', 
+          list.files(wds['cc.d'], full.names = TRUE), value = TRUE)
+names(df) = paste0('20', gsub('.*[0-9]{4}_([0-9]{2})_.*', '\\1', df))
+
+dist_urb = rbindlist(lapply(df, function(ff) {
+  #fread failed to guess column class and errored
+  DT = fread(ff, colClasses = 'character')
+  incl_cols = grep('STID|LOCALE|ULOCAL', names(DT))
+  DT = DT[FIPST == '55', ..incl_cols]
+  setnames(DT, c('district', 'urbanicity'))
+}), idcol = 'year')
+
+dist_urb[urban_map, urbanicity := i.size, on = 'urbanicity']
+dist_urb[urbanicity %in% c('M', 'N'), urbanicity := NA]
+
+# No urbanicity code at district level in 1999-2000, so use
+#   the "maximum" urbanicity at the school level. 59
+#   districts have >1 urbanicity at the school level.
+lvord = c('Large Urban', 'Small Urban', 'Suburban', 'Rural')
+dist_urb = 
+  rbind(dist_urb, 
+        schools[order(factor(urbanicity, levels = lvord)),
+                !"school"][year == 2000, .SD[1L], by = district])
+
+districts[dist_urb, urbanicity := i.urbanicity, on = c('district', 'year')]
 
 fwrite(districts, wds['data'] %+% 'district_demographics.csv')

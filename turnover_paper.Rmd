@@ -30,7 +30,7 @@ teachers = fread(wds['data'] %+% 'wisconsin_teacher_data_matched.csv',
 
 incl_yrs = 2000:2008
 incl_rng = range(incl_yrs)
-teachers = teachers[year %between% incl_rng]
+teachers = teachers[year %between% incl_rng & highest_degree %in% 4:5]
 
 teachers = 
   unique(teachers[order(-full_time_equiv)], by = c('teacher_id', 'year'))
@@ -53,15 +53,37 @@ teachers[schools, urbanicity_next := i.urbanicity,
 payscales = fread(wds['data'] %+% 'wisconsin_salary_scales_imputed.csv',
                   colClasses = list(character = 'district_fill'))
 payscales = payscales[year %between% incl_rng]
+districts = fread(wds['data'] %+% 'district_demographics.csv',
+                  colClasses = list(character = 'district'))
 payscales[districts, `:=`(n_students = i.member, pct_hisp = pct_hisp,
                           pct_black = pct_black, pct_frl = pct_frl,
-                          pct_prof = (n_prof + n_advn)/n_tested),
+                          pct_prof = (n_prof + n_advn)/n_tested,
+                          urbanicity = urbanicity),
           on = c(district_fill = 'district', 'year')]
 #confirmed: 1-1 mapping b/w district & cesa (even across years)
 cesa_map = unique(teachers[ , .(district_fill, cesa)])
 payscales[cesa_map, cesa := cesa, on = 'district_fill']
 payscales[ , lwage_ba_resid := 
-             lm(log(wage_ba) ~ 
+             resid(lm(log(wage_ba) ~ cesa + urbanicity + scale(pct_prof) + 
+                        pct_black + pct_hisp + pct_frl, 
+                      na.action = na.exclude)),
+           by = tenure]
+payscales[ , lwage_ma_resid := 
+             resid(lm(log(wage_ma) ~ cesa + urbanicity + scale(pct_prof) + 
+                        pct_black + pct_hisp + pct_frl, 
+                      na.action = na.exclude)),
+           by = tenure]
+
+teachers[order(year), salary_next := 
+           shift(salary, n = 1, type = 'lead'), by = teacher_id]
+teachers[melt(payscales, id.vars = c('year', 'district_fill', 'tenure'),
+              measure.vars = c('wage_ba', 'wage_ma')
+              )[ , highest_degree := 4L + (variable == 'wage_ma')], 
+         schedule_lsalary := log(i.value),
+         on = c('year', 'district_fill', 
+                total_exp_floor = 'tenure', 'highest_degree')]
+teachers[order(year), schedule_lsalary_next := 
+           shift(schedule_lsalary, n = 1, type = 'lead'), by = teacher_id]
 ```
 
 

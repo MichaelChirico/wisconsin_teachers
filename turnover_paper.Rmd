@@ -39,7 +39,7 @@ teachers[is.na(move_school_next), move_school_next := FALSE]
 teachers[is.na(move_district_next), move_district_next := FALSE]
 
 schools = fread(wds['data'] %+% 'school_demographics.csv',
-                colClasses = c('integer', rep('character', 3L)), 
+                colClasses = list(character = c('district', 'school')), 
                 na.strings = '')
 schools[ , urbanicity := 
            factor(urbanicity, levels = 
@@ -55,7 +55,7 @@ payscales = fread(wds['data'] %+% 'wisconsin_salary_scales_imputed.csv',
 payscales = payscales[year %between% incl_rng]
 districts = fread(wds['data'] %+% 'district_demographics.csv',
                   colClasses = list(character = 'district'))
-payscales[districts, `:=`(n_students = i.member, pct_hisp = pct_hisp,
+payscales[districts, `:=`(n_students = i.n_students, pct_hisp = pct_hisp,
                           pct_black = pct_black, pct_frl = pct_frl,
                           pct_prof = (n_prof + n_advn)/n_tested,
                           urbanicity = urbanicity),
@@ -125,6 +125,19 @@ teachers[districts,
               pct_hisp_next = i.pct_hisp, pct_black_next = i.pct_black, 
               pct_frl_next = i.pct_frl, urbanicity_d_next = urbanicity), 
          on = c('year', district_next_main = 'district')]
+
+teachers[schools, 
+         `:=`(pct_prof_s = (i.n_prof + i.n_advn)/i.n_tested, 
+              pct_hisp_s = i.pct_hisp, pct_black_s = i.pct_black, 
+              pct_frl_s = i.pct_frl), 
+         on = c('year', district_fill = 'district', school_fill = 'school')]
+
+teachers[schools, 
+         `:=`(pct_prof_next_s = (i.n_prof + i.n_advn)/i.n_tested, 
+              pct_hisp_next_s = i.pct_hisp, pct_black_next_s = i.pct_black, 
+              pct_frl_next_s = i.pct_frl), 
+         on = c('year', district_next_main = 'district',
+                school_next_main = 'school')]
 ```
 
 
@@ -215,6 +228,16 @@ teachers[move_district_next & urbanicity_d %in% c('Large Urban', 'Suburban') &
          keyby = urbanicity_d
          ][ , melt(.SD, measure.vars = patterns('^d_'))
             ][ , dcast(.SD, variable ~ urbanicity_d, value.var = 'value')]
+
+teachers[move_district_next & urbanicity_d %in% c('Large Urban', 'Suburban') & 
+           urbanicity_d_next == 'Suburban' & total_exp_floor <= 10,
+         .(d_pct_prof_s = mean(pct_prof_next_s - pct_prof_s, na.rm = TRUE),
+           d_pct_hisp_s = mean(pct_hisp_next_s - pct_hisp_s, na.rm = TRUE),
+           d_pct_black_s = mean(pct_black_next_s - pct_black_s, na.rm = TRUE),
+           d_pct_frl_s = mean(pct_frl_next_s - pct_frl_s, na.rm = TRUE)),
+         keyby = urbanicity_d
+         ][ , melt(.SD, measure.vars = patterns('^d_'))
+            ][ , dcast(.SD, variable ~ urbanicity_d, value.var = 'value')]
 ```
 
 ```{r table_5}
@@ -224,6 +247,16 @@ teachers[move_district_next & ethnicity %in% c('B', 'H') &
            d_pct_hisp = mean(pct_hisp_next - pct_hisp, na.rm = TRUE),
            d_pct_black = mean(pct_black_next - pct_black, na.rm = TRUE),
            d_pct_frl = mean(pct_frl_next - pct_frl, na.rm = TRUE), N = .N),
+         keyby = ethnicity
+         ][ , melt(.SD, measure.vars = patterns('^d_|N'))
+            ][ , dcast(.SD, variable ~ ethnicity, value.var = 'value')]
+
+teachers[move_school_next & !move_district_next & 
+           ethnicity %in% c('B', 'H') & total_exp_floor <= 10,
+         .(d_pct_prof = mean(pct_prof_next_s - pct_prof_s, na.rm = TRUE),
+           d_pct_hisp = mean(pct_hisp_next_s - pct_hisp_s, na.rm = TRUE),
+           d_pct_black = mean(pct_black_next_s - pct_black_s, na.rm = TRUE),
+           d_pct_frl = mean(pct_frl_next_s - pct_frl_s, na.rm = TRUE), N = .N),
          keyby = ethnicity
          ][ , melt(.SD, measure.vars = patterns('^d_|N'))
             ][ , dcast(.SD, variable ~ ethnicity, value.var = 'value')]

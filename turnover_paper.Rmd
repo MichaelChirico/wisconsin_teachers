@@ -218,7 +218,15 @@ teachers[move_district_next & urbanicity_d %in% c('Large Urban', 'Suburban') &
 ```
 
 ```{r table_5}
-teachers
+teachers[move_district_next & ethnicity %in% c('B', 'H') & 
+           total_exp_floor <= 10,
+         .(d_pct_prof = mean(pct_prof_next - pct_prof, na.rm = TRUE),
+           d_pct_hisp = mean(pct_hisp_next - pct_hisp, na.rm = TRUE),
+           d_pct_black = mean(pct_black_next - pct_black, na.rm = TRUE),
+           d_pct_frl = mean(pct_frl_next - pct_frl, na.rm = TRUE), N = .N),
+         keyby = ethnicity
+         ][ , melt(.SD, measure.vars = patterns('^d_|N'))
+            ][ , dcast(.SD, variable ~ ethnicity, value.var = 'value')]
 ```
 
 

@@ -107,13 +107,17 @@ grades1 = rbindlist(lapply(wsas1, function(ff) {
   setnames(DT, num, c('n', 'pct_prof', 'pct_advn'))
   DT[ , n_prof := round(n * pct_prof/100)]
   DT[ , n_advn := round(n * pct_advn/100)]
-  DT = DT[ , lapply(.SD, sum, na.rm = TRUE), 
-           by = .(district = district_number),
-           .SDcols = c('n', 'n_prof', 'n_advn')]
   DT
 }), idcol = 'year')
 
-districts[grades1, c('n_tested', 'n_prof', 'n_advn') :=
+schools[grades1, c('n_tested', 'n_prof', 'n_advn') :=
+          .(i.n, i.n_prof, i.n_advn),
+        on = c('year', district = 'district_number', school = 'school_number')]
+
+districts[grades1[ , lapply(.SD, sum, na.rm = TRUE), 
+                   by = .(year, district = district_number),
+                   .SDcols = c('n', 'n_prof', 'n_advn')], 
+          c('n_tested', 'n_prof', 'n_advn') :=
             .(i.n, i.n_prof, i.n_advn), on = c('year', 'district')]
 
 wsas2 =  list.files(wds['wsas'], pattern = 'certified.*-0[0-8]', 
@@ -121,22 +125,30 @@ wsas2 =  list.files(wds['wsas'], pattern = 'certified.*-0[0-8]',
 names(wsas2) = paste0('20', gsub('.*-(.*)\\.csv', '\\1', wsas2))
 
 grades2 = rbindlist(lapply(wsas2, function(ff) {
-  DT = fread(ff, select = c('GROUP_BY', 'DISTRICT_CODE', 'SCHOOL_NAME',
+  DT = fread(ff, select = c('GROUP_BY', 'DISTRICT_CODE', 'SCHOOL_CODE',
                             'TEST_SUBJECT', 'TEST_GROUP', 'GROUP_BY_VALUE',
                             'TEST_RESULT', 'STUDENT_COUNT'))
   DT = DT[GROUP_BY == 'All Students' & DISTRICT_CODE != '0000' & 
-            SCHOOL_NAME == '[Districtwide]' & TEST_GROUP == 'WKCE' & 
-            GROUP_BY_VALUE != '[Data Suppressed]' & TEST_RESULT != 'No WSAS']
+            nzchar(SCHOOL_CODE) & TEST_GROUP == 'WKCE' & 
+            GROUP_BY_VALUE != '[Data Suppressed]' & TEST_RESULT != 'No WSAS' & 
+            TEST_SUBJECT %in% c('Mathematics', 'Reading')]
   DT[ , STUDENT_COUNT := as.numeric(STUDENT_COUNT)]
-  DT = dcast(DT, DISTRICT_CODE ~ TEST_RESULT, 
+  DT = dcast(DT, DISTRICT_CODE + SCHOOL_CODE ~ TEST_RESULT, 
              value.var = 'STUDENT_COUNT', fun.aggregate = sum)
   DT[ , n := rowSums(.SD), .SDcols = grep('[a-z]', names(DT))]
-  setnames(DT, c('DISTRICT_CODE', 'Proficient', 'Advanced'),
-           c('district', 'n_prof', 'n_advn'))
-  DT[ , c('Minimal Performance', 'Basic') := NULL][]
+  setnames(DT, c('DISTRICT_CODE', 'SCHOOL_CODE', 'Proficient', 'Advanced'),
+           c('district', 'school', 'n_prof', 'n_advn'))[]
 }), idcol = 'year')
 
-districts[grades2, c('n_tested', 'n_prof', 'n_advn') :=
+grades2[ , c('Minimal Performance', 'Basic') := NULL]
+
+schools[grades2, c('n_tested', 'n_prof', 'n_advn') :=
+            .(i.n, i.n_prof, i.n_advn), 
+        on = c('year', 'district', 'school')]
+
+districts[grades2[ , lapply(.SD, sum, na.rm = TRUE), 
+                   by = .(year, district), .SDcols = !"school"],
+          c('n_tested', 'n_prof', 'n_advn') :=
             .(i.n, i.n_prof, i.n_advn), on = c('year', 'district')]
 
 # Urbanicity, district-level
@@ -162,11 +174,10 @@ lvord = c('Large Urban', 'Small Urban', 'Suburban', 'Rural')
 dist_urb = 
   rbind(dist_urb, 
         schools[order(factor(urbanicity, levels = lvord)),
-                !"school"][year == 2000, .SD[1L], by = district])
+                c('year', 'district', 'urbanicity')
+                ][year == 2000, .SD[1L], by = district])
 
 districts[dist_urb, urbanicity := i.urbanicity, on = c('district', 'year')]
 
-fwrite(districts, wds['data'] %+% 'district_demographics.csv')
-
 fwrite(schools, wds['data'] %+% 'school_demographics.csv')
-
+fwrite(districts, wds['data'] %+% 'district_demographics.csv')

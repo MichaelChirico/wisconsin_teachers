@@ -44,9 +44,9 @@ schools = fread(wds['data'] %+% 'school_demographics.csv',
 schools[ , urbanicity := 
            factor(urbanicity, levels = 
                     c('Large Urban', 'Small Urban', 'Suburban', 'Rural'))]
-teachers[schools, urbanicity := i.urbanicity, 
+teachers[schools, urbanicity_s := i.urbanicity, 
          on = c('district', 'school', 'year')]
-teachers[schools, urbanicity_next := i.urbanicity, 
+teachers[schools, urbanicity_s_next := i.urbanicity, 
          on = c(district_next_main = 'district', 
                 school_next_main = 'school', 'year')]
 
@@ -116,13 +116,14 @@ teachers[melt(payscales, id.vars = c('year', 'district_fill', 'tenure'),
 
 teachers[districts, 
          `:=`(pct_prof = (n_prof + n_advn)/n_tested, pct_hisp = pct_hisp, 
-              pct_black = pct_black, pct_frl = pct_frl), 
+              pct_black = pct_black, pct_frl = pct_frl,
+              urbanicity_d = urbanicity), 
          on = c('year', district_fill = 'district')]
 
 teachers[districts, 
          `:=`(pct_prof_next = (n_prof + n_advn)/n_tested, 
               pct_hisp_next = pct_hisp, pct_black_next = pct_black, 
-              pct_frl_next = pct_frl), 
+              pct_frl_next = pct_frl, urbanicity_d_next = urbanicity), 
          on = c('year', district_next_main = 'district')]
 ```
 
@@ -198,6 +199,26 @@ teachers[move_district_next & total_exp_floor <= 10,
            f}, gender = factor(gender, levels = c('M', 'F')))
          ][ , melt(.SD, measure.vars = patterns('^d_'))
             ][ , dcast(.SD, variable ~ gender + exp, value.var = 'value')]
+```
+
+```{r table_4}
+teachers[move_district_next & urbanicity_d %in% c('Large Urban', 'Suburban') & 
+           urbanicity_d_next == 'Suburban' & total_exp_floor <= 10,
+         .(d_lsalary = mean(schedule_lsalary_next, na.rm = TRUE) - 
+             mean(schedule_lsalary_next_cf, na.rm = TRUE), 
+           d_lsalary_resid = mean(schedule_lsalary_resid_next, na.rm = TRUE) - 
+             mean(schedule_lsalary_resid_next_cf, na.rm = TRUE),
+           d_pct_prof = mean(pct_prof_next, na.rm = TRUE) - 
+             mean(pct_prof, na.rm = TRUE),
+           d_pct_hisp = mean(pct_hisp_next, na.rm = TRUE) - 
+             mean(pct_hisp, na.rm = TRUE),
+           d_pct_black = mean(pct_black_next, na.rm = TRUE) - 
+             mean(pct_black, na.rm = TRUE),
+           d_pct_frl = mean(pct_frl_next, na.rm = TRUE) - 
+             mean(pct_frl, na.rm = TRUE)),
+         keyby = urbanicity_d
+         ][ , melt(.SD, measure.vars = patterns('^d_'))
+            ][ , dcast(.SD, variable ~ urbanicity_d, value.var = 'value')]
 ```
 
 

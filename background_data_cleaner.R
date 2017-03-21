@@ -42,7 +42,7 @@ setnames(schools, c('STID', 'SEASCH', 'FRELCH', 'REDLCH',
 
 schools[ , n_frl := n_free + n_rdcd]
 schools[ , c('n_free', 'n_rdcd') := NULL]
-schools[member == 0, member := NA]
+schools[n_students == 0, n_students := NA]
 
 urban_map = data.table(
   urbanicity = paste0(c(1:8, 11:13, 21:23, 31:33, 41:43)),

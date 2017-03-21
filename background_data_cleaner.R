@@ -27,10 +27,22 @@ sf = grep('.*-0[0-8].*W',
 names(sf) = paste0('20', gsub('.*[0-9]{4}-([0-9]{2})_.*', '\\1', sf))
 schools = rbindlist(lapply(sf, function(ff) {
   DT = fread(ff)
-  incl_cols = grep('STID|SEASCH|LOCALE|ULOCAL', names(DT))
-  DT = DT[FIPST == '55', incl_cols, with = FALSE]
-  setnames(DT, c('district', 'school', 'urbanicity'))
+  incl_patt = 'STID|SEASCH|LOCALE|ULOCAL|MEMBER|^HISP|^BLACK|LCH'
+  incl_cols = grep(incl_patt, names(DT))
+  DT = DT[FIPST == '55', ..incl_cols]
+  new_names = gsub('(.*)[0-9]{2}$', '\\1', names(DT))
+  new_names = gsub('LOCALE|ULOCAL', 'urbanicity', new_names)
+  setnames(DT, new_names)
 }), idcol = 'year')
+
+setnames(schools, c('STID', 'SEASCH', 'FRELCH', 'REDLCH',
+                    'MEMBER', 'HISP', 'BLACK'),
+         c('district', 'school', 'n_free', 'n_rdcd',
+           'n_students', 'n_hisp', 'n_black'))
+
+schools[ , n_frl := n_free + n_rdcd]
+schools[ , c('n_free', 'n_rdcd') := NULL]
+schools[member == 0, member := NA]
 
 urban_map = data.table(
   urbanicity = paste0(c(1:8, 11:13, 21:23, 31:33, 41:43)),
@@ -42,27 +54,16 @@ urban_map = data.table(
 schools[urban_map, urbanicity := i.size, on = 'urbanicity']
 schools[urbanicity %in% c('M', 'N'), urbanicity := NA]
 
-fwrite(schools, wds['data'] %+% 'school_demographics.csv')
-
 # Ethnicity, poverty (district-level, via CCD)
-districts = rbindlist(lapply(sf, function(ff) {
-  DT = fread(ff)
-  incl_cols = grep('STID|SEASCH|MEMBER|^HISP|^BLACK|LCH', names(DT))
-  DT = DT[FIPST == '55', ..incl_cols]
-  DT[ , (names(DT)) := lapply(.SD, function(x) {x[x < 0] = NA; x})]
-  setnames(DT, c('district', 'school', 'free', 
-                 'reduced', 'member', 'hisp', 'black'))
-  DT[ , lapply(.SD, sum, na.rm = TRUE), by = district,
-      .SDcols = !"school"]
-}), idcol = 'year')
+districts = schools[ , lapply(.SD, sum, na.rm = TRUE), 
+                     by = .(district, year),
+                     .SDcols = !c('school', 'urbanicity')]
 
-districts[ , frl := free + reduced]
-districts[ , c('free', 'reduced') := NULL]
-districts[member == 0, member := NA]
-
-pct_col = c('hisp', 'black', 'frl')
-districts[ , (pct_col) := lapply(.SD, `/`, member), .SDcols = pct_col]
+pct_col = c('n_hisp', 'n_black', 'n_frl')
+districts[ , (pct_col) := lapply(.SD, `/`, n_students), .SDcols = pct_col]
+schools[ , (pct_col) := lapply(.SD, `/`, n_students), .SDcols = pct_col]
 setnames(districts, pct_col, paste0('pct_', pct_col))
+setnames(schools, pct_col, paste0('pct_', pct_col))
 
 # Test scores (district-level, via CCD)
 
@@ -166,3 +167,6 @@ dist_urb =
 districts[dist_urb, urbanicity := i.urbanicity, on = c('district', 'year')]
 
 fwrite(districts, wds['data'] %+% 'district_demographics.csv')
+
+fwrite(schools, wds['data'] %+% 'school_demographics.csv')
+

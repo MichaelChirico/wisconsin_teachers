@@ -62,8 +62,8 @@ districts = schools[ , lapply(.SD, sum, na.rm = TRUE),
 pct_col = c('n_hisp', 'n_black', 'n_frl')
 districts[ , (pct_col) := lapply(.SD, `/`, n_students), .SDcols = pct_col]
 schools[ , (pct_col) := lapply(.SD, `/`, n_students), .SDcols = pct_col]
-setnames(districts, pct_col, paste0('pct_', pct_col))
-setnames(schools, pct_col, paste0('pct_', pct_col))
+setnames(districts, pct_col, gsub('^n', 'pct', pct_col))
+setnames(schools, pct_col, gsub('^n', 'pct', pct_col))
 
 # Test scores (district-level, via CCD)
 

@@ -19,6 +19,7 @@ knitr::opts_chunk$set(echo = FALSE, results = 'hide')
 ```{r data_import, include = FALSE}
 library(data.table)
 library(funchir)
+library(Hmisc)
 
 wds = c(data = '/media/data_drive/wisconsin/')
 
@@ -174,22 +175,22 @@ teachers[ , .(`Teacher Experience` = 'All',
 ```{r table_2}
 #table 2a
 ## to do: WTF is going on with missing urbanicity, in particular in WI
-teachers[(move_district_next & !is.na(urbanicity)), 
-         c(as.list(table2(urbanicity_next, prop = TRUE)),
+teachers[(move_district_next & !is.na(urbanicity_s)), 
+         c(as.list(table2(urbanicity_s_next, prop = TRUE)),
            list(`# Changing Districts` = .N, 
                 `% of origin teachers` =
-                  .N/teachers[!is.na(urbanicity)
-                              ][.BY, .N, on = 'urbanicity'])),
-         keyby = urbanicity]
+                  .N/teachers[!is.na(urbanicity_s)
+                              ][.BY, .N, on = 'urbanicity_s'])),
+         keyby = urbanicity_s]
 
 #table 2b
-teachers[(move_district_next & !is.na(urbanicity) & total_exp_floor < 3), 
-         c(as.list(table2(urbanicity_next, prop = TRUE)),
+teachers[(move_district_next & !is.na(urbanicity_s) & total_exp_floor < 3), 
+         c(as.list(table2(urbanicity_s_next, prop = TRUE)),
            list(`# Changing Districts` = .N, 
                 `% of origin teachers` =
-                  .N/teachers[!is.na(urbanicity) & total_exp_floor < 3
-                              ][.BY, .N, on = 'urbanicity'])),
-         keyby = urbanicity]
+                  .N/teachers[!is.na(urbanicity_s) & total_exp_floor < 3
+                              ][.BY, .N, on = 'urbanicity_s'])),
+         keyby = urbanicity_s]
 ```
 
 ```{r table_3}
@@ -260,6 +261,45 @@ teachers[move_school_next & !move_district_next &
          keyby = ethnicity
          ][ , melt(.SD, measure.vars = patterns('^d_|N'))
             ][ , dcast(.SD, variable ~ ethnicity, value.var = 'value')]
+```
+
+```{r table_6}
+districts[payscales[ , mean(lwage_ba_resid + lwage_ma_resid, na.rm = TRUE), 
+                     by = .(district_fill, year)], 
+          lwage_resid_avg := i.V1, on = c(district = 'district_fill', 'year')]
+districts[teachers[ , .N, by = .(district_fill, year)],
+          n_teachers := i.N, on = c(district = 'district_fill', 'year')]
+districts[ , pct_prof := (n_prof + n_advn)/n_tested]
+
+q_var = c('lwage_resid_avg', 'pct_prof', 'pct_frl', 'pct_black', 'pct_hisp')
+districts[ , paste0(q_var, '_q') := lapply(.SD, function(x) {
+  brk = wtd.quantile(x, 0:4/4, weights = n_teachers, 
+                     normwt = TRUE, na.rm = TRUE)
+  cut(x, breaks = brk, labels = 1:4, right = FALSE, include.lowest = TRUE)
+}), .SDcols = q_var]
+
+teachers[districts, 
+         `:=`(lwage_resid_q = i.lwage_resid_avg_q,
+              pct_frl_q = i.pct_frl_q, pct_black_q = i.pct_black_q,
+              pct_prof_q = i.pct_prof_q, pct_hisp_q = i.pct_hisp_q),
+         on = c(district_fill = 'district', 'year')]
+
+melt(teachers, id.vars = c('year', 'move_district_next', 
+                           'move_school_next', 'quit_next'), 
+     measure.vars = patterns('_q$'), na.rm = TRUE, value.name = 'quartile'
+     )[ , .(`Probability Teachers Move to New School within District` = 
+              mean(move_school_next & !move_district_next),
+            `Probability Teachers Move to New District` = 
+              mean(move_district_next),
+            `Probability Teachers Exit Public Schools` = 
+              mean(quit_next)), 
+        keyby = .(`Quartile of Distribution` = 
+                    factor(variable, 
+                           levels = c('lwage_resid_q', 'pct_prof_q',
+                                      'pct_frl_q', 'pct_black_q', 'pct_hisp_q')), 
+                  quartile = 
+                    factor(quartile, levels = 4:1, 
+                           labels = c('Highest', '3rd', '2nd', 'Lowest')))]
 ```
 
 

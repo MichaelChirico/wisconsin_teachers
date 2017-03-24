@@ -21,6 +21,7 @@ library(data.table)
 library(Hmisc)
 library(funchir)
 library(texreg)
+library(mlogit)
 
 wds = c(data = '/media/data_drive/wisconsin/')
 
@@ -338,6 +339,35 @@ reg_l =
                                  I(total_exp_floor^2) + n_students + class_size)])
 texreg(reg_l, omit.coef = '^factor')
 ```
+
+```{r table_9}
+teachers[ , stay := !move_district_next & !quit_next, move_type]
+teachersML = 
+  melt(teachers, id.vars =
+         c('teacher_id', 'year', 'schedule_lbase_ba_salary', 
+           'gender', 'pct_prof_s', 'pct_frl_s', 'urbanicity_s',
+           'ethnicity_main', 'pct_black_s', 'pct_hisp_s',
+           'total_exp_floor', 'n_students', 'class_size','exp_split'), 
+       measure.vars = c('stay', 'move_district_next', 'quit_next'),
+       variable.name = 'alternative', value.name = 'chosen')
+setorder(teachersML, teacher_id, year, alternative)
+
+teachersML[ , ID := .GRP, by = .(teacher_id, year)]
+
+setattr(teachersML, 'class', c('mlogit.data', class(teachersML)))
+
+mnl_l = 
+  lapply(split(teachersML, by = 'exp_split', sorted = TRUE), function(DT) {
+    print(head(DT))
+    setattr(DT, 'index', with(DT, data.table(alt = alternative, chid = ID)))
+    mlogit(chosen ~ 0 | 
+             schedule_lbase_ba_salary*gender + pct_prof_s + pct_frl_s + 
+             ethnicity_main*pct_black_s + ethnicity_main*pct_hisp_s + 
+             factor(year) + urbanicity_s + total_exp_floor + 
+             I(total_exp_floor^2) + n_students + class_size, data = DT)
+  })
+```
+
 
 
 # Conclusion

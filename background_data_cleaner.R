@@ -27,7 +27,7 @@ sf = grep('.*-0[0-8].*W',
 names(sf) = paste0('20', gsub('.*[0-9]{4}-([0-9]{2})_.*', '\\1', sf))
 schools = rbindlist(lapply(sf, function(ff) {
   DT = fread(ff)
-  incl_patt = 'STID|SEASCH|LOCALE|ULOCAL|MEMBER|^HISP|^BLACK|LCH'
+  incl_patt = 'STID|SEASCH|LOCALE|ULOCAL|MEMBER|^HISP|^BLACK|TOTFRL'
   incl_cols = grep(incl_patt, names(DT))
   DT = DT[FIPST == '55', ..incl_cols]
   new_names = gsub('(.*)[0-9]{2}$', '\\1', names(DT))
@@ -35,13 +35,11 @@ schools = rbindlist(lapply(sf, function(ff) {
   setnames(DT, new_names)
 }), idcol = 'year')
 
-setnames(schools, c('STID', 'SEASCH', 'FRELCH', 'REDLCH',
+setnames(schools, c('STID', 'SEASCH', 'TOTFRL',
                     'MEMBER', 'HISP', 'BLACK'),
-         c('district', 'school', 'n_free', 'n_rdcd',
+         c('district', 'school', 'n_frl',
            'n_students', 'n_hisp', 'n_black'))
 
-schools[ , n_frl := n_free + n_rdcd]
-schools[ , c('n_free', 'n_rdcd') := NULL]
 schools[n_students == 0, n_students := NA]
 
 urban_map = data.table(

@@ -149,7 +149,7 @@ districts[grades2[ , lapply(.SD, sum, na.rm = TRUE),
           c('n_tested', 'n_prof', 'n_advn') :=
             .(i.n, i.n_prof, i.n_advn), on = c('year', 'district')]
 
-# Urbanicity, district-level
+# Urbanicity and STR, district-level
 df = grep('.*_0[1-8]_', 
           list.files(wds['cc.d'], full.names = TRUE), value = TRUE)
 names(df) = paste0('20', gsub('.*[0-9]{4}_([0-9]{2})_.*', '\\1', df))
@@ -157,10 +157,23 @@ names(df) = paste0('20', gsub('.*[0-9]{4}_([0-9]{2})_.*', '\\1', df))
 dist_urb = rbindlist(lapply(df, function(ff) {
   #fread failed to guess column class and errored
   DT = fread(ff, colClasses = 'character')
-  incl_cols = grep('STID|LOCALE|ULOCAL', names(DT))
-  DT = DT[FIPST == '55', ..incl_cols]
-  setnames(DT, c('district', 'urbanicity'))
+  incl_cols = grep('STID|LOCALE|ULOCAL|MEMBER|TOTTCH', names(DT))
+  DT[FIPST == '55', ..incl_cols]
 }), idcol = 'year')
+
+setnames(dist_urb, 2L:5L,
+         c('district', 'urbanicity', 'n_students', 'n_teachers'))
+
+dist_urb00 = 
+  fread(wds['cc.d'] %+% '/universe_1999_00_1b.csv',
+        select = c('FIPST', paste0(c('STID', 'MEMBER', 'TOTTCH'), '99')),
+        col.names = c('fipst', 'district', 'n_students', 'n_teachers'))
+dist_urb00[ , year := '2000']
+
+dist_urb = rbind(dist_urb, dist_urb00[fipst == '55', !"fipst"], fill = TRUE)
+
+dist_urb[ , class_size := as.numeric(n_students)/as.numeric(n_teachers)]
+dist_urb[ , c('n_teachers', 'n_students') := NULL]
 
 dist_urb[urban_map, urbanicity := i.size, on = 'urbanicity']
 dist_urb[urbanicity %in% c('M', 'N'), urbanicity := NA]
@@ -169,13 +182,14 @@ dist_urb[urbanicity %in% c('M', 'N'), urbanicity := NA]
 #   the "maximum" urbanicity at the school level. 59
 #   districts have >1 urbanicity at the school level.
 lvord = c('Large Urban', 'Small Urban', 'Suburban', 'Rural')
-dist_urb = 
-  rbind(dist_urb, 
-        schools[order(factor(urbanicity, levels = lvord)),
-                c('year', 'district', 'urbanicity')
-                ][year == 2000, .SD[1L], by = district])
+dist_urb[schools[year == 2000][order(factor(urbanicity, levels = lvord)), 
+                               .SD[1L], by = district, 
+                               .SDcols = c('year', 'district', 'urbanicity')],
+         urbanicity := i.urbanicity, on = c('district', 'year')]
 
-districts[dist_urb, urbanicity := i.urbanicity, on = c('district', 'year')]
+districts[dist_urb, `:=`(urbanicity = i.urbanicity, 
+                         class_size = i.class_size),
+          on = c('district', 'year')]
 
 fwrite(schools, wds['data'] %+% 'school_demographics.csv')
 fwrite(districts, wds['data'] %+% 'district_demographics.csv')

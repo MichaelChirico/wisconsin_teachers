@@ -18,8 +18,9 @@ knitr::opts_chunk$set(echo = FALSE, results = 'hide')
 
 ```{r data_import, include = FALSE}
 library(data.table)
-library(funchir)
 library(Hmisc)
+library(funchir)
+library(texreg)
 
 wds = c(data = '/media/data_drive/wisconsin/')
 
@@ -300,6 +301,29 @@ melt(teachers, id.vars = c('year', 'move_district_next',
                   quartile = 
                     factor(quartile, levels = 4:1, 
                            labels = c('Highest', '3rd', '2nd', 'Lowest')))]
+```
+
+```{r table_7}
+exp_lab = c('1-3 years', '4-6 years', '7-11 years', '12-30 years')
+teachers[ , exp_split := factor(total_exp_floor)]
+levels(teachers$exp_split) = setNames(list(1:3, 4:6, 7:11, 12:30), exp_lab)
+teachers[ , gender := factor(gender, levels = c('M', 'F'))]
+
+teachers[payscales[ , log(wage_ba[1L]), by = .(district_fill, year)], 
+         schedule_lbase_ba_salary := i.V1, on = c('year', 'district_fill')]
+teachers[districts, `:=`(n_students = i.n_students, class_size = i.class_size),
+         on = c(district_fill = 'district', 'year')]
+
+reg_l = 
+  lapply(split(teachers, by = 'exp_split', sorted = TRUE),
+         function(DT) DT[ , lm(move_district_next ~
+                                 schedule_lbase_ba_salary*gender + 
+                                 pct_prof_s + pct_frl_s + 
+                                 ethnicity_main*pct_black_s + 
+                                 ethnicity_main*pct_hisp_s + factor(year) + 
+                                 urbanicity_s + total_exp_floor + 
+                                 I(total_exp_floor^2) + n_students + class_size)])
+texreg(reg_l)
 ```
 
 

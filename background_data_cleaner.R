@@ -149,6 +149,8 @@ districts[grades2[ , lapply(.SD, sum, na.rm = TRUE),
           c('n_tested', 'n_prof', 'n_advn') :=
             .(i.n, i.n_prof, i.n_advn), on = c('year', 'district')]
 
+districts[ , pct_prof := (n_prof + n_advn)/n_tested]
+
 # Urbanicity and STR, district-level
 df = grep('.*_0[1-8]_', 
           list.files(wds['cc.d'], full.names = TRUE), value = TRUE)

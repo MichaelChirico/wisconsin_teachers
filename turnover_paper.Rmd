@@ -271,7 +271,6 @@ districts[payscales[ , mean(lwage_ba_resid + lwage_ma_resid, na.rm = TRUE),
           lwage_resid_avg := i.V1, on = c(district = 'district_fill', 'year')]
 districts[teachers[ , .N, by = .(district_fill, year)],
           n_teachers := i.N, on = c(district = 'district_fill', 'year')]
-districts[ , pct_prof := (n_prof + n_advn)/n_tested]
 
 q_var = c('lwage_resid_avg', 'pct_prof', 'pct_frl', 'pct_black', 'pct_hisp')
 districts[ , paste0(q_var, '_q') := lapply(.SD, function(x) {
@@ -341,7 +340,7 @@ texreg(reg_l, omit.coef = '^factor')
 ```
 
 ```{r table_9}
-teachers[ , stay := !move_district_next & !quit_next, move_type]
+teachers[ , stay := !move_district_next & !quit_next]
 teachersML = 
   melt(teachers, id.vars =
          c('teacher_id', 'year', 'schedule_lbase_ba_salary', 

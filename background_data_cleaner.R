@@ -63,6 +63,9 @@ schools[ , (pct_col) := lapply(.SD, `/`, n_students), .SDcols = pct_col]
 setnames(districts, pct_col, gsub('^n', 'pct', pct_col))
 setnames(schools, pct_col, gsub('^n', 'pct', pct_col))
 
+#no longer need in school-level data
+schools[ , n_students := NULL]
+
 # Test scores (district-level, via CCD)
 
 ## Available metrics
@@ -144,12 +147,16 @@ schools[grades2, c('n_tested', 'n_prof', 'n_advn') :=
             .(i.n, i.n_prof, i.n_advn), 
         on = c('year', 'district', 'school')]
 
+schools[ , pct_prof := (n_prof + n_advn)/n_tested]
+schools[ , c('n_tested', 'n_prof', 'n_advn') := NULL]
+
 districts[grades2[ , lapply(.SD, sum, na.rm = TRUE), 
                    by = .(year, district), .SDcols = !"school"],
           c('n_tested', 'n_prof', 'n_advn') :=
             .(i.n, i.n_prof, i.n_advn), on = c('year', 'district')]
 
 districts[ , pct_prof := (n_prof + n_advn)/n_tested]
+districts[ , c('n_tested', 'n_prof', 'n_advn') := NULL]
 
 # Urbanicity and STR, district-level
 df = grep('.*_0[1-8]_', 

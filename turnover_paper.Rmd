@@ -25,11 +25,18 @@ library(mlogit)
 
 wds = c(data = '/media/data_drive/wisconsin/')
 
-colClasses = fread(wds['data'] %+% 
-                     'wisconsin_teacher_data_matched_colClass.csv',
-                   header = FALSE)
+incl_cols = c('year', 'cesa', 'district_fill', 'school_fill', 
+              'teacher_id', 'highest_degree', 'total_exp_floor',
+              'district_next_main', 'school_next_main',
+              'full_time_equiv', 'gender', 'ethnicity_main',
+              'move_school_next', 'move_district_next', 'quit_next')
+colClasses = with(
+  fread(wds['data'] %+% 
+          'wisconsin_teacher_data_matched_colClass.csv', header = FALSE),
+  setNames(V2[V1 %in% incl_cols], V1[V1 %in% incl_cols]))
+
 teachers = fread(wds['data'] %+% 'wisconsin_teacher_data_matched.csv',
-                 colClasses = colClasses$V2)
+                 select = incl_cols, colClasses = colClasses)
 
 incl_yrs = 2000:2008
 incl_rng = range(incl_yrs)
@@ -41,6 +48,8 @@ teachers =
 teachers[is.na(move_school_next), move_school_next := FALSE]
 teachers[is.na(move_district_next), move_district_next := FALSE]
 
+teachers[ , gender := factor(gender, levels = c('M', 'F'))]
+
 schools = fread(wds['data'] %+% 'school_demographics.csv',
                 colClasses = list(character = c('district', 'school')), 
                 na.strings = '')
@@ -48,20 +57,20 @@ schools[ , urbanicity :=
            factor(urbanicity, levels = 
                     c('Large Urban', 'Small Urban', 'Suburban', 'Rural'))]
 teachers[schools, urbanicity_s := i.urbanicity, 
-         on = c('district', 'school', 'year')]
-teachers[schools, urbanicity_s_next := i.urbanicity, 
-         on = c(district_next_main = 'district', 
-                school_next_main = 'school', 'year')]
+         on = c(district_fill = 'district', school_fill = 'school', 'year')]
 
-payscales = fread(wds['data'] %+% 'wisconsin_salary_scales_imputed.csv',
-                  colClasses = list(character = 'district_fill'))
+payscales = 
+  fread(wds['data'] %+% 'wisconsin_salary_scales_imputed.csv',
+        colClasses = list(character = 'district_fill'),
+        select = c('year', 'district_fill', 'tenure', 'wage_ba', 'wage_ma'))
 payscales = payscales[year %between% incl_rng]
+
 districts = fread(wds['data'] %+% 'district_demographics.csv',
                   colClasses = list(character = 'district'))
-payscales[districts, `:=`(n_students = i.n_students, pct_hisp = pct_hisp,
-                          pct_black = pct_black, pct_frl = pct_frl,
-                          pct_prof = (n_prof + n_advn)/n_tested,
-                          urbanicity = urbanicity),
+payscales[districts, `:=`(n_students = i.n_students, pct_hisp = i.pct_hisp,
+                          pct_black = i.pct_black, pct_frl = i.pct_frl,
+                          pct_prof = i.pct_prof,
+                          urbanicity = i.urbanicity),
           on = c(district_fill = 'district', 'year')]
 #confirmed: 1-1 mapping b/w district & cesa (even across years)
 cesa_map = unique(teachers[ , .(district_fill, cesa)])
@@ -77,8 +86,6 @@ payscales[ , lwage_ma_resid :=
                       na.action = na.exclude)),
            by = tenure]
 
-teachers[order(year), salary_next := 
-           shift(salary, n = 1, type = 'lead'), by = teacher_id]
 teachers[melt(payscales, id.vars = c('year', 'district_fill', 'tenure'),
               measure.vars = c('wage_ba', 'wage_ma')
               )[ , highest_degree := 4L + (variable == 'wage_ma')], 
@@ -118,27 +125,25 @@ teachers[melt(payscales, id.vars = c('year', 'district_fill', 'tenure'),
                 total_exp_floor = 'tenure', 'highest_degree')]
 
 teachers[districts, 
-         `:=`(pct_prof = (i.n_prof + i.n_advn)/i.n_tested, 
-              pct_hisp = i.pct_hisp, pct_black = i.pct_black, 
-              pct_frl = i.pct_frl, urbanicity_d = i.urbanicity), 
+         `:=`(pct_prof = i.pct_prof, pct_hisp = i.pct_hisp, 
+              pct_black = i.pct_black, pct_frl = i.pct_frl, 
+              urbanicity_d = i.urbanicity), 
          on = c('year', district_fill = 'district')]
 
 teachers[districts, 
-         `:=`(pct_prof_next = (i.n_prof + i.n_advn)/i.n_tested, 
-              pct_hisp_next = i.pct_hisp, pct_black_next = i.pct_black, 
-              pct_frl_next = i.pct_frl, urbanicity_d_next = urbanicity), 
+         `:=`(pct_prof_next = i.pct_prof, pct_hisp_next = i.pct_hisp, 
+              pct_black_next = i.pct_black, pct_frl_next = i.pct_frl, 
+              urbanicity_d_next = urbanicity), 
          on = c('year', district_next_main = 'district')]
 
 teachers[schools, 
-         `:=`(pct_prof_s = (i.n_prof + i.n_advn)/i.n_tested, 
-              pct_hisp_s = i.pct_hisp, pct_black_s = i.pct_black, 
-              pct_frl_s = i.pct_frl), 
+         `:=`(pct_prof_s = i.pct_prof, pct_hisp_s = i.pct_hisp, 
+              pct_black_s = i.pct_black, pct_frl_s = i.pct_frl), 
          on = c('year', district_fill = 'district', school_fill = 'school')]
 
 teachers[schools, 
-         `:=`(pct_prof_next_s = (i.n_prof + i.n_advn)/i.n_tested, 
-              pct_hisp_next_s = i.pct_hisp, pct_black_next_s = i.pct_black, 
-              pct_frl_next_s = i.pct_frl), 
+         `:=`(pct_prof_next_s = i.pct_prof, pct_hisp_next_s = i.pct_hisp, 
+              pct_black_next_s = i.pct_black, pct_frl_next_s = i.pct_frl), 
          on = c('year', district_next_main = 'district',
                 school_next_main = 'school')]
 ```
@@ -210,7 +215,7 @@ teachers[move_district_next & total_exp_floor <= 10,
          keyby = .(exp = {
            f = factor(total_exp_floor)
            levels(f) = list('1-3' = 1:3, '4-6' = 4:6, '7-10' = 7:10)
-           f}, gender = factor(gender, levels = c('M', 'F')))
+           f}, gender)
          ][ , melt(.SD, measure.vars = patterns('^d_'))
             ][ , dcast(.SD, variable ~ gender + exp, value.var = 'value')]
 ```
@@ -244,23 +249,23 @@ teachers[move_district_next & urbanicity_d %in% c('Large Urban', 'Suburban') &
 ```
 
 ```{r table_5}
-teachers[move_district_next & ethnicity %in% c('B', 'H') & 
-           total_exp_floor <= 10,
+teachers[move_district_next & total_exp_floor <= 10 & 
+           ethnicity_main %in% c('Black', 'Hispanic'),
          .(d_pct_prof = mean(pct_prof_next - pct_prof, na.rm = TRUE),
            d_pct_hisp = mean(pct_hisp_next - pct_hisp, na.rm = TRUE),
            d_pct_black = mean(pct_black_next - pct_black, na.rm = TRUE),
            d_pct_frl = mean(pct_frl_next - pct_frl, na.rm = TRUE), N = .N),
-         keyby = ethnicity
+         keyby = ethnicity_main
          ][ , melt(.SD, measure.vars = patterns('^d_|N'))
             ][ , dcast(.SD, variable ~ ethnicity, value.var = 'value')]
 
-teachers[move_school_next & !move_district_next & 
-           ethnicity %in% c('B', 'H') & total_exp_floor <= 10,
+teachers[move_school_next & !move_district_next & total_exp_floor <= 10 &
+           ethnicity_main %in% c('Black', 'Hispanic'),
          .(d_pct_prof = mean(pct_prof_next_s - pct_prof_s, na.rm = TRUE),
            d_pct_hisp = mean(pct_hisp_next_s - pct_hisp_s, na.rm = TRUE),
            d_pct_black = mean(pct_black_next_s - pct_black_s, na.rm = TRUE),
            d_pct_frl = mean(pct_frl_next_s - pct_frl_s, na.rm = TRUE), N = .N),
-         keyby = ethnicity
+         keyby = ethnicity_main
          ][ , melt(.SD, measure.vars = patterns('^d_|N'))
             ][ , dcast(.SD, variable ~ ethnicity, value.var = 'value')]
 ```
@@ -307,7 +312,6 @@ melt(teachers, id.vars = c('year', 'move_district_next',
 exp_lab = c('1-3 years', '4-6 years', '7-11 years', '12-30 years')
 teachers[ , exp_split := factor(total_exp_floor)]
 levels(teachers$exp_split) = setNames(list(1:3, 4:6, 7:11, 12:30), exp_lab)
-teachers[ , gender := factor(gender, levels = c('M', 'F'))]
 
 teachers[payscales[ , log(wage_ba[1L]), by = .(district_fill, year)], 
          schedule_lbase_ba_salary := i.V1, on = c('year', 'district_fill')]

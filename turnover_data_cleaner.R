@@ -36,10 +36,12 @@ teachers = teachers[year %between% incl_rng & highest_degree %in% 4:5]
 teachers = 
   unique(teachers[order(-full_time_equiv)], by = c('teacher_id', 'year'))
 
+#move_school/district_next if and only if quit_next
 teachers[is.na(move_school_next), move_school_next := FALSE]
 teachers[is.na(move_district_next), move_district_next := FALSE]
 
 teachers[ , gender := factor(gender, levels = c('M', 'F'))]
+teachers[ , move_within_next := move_school_next & !move_district_next]
 teachers[ , stay := !move_district_next & !quit_next]
 
 exp_lab = c('1-3 years', '4-6 years', '7-11 years', '12-30 years')
@@ -163,3 +165,7 @@ teachers[schools,
               urbanicity_s_next = i.urbanicity), 
          on = c('year', district_next_main = 'district',
                 school_next_main = 'school')]
+
+## @knitr stop_read
+
+fwrite(teachers, wds['data'] %+% 'teacher_turnover_data.csv')

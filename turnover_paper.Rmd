@@ -27,26 +27,22 @@ knitr::read_chunk('turnover_data_cleaner.R')
 # Results
 
 ```{r table_1}
-teachers[ , .(`Remain in Same School` = sum(!move_school_next, na.rm = TRUE)/.N,
-              `Change Schools Within District` = 
-                sum(move_school_next & !move_district_next, na.rm = TRUE)/.N,
-              `Switch Districts` = sum(move_district_next, na.rm = TRUE)/.N,
-              `Exit Wisconsin Public School` = sum(quit_next, na.rm = TRUE)/.N,
+teachers[ , .(`Remain in Same School` = sum(!move_school_next)/.N,
+              `Change Schools Within District` = sum(move_within_next)/.N,
+              `Switch Districts` = sum(move_district_next)/.N,
+              `Exit Wisconsin Public Schools` = 
+                sum(quit_next, na.rm = TRUE)/.N,
               `Number of Teachers` = .N),
-          keyby = .(`Teacher Experience` = {
-            f = factor(total_exp_floor)
-            levels(f) = list(`0-2 years` = 1:3,
-                             `3-5 years` = 4:6,
-                             `6-10 years` = 7:11,
-                             `11-30 years` = 12:30)
-            f})]
+          keyby = .(`Teacher Experience` = exp_split)]
 #table 1b
 teachers[ , .(`Teacher Experience` = 'All',
-              `Remain in Same School` = sum(!move_school_next, na.rm = TRUE)/.N,
+              `Remain in Same School` = 
+                sum(!move_school_next, na.rm = TRUE)/.N,
               `Change Schools Within District` = 
-                sum(move_school_next & !move_district_next, na.rm = TRUE)/.N,
+                sum(move_within_next, na.rm = TRUE)/.N,
               `Switch Districts` = sum(move_district_next, na.rm = TRUE)/.N,
-              `Exit Wisconsin Public School` = sum(quit_next, na.rm = TRUE)/.N,
+              `Exit Wisconsin Public Schools` =
+                sum(quit_next, na.rm = TRUE)/.N,
               `Number of Teachers` = .N)]
 ```
 
@@ -130,7 +126,7 @@ teachers[move_district_next & total_exp_floor <= 10 &
          ][ , melt(.SD, measure.vars = patterns('^d_|N'))
             ][ , dcast(.SD, variable ~ ethnicity_main, value.var = 'value')]
 
-teachers[move_school_next & !move_district_next & total_exp_floor <= 10 &
+teachers[move_within_next & total_exp_floor <= 10 &
            ethnicity_main %in% c('Black', 'Hispanic'),
          .(d_pct_prof = mean(pct_prof_next_s - pct_prof_s, na.rm = TRUE),
            d_pct_hisp = mean(pct_hisp_next_s - pct_hisp_s, na.rm = TRUE),
@@ -147,7 +143,7 @@ melt(teachers, id.vars = c('year', 'move_district_next',
      measure.vars = paste0(q_var, '_q'), na.rm = TRUE,
      variable.name = 'Quartile of Distribution', value.name = 'quartile'
      )[ , .(`Probability Teachers Move to New School within District` = 
-              mean(move_school_next & !move_district_next),
+              mean(move_within_next),
             `Probability Teachers Move to New District` = 
               mean(move_district_next),
             `Probability Teachers Exit Public Schools` = 

@@ -359,13 +359,16 @@ setattr(teachersML, 'class', c('mlogit.data', class(teachersML)))
 mnl_l = 
   lapply(split(teachersML, by = 'exp_split', sorted = TRUE), function(DT) {
     print(head(DT))
+    setattr(DT, 'class', c('mlogit.data', class(DT)))
     setattr(DT, 'index', with(DT, data.table(alt = alternative, chid = ID)))
     mlogit(chosen ~ 0 | 
              schedule_lbase_ba_salary*gender + pct_prof_s + pct_frl_s + 
              ethnicity_main*pct_black_s + ethnicity_main*pct_hisp_s + 
-             factor(year) + urbanicity_s + total_exp_floor + 
+             #need to include dummy for year, but solution fails
+             urbanicity_s + total_exp_floor + 
              I(total_exp_floor^2) + n_students + class_size, data = DT)
   })
+texreg(mnl_l)
 ```
 
 

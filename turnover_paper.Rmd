@@ -49,6 +49,11 @@ teachers[is.na(move_school_next), move_school_next := FALSE]
 teachers[is.na(move_district_next), move_district_next := FALSE]
 
 teachers[ , gender := factor(gender, levels = c('M', 'F'))]
+teachers[ , stay := !move_district_next & !quit_next]
+
+exp_lab = c('1-3 years', '4-6 years', '7-11 years', '12-30 years')
+teachers[ , exp_split := factor(total_exp_floor)]
+levels(teachers$exp_split) = setNames(list(1:3, 4:6, 7:11, 12:30), exp_lab)
 
 schools = fread(wds['data'] %+% 'school_demographics.csv',
                 colClasses = list(character = c('district', 'school')), 
@@ -85,6 +90,9 @@ payscales[ , lwage_ma_resid :=
                         pct_black + pct_hisp + pct_frl, 
                       na.action = na.exclude)),
            by = tenure]
+
+teachers[payscales[ , log(wage_ba[1L]), by = .(district_fill, year)], 
+         schedule_lbase_ba_salary := i.V1, on = c('year', 'district_fill')]
 
 teachers[melt(payscales, id.vars = c('year', 'district_fill', 'tenure'),
               measure.vars = c('wage_ba', 'wage_ma')
@@ -124,11 +132,27 @@ teachers[melt(payscales, id.vars = c('year', 'district_fill', 'tenure'),
          on = c('year', 'district_fill', 
                 total_exp_floor = 'tenure', 'highest_degree')]
 
-teachers[districts, 
-         `:=`(pct_prof = i.pct_prof, pct_hisp = i.pct_hisp, 
-              pct_black = i.pct_black, pct_frl = i.pct_frl, 
-              urbanicity_d = i.urbanicity), 
-         on = c('year', district_fill = 'district')]
+districts[payscales[ , mean(lwage_ba_resid + lwage_ma_resid, na.rm = TRUE), 
+                     by = .(district_fill, year)], 
+          lwage_resid_avg := i.V1, on = c(district = 'district_fill', 'year')]
+districts[teachers[ , .N, by = .(district_fill, year)],
+          n_teachers := i.N, on = c(district = 'district_fill', 'year')]
+
+q_var = c('lwage_resid_avg', 'pct_prof', 'pct_frl', 'pct_black', 'pct_hisp')
+districts[ , paste0(q_var, '_q') := lapply(.SD, function(x) {
+  brk = wtd.quantile(x, 0:4/4, weights = n_teachers, 
+                     normwt = TRUE, na.rm = TRUE)
+  f = cut(x, breaks = brk, labels = 1:4, right = FALSE, include.lowest = TRUE)
+  factor(f, levels = 4:1, labels = c('Highest', '3rd', '2nd', 'Lowest'))
+}), .SDcols = q_var]
+
+from_dist = c('pct_prof', 'pct_hisp', 'pct_black', 'pct_frl',
+              'urbanicity', 'n_students', 'class_size',
+              paste0(q_var, '_q'))
+teachers[ , (from_dist) := 
+            districts[.SD, ..from_dist,
+                      on = c('year', district = 'district_fill')]]
+setnames(teachers, 'urbanicity', 'urbanicity_d')
 
 teachers[districts, 
          `:=`(pct_prof_next = i.pct_prof, pct_hisp_next = i.pct_hisp, 
@@ -138,12 +162,14 @@ teachers[districts,
 
 teachers[schools, 
          `:=`(pct_prof_s = i.pct_prof, pct_hisp_s = i.pct_hisp, 
-              pct_black_s = i.pct_black, pct_frl_s = i.pct_frl), 
+              pct_black_s = i.pct_black, pct_frl_s = i.pct_frl,
+              urbanicity_s = i.urbanicity), 
          on = c('year', district_fill = 'district', school_fill = 'school')]
 
 teachers[schools, 
          `:=`(pct_prof_next_s = i.pct_prof, pct_hisp_next_s = i.pct_hisp, 
-              pct_black_next_s = i.pct_black, pct_frl_next_s = i.pct_frl), 
+              pct_black_next_s = i.pct_black, pct_frl_next_s = i.pct_frl,
+              urbanicity_s_next = i.urbanicity), 
          on = c('year', district_next_main = 'district',
                 school_next_main = 'school')]
 ```
@@ -257,7 +283,7 @@ teachers[move_district_next & total_exp_floor <= 10 &
            d_pct_frl = mean(pct_frl_next - pct_frl, na.rm = TRUE), N = .N),
          keyby = ethnicity_main
          ][ , melt(.SD, measure.vars = patterns('^d_|N'))
-            ][ , dcast(.SD, variable ~ ethnicity, value.var = 'value')]
+            ][ , dcast(.SD, variable ~ ethnicity_main, value.var = 'value')]
 
 teachers[move_school_next & !move_district_next & total_exp_floor <= 10 &
            ethnicity_main %in% c('Black', 'Hispanic'),
@@ -267,57 +293,24 @@ teachers[move_school_next & !move_district_next & total_exp_floor <= 10 &
            d_pct_frl = mean(pct_frl_next_s - pct_frl_s, na.rm = TRUE), N = .N),
          keyby = ethnicity_main
          ][ , melt(.SD, measure.vars = patterns('^d_|N'))
-            ][ , dcast(.SD, variable ~ ethnicity, value.var = 'value')]
+            ][ , dcast(.SD, variable ~ ethnicity_main, value.var = 'value')]
 ```
 
 ```{r table_6}
-districts[payscales[ , mean(lwage_ba_resid + lwage_ma_resid, na.rm = TRUE), 
-                     by = .(district_fill, year)], 
-          lwage_resid_avg := i.V1, on = c(district = 'district_fill', 'year')]
-districts[teachers[ , .N, by = .(district_fill, year)],
-          n_teachers := i.N, on = c(district = 'district_fill', 'year')]
-
-q_var = c('lwage_resid_avg', 'pct_prof', 'pct_frl', 'pct_black', 'pct_hisp')
-districts[ , paste0(q_var, '_q') := lapply(.SD, function(x) {
-  brk = wtd.quantile(x, 0:4/4, weights = n_teachers, 
-                     normwt = TRUE, na.rm = TRUE)
-  cut(x, breaks = brk, labels = 1:4, right = FALSE, include.lowest = TRUE)
-}), .SDcols = q_var]
-
-teachers[districts, 
-         `:=`(lwage_resid_q = i.lwage_resid_avg_q,
-              pct_frl_q = i.pct_frl_q, pct_black_q = i.pct_black_q,
-              pct_prof_q = i.pct_prof_q, pct_hisp_q = i.pct_hisp_q),
-         on = c(district_fill = 'district', 'year')]
-
 melt(teachers, id.vars = c('year', 'move_district_next', 
                            'move_school_next', 'quit_next'), 
-     measure.vars = patterns('_q$'), na.rm = TRUE, value.name = 'quartile'
+     measure.vars = paste0(q_var, '_q'), na.rm = TRUE,
+     variable.name = 'Quartile of Distribution', value.name = 'quartile'
      )[ , .(`Probability Teachers Move to New School within District` = 
               mean(move_school_next & !move_district_next),
             `Probability Teachers Move to New District` = 
               mean(move_district_next),
             `Probability Teachers Exit Public Schools` = 
               mean(quit_next)), 
-        keyby = .(`Quartile of Distribution` = 
-                    factor(variable, 
-                           levels = c('lwage_resid_q', 'pct_prof_q',
-                                      'pct_frl_q', 'pct_black_q', 'pct_hisp_q')), 
-                  quartile = 
-                    factor(quartile, levels = 4:1, 
-                           labels = c('Highest', '3rd', '2nd', 'Lowest')))]
+        keyby = .(`Quartile of Distribution`, quartile)]
 ```
 
 ```{r table_7}
-exp_lab = c('1-3 years', '4-6 years', '7-11 years', '12-30 years')
-teachers[ , exp_split := factor(total_exp_floor)]
-levels(teachers$exp_split) = setNames(list(1:3, 4:6, 7:11, 12:30), exp_lab)
-
-teachers[payscales[ , log(wage_ba[1L]), by = .(district_fill, year)], 
-         schedule_lbase_ba_salary := i.V1, on = c('year', 'district_fill')]
-teachers[districts, `:=`(n_students = i.n_students, class_size = i.class_size),
-         on = c(district_fill = 'district', 'year')]
-
 reg_l = 
   lapply(split(teachers, by = 'exp_split', sorted = TRUE),
          function(DT) DT[ , lm(move_district_next ~
@@ -344,7 +337,6 @@ texreg(reg_l, omit.coef = '^factor')
 ```
 
 ```{r table_9}
-teachers[ , stay := !move_district_next & !quit_next]
 teachersML = 
   melt(teachers, id.vars =
          c('teacher_id', 'year', 'schedule_lbase_ba_salary', 
@@ -356,8 +348,6 @@ teachersML =
 setorder(teachersML, teacher_id, year, alternative)
 
 teachersML[ , ID := .GRP, by = .(teacher_id, year)]
-
-setattr(teachersML, 'class', c('mlogit.data', class(teachersML)))
 
 mnl_l = 
   lapply(split(teachersML, by = 'exp_split', sorted = TRUE), function(DT) {
@@ -373,8 +363,6 @@ mnl_l =
   })
 texreg(mnl_l)
 ```
-
-
 
 # Conclusion
 

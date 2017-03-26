@@ -6,8 +6,6 @@
 ###############################################################################
 #                             Package Setup                                   #
 ###############################################################################
-rm(list = ls(all = TRUE))
-gc()
 wds = c(cc.s = "/media/data_drive/common_core/school",
         cc.d = "/media/data_drive/common_core/district",
         wsas = '/media/data_drive/wisconsin/wsas',
@@ -36,6 +34,19 @@ setnames(schools, c('STID', 'SEASCH', 'TOTFRL',
                     'MEMBER', 'HISP', 'BLACK'),
          c('district', 'school', 'n_frl',
            'n_students', 'n_hisp', 'n_black'))
+
+#2007-08 begins tab-separated files, so read separately
+ff = list.files(wds['cc.s'], pattern = '2007-08', full.names = TRUE)
+incl_cols = c('FIPST', c('STID', 'SEASCH', 'ULOCAL',
+                         'MEMBER', 'HISP', 'BLACK', 'TOTFRL') %+% '07')
+schools08 = fread(ff, select = incl_cols)[FIPST == '55']
+schools08[ , c('FIPST', 'year') := .(NULL, '2008')]
+setnames(schools08, 
+         c('STID', 'SEASCH', 'TOTFRL',
+           'MEMBER', 'HISP', 'BLACK', 'ULOCAL') %+% '07',
+         c('district', 'school', 'n_frl',
+           'n_students', 'n_hisp', 'n_black', 'urbanicity'))
+schools = rbind(schools, schools08)
 
 schools[n_students == 0, n_students := NA]
 

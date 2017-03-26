@@ -14,7 +14,9 @@ library(texreg)
 
 wds = c(data = '/media/data_drive/wisconsin/')
 
-#import main teacher file
+###############################################################################
+#                              Main Teacher File                              #
+###############################################################################
 incl_cols = c('year', 'cesa', 'district_fill', 'school_fill', 
               'teacher_id', 'highest_degree', 'total_exp_floor',
               'district_next_main', 'school_next_main',
@@ -50,6 +52,10 @@ exp_lab = c('1-3 years', '4-6 years', '7-11 years', '12-30 years')
 teachers[ , exp_split := factor(total_exp_floor)]
 levels(teachers$exp_split) = setNames(list(1:3, 4:6, 7:11, 12:30), exp_lab)
 
+###############################################################################
+#                           District-Level Covariates                         #
+###############################################################################
+
 districts = fread(wds['data'] %+% 'district_demographics.csv',
                   colClasses = list(character = 'district'), na.strings = '')
 
@@ -81,33 +87,15 @@ districts[districts[year == 2005 & district %in%
                     .(year = 2006L, district, urbanicity)],
           urbanicity := i.urbanicity, on = c('district', 'year')]
 
-schools = fread(wds['data'] %+% 'school_demographics.csv',
-                colClasses = list(character = c('district', 'school')), 
-                na.strings = '')
+teachers[districts, 
+         `:=`(pct_prof_next = i.pct_prof, pct_hisp_next = i.pct_hisp, 
+              pct_black_next = i.pct_black, pct_frl_next = i.pct_frl, 
+              urbanicity_d_next = urbanicity), 
+         on = c('year', district_next_main = 'district')]
 
-#For schools that are missing urbanicity at least once
-#  but only ever observe one actual urbanicity value, assign this
-schools[schools[ , if(any(is.na(urbanicity)) & 
-                          uniqueN(urbanicity, na.rm = TRUE) == 1L)
-  .(urbanicity = unique(na.omit(urbanicity))), by = .(district, school)],
-  urbanicity := i.urbanicity, on = 'district']
-#For schools missing urbanicity that are in districts
-#  that have only one type of observed urbanicity, assign that
-schools[schools[ , if (any(is.na(urbanicity)) & 
-                       uniqueN(urbanicity, na.rm = TRUE) == 1L) 
-  .(urbanicity = unique(na.omit(urbanicity))), by = district],
-  urbanicity := i.urbanicity, on = 'district']
-#Lastly, assign district urbanicity to unmatched schools
-#  (matches exactly what I would have assigned by inspection)
-schools[districts[schools[is.na(urbanicity), .(year, school, district)], 
-                  on = c('year', 'district')],
-        urbanicity := i.urbanicity, on = c('year', 'district', 'school')]
-
-schools[ , urbanicity := 
-           factor(urbanicity, levels = 
-                    c('Large Urban', 'Small Urban', 'Suburban', 'Rural'))]
-teachers[schools, urbanicity_s := i.urbanicity, 
-         on = c(district_fill = 'district', school_fill = 'school', 'year')]
+###############################################################################
+#                               Salary Covariates                             #
+###############################################################################
 
 payscales = 
   fread(wds['data'] %+% 'wisconsin_salary_scales_imputed.csv',
@@ -197,11 +185,37 @@ teachers[ , (from_dist) :=
                       on = c('year', district = 'district_fill')]]
 setnames(teachers, 'urbanicity', 'urbanicity_d')
 
-teachers[districts, 
-         `:=`(pct_prof_next = i.pct_prof, pct_hisp_next = i.pct_hisp, 
-              pct_black_next = i.pct_black, pct_frl_next = i.pct_frl, 
-              urbanicity_d_next = urbanicity), 
-         on = c('year', district_next_main = 'district')]
+###############################################################################
+#                            School-Level Covariates                          #
+###############################################################################
+
+schools = fread(wds['data'] %+% 'school_demographics.csv',
+                colClasses = list(character = c('district', 'school')), 
+                na.strings = '')
+
+#For schools that are missing urbanicity at least once
+#  but only ever observe one actual urbanicity value, assign this
+schools[schools[ , if(any(is.na(urbanicity)) & 
+                          uniqueN(urbanicity, na.rm = TRUE) == 1L)
+  .(urbanicity = unique(na.omit(urbanicity))), by = .(district, school)],
+  urbanicity := i.urbanicity, on = 'district']
+#For schools missing urbanicity that are in districts
+#  that have only one type of observed urbanicity, assign that
+schools[schools[ , if (any(is.na(urbanicity)) & 
+                       uniqueN(urbanicity, na.rm = TRUE) == 1L) 
+  .(urbanicity = unique(na.omit(urbanicity))), by = district],
+  urbanicity := i.urbanicity, on = 'district']
+#Lastly, assign district urbanicity to unmatched schools
+#  (matches exactly what I would have assigned by inspection)
+schools[districts[schools[is.na(urbanicity), .(year, school, district)], 
+                  on = c('year', 'district')],
+        urbanicity := i.urbanicity, on = c('year', 'district', 'school')]
+
+schools[ , urbanicity := 
+           factor(urbanicity, levels = 
+                    c('Large Urban', 'Small Urban', 'Suburban', 'Rural'))]
+teachers[schools, urbanicity_s := i.urbanicity, 
+         on = c(district_fill = 'district', school_fill = 'school', 'year')]
 
 teachers[schools, 
          `:=`(pct_prof_s = i.pct_prof, pct_hisp_s = i.pct_hisp, 

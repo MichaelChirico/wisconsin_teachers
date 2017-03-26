@@ -44,23 +44,22 @@ teachers[ , .(`Teacher Experience` = 'All',
 
 ```{r table_2}
 #table 2a
-## to do: WTF is going on with missing urbanicity, in particular in WI
-teachers[(move_district_next & !is.na(urbanicity_s)), 
-         c(as.list(table2(urbanicity_s_next, prop = TRUE)),
-           list(`# Changing Districts` = .N, 
-                `% of origin teachers` =
-                  .N/teachers[!is.na(urbanicity_s)
-                              ][.BY, .N, on = 'urbanicity_s'])),
-         keyby = urbanicity_s]
+teachers[ , {
+  idx = move_district_next
+  N_move = sum(idx)
+  c(as.list(table2(urbanicity_s_next[idx], prop = TRUE)),
+    list(`# Changing Districts` = N_move, 
+         `% of origin teachers` = N_move/.N))
+}, keyby = urbanicity_s]
 
 #table 2b
-teachers[(move_district_next & !is.na(urbanicity_s) & total_exp_floor < 3), 
-         c(as.list(table2(urbanicity_s_next, prop = TRUE)),
-           list(`# Changing Districts` = .N, 
-                `% of origin teachers` =
-                  .N/teachers[!is.na(urbanicity_s) & total_exp_floor < 3
-                              ][.BY, .N, on = 'urbanicity_s'])),
-         keyby = urbanicity_s]
+teachers[total_exp_floor <= 3, {
+  idx = move_district_next
+  N_move = sum(idx)
+  c(as.list(table2(urbanicity_s_next[idx], prop = TRUE)),
+    list(`# Changing Districts` = N_move, 
+         `% of origin teachers` = N_move/.N))
+}, keyby = urbanicity_s]
 ```
 
 ```{r table_3}

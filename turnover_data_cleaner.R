@@ -33,7 +33,7 @@ incl_yrs = 2000:2008
 incl_rng = range(incl_yrs)
 teachers = teachers[year %between% incl_rng & highest_degree %in% 4:5 & 
                       #should exclude this earlier in the pipeline
-                      grep('^7', district_fill)]
+                      !grepl('^7', district_fill)]
 
 teachers = 
   unique(teachers[order(-full_time_equiv)], by = c('teacher_id', 'year'))

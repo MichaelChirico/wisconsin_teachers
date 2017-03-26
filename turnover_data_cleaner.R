@@ -165,8 +165,6 @@ schools = fread(wds['data'] %+% 'school_demographics.csv',
 schools[ , urbanicity := 
            factor(urbanicity, levels = 
                     c('Large Urban', 'Small Urban', 'Suburban', 'Rural'))]
-teachers[schools, urbanicity_s := i.urbanicity, 
-         on = c(district_fill = 'district', school_fill = 'school', 'year')]
 
 teachers[schools, 
          `:=`(pct_prof_s = i.pct_prof, pct_hisp_s = i.pct_hisp, 

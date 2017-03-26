@@ -31,7 +31,9 @@ teachers = fread(wds['data'] %+% 'wisconsin_teacher_data_matched.csv',
 #subset to focus timeframe, eliminate teachers outside 
 incl_yrs = 2000:2008
 incl_rng = range(incl_yrs)
-teachers = teachers[year %between% incl_rng & highest_degree %in% 4:5]
+teachers = teachers[year %between% incl_rng & highest_degree %in% 4:5 & 
+                      #should exclude this earlier in the pipeline
+                      grep('^7', district_fill)]
 
 teachers = 
   unique(teachers[order(-full_time_equiv)], by = c('teacher_id', 'year'))
@@ -42,15 +44,65 @@ teachers[is.na(move_district_next), move_district_next := FALSE]
 
 teachers[ , gender := factor(gender, levels = c('M', 'F'))]
 teachers[ , move_within_next := move_school_next & !move_district_next]
-teachers[ , stay := !move_district_next & !quit_next]
+teachers[ , stay_next := !move_district_next & !quit_next]
 
 exp_lab = c('1-3 years', '4-6 years', '7-11 years', '12-30 years')
 teachers[ , exp_split := factor(total_exp_floor)]
 levels(teachers$exp_split) = setNames(list(1:3, 4:6, 7:11, 12:30), exp_lab)
 
+districts = fread(wds['data'] %+% 'district_demographics.csv',
+                  colClasses = list(character = 'district'), na.strings = '')
+
+#In 2006 all urbanicity is missing. For districts that never
+#  saw a different urbanicity code, assign the unique code.
+districts[districts[ , if(any(is.na(urbanicity)) & 
+                          uniqueN(urbanicity, na.rm = TRUE) == 1L)
+  .(urbanicity = unique(na.omit(urbanicity))), by = district],
+  urbanicity := i.urbanicity, on = 'district']
+#If in 2005 & 2007, there was only one value of urbanicity
+#  in a district missing 2006, assign the observed constant value to 2006
+districts[districts[year %in% 2005:2007, 
+                    if(any(is.na(urbanicity)) & 
+                       uniqueN(urbanicity, na.rm = TRUE) == 1L)
+                      .(year = 2006L, 
+                        urbanicity = unique(na.omit(urbanicity))), 
+                    by = district],
+  urbanicity := i.urbanicity, on = c('district', 'year')]
+#If more than 5 other years featured a single urbanicity,
+#  assign that to 2006
+districts[districts[year != 2006 & district %in% 
+                      districts[is.na(urbanicity), district], .N, 
+                    by = .(district, urbanicity)
+                    ][N>5, .(year = 2006L, district, urbanicity)],
+          urbanicity := i.urbanicity, on = c('district', 'year')]
+#Just assign 2005's value for the rest
+districts[districts[year == 2005 & district %in% 
+                      districts[is.na(urbanicity), district],
+                    .(year = 2006L, district, urbanicity)],
+          urbanicity := i.urbanicity, on = c('district', 'year')]
+
 schools = fread(wds['data'] %+% 'school_demographics.csv',
                 colClasses = list(character = c('district', 'school')), 
                 na.strings = '')
+
+#For schools that are missing urbanicity at least once
+#  but only ever observe one actual urbanicity value, assign this
+schools[schools[ , if(any(is.na(urbanicity)) & 
+                          uniqueN(urbanicity, na.rm = TRUE) == 1L)
+  .(urbanicity = unique(na.omit(urbanicity))), by = .(district, school)],
+  urbanicity := i.urbanicity, on = 'district']
+#For schools missing urbanicity that are in districts
+#  that have only one type of observed urbanicity, assign that
+schools[schools[ , if (any(is.na(urbanicity)) & 
+                       uniqueN(urbanicity, na.rm = TRUE) == 1L) 
+  .(urbanicity = unique(na.omit(urbanicity))), by = district],
+  urbanicity := i.urbanicity, on = 'district']
+#Lastly, assign district urbanicity to unmatched schools
+#  (matches exactly what I would have assigned by inspection)
+schools[districts[schools[is.na(urbanicity), .(year, school, district)], 
+                  on = c('year', 'district')],
+        urbanicity := i.urbanicity, on = c('year', 'district', 'school')]
+
 schools[ , urbanicity := 
            factor(urbanicity, levels = 
                     c('Large Urban', 'Small Urban', 'Suburban', 'Rural'))]
@@ -63,8 +115,6 @@ payscales =
         select = c('year', 'district_fill', 'tenure', 'wage_ba', 'wage_ma'))
 payscales = payscales[year %between% incl_rng]
 
-districts = fread(wds['data'] %+% 'district_demographics.csv',
-                  colClasses = list(character = 'district'))
 payscales[districts, `:=`(n_students = i.n_students, pct_hisp = i.pct_hisp,
                           pct_black = i.pct_black, pct_frl = i.pct_frl,
                           pct_prof = i.pct_prof,

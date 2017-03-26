@@ -30,19 +30,15 @@ knitr::read_chunk('turnover_data_cleaner.R')
 teachers[ , .(`Remain in Same School` = sum(!move_school_next)/.N,
               `Change Schools Within District` = sum(move_within_next)/.N,
               `Switch Districts` = sum(move_district_next)/.N,
-              `Exit Wisconsin Public Schools` = 
-                sum(quit_next, na.rm = TRUE)/.N,
+              `Exit Wisconsin Public Schools` = sum(quit_next)/.N,
               `Number of Teachers` = .N),
           keyby = .(`Teacher Experience` = exp_split)]
 #table 1b
 teachers[ , .(`Teacher Experience` = 'All',
-              `Remain in Same School` = 
-                sum(!move_school_next, na.rm = TRUE)/.N,
-              `Change Schools Within District` = 
-                sum(move_within_next, na.rm = TRUE)/.N,
-              `Switch Districts` = sum(move_district_next, na.rm = TRUE)/.N,
-              `Exit Wisconsin Public Schools` =
-                sum(quit_next, na.rm = TRUE)/.N,
+              `Remain in Same School` = sum(!move_school_next)/.N,
+              `Change Schools Within District` = sum(move_within_next)/.N,
+              `Switch Districts` = sum(move_district_next)/.N,
+              `Exit Wisconsin Public Schools` = sum(quit_next)/.N,
               `Number of Teachers` = .N)]
 ```
 
@@ -185,7 +181,7 @@ teachersML =
            'gender', 'pct_prof_s', 'pct_frl_s', 'urbanicity_s',
            'ethnicity_main', 'pct_black_s', 'pct_hisp_s',
            'total_exp_floor', 'n_students', 'class_size','exp_split'), 
-       measure.vars = c('stay', 'move_district_next', 'quit_next'),
+       measure.vars = c('stay_next', 'move_district_next', 'quit_next'),
        variable.name = 'alternative', value.name = 'chosen')
 setorder(teachersML, teacher_id, year, alternative)
 

@@ -7,6 +7,10 @@ output:
     keep_tex: yes
 header-includes:
   - \usepackage{theapa}
+  - \usepackage{array}
+  - \usepackage{multirow}
+  - \newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1\linewidth}}
+  - \usepackage{longtable}
 abstract: 'Turnover in Wisconsin'
 bibliography: references.bib
 link-citations: true
@@ -27,39 +31,89 @@ knitr::read_chunk('turnover_data_cleaner.R')
 # Results
 
 ```{r table_1}
-teachers[ , .(`Remain in Same School` = sum(!move_school_next)/.N,
-              `Change Schools Within District` = sum(move_within_next)/.N,
-              `Switch Districts` = sum(move_district_next)/.N,
-              `Exit Wisconsin Public Schools` = sum(quit_next)/.N,
-              `Number of Teachers` = .N),
-          keyby = .(`Teacher Experience` = exp_split)]
-#table 1b
-teachers[ , .(`Teacher Experience` = 'All',
-              `Remain in Same School` = sum(!move_school_next)/.N,
-              `Change Schools Within District` = sum(move_within_next)/.N,
-              `Switch Districts` = sum(move_district_next)/.N,
-              `Exit Wisconsin Public Schools` = sum(quit_next)/.N,
-              `Number of Teachers` = .N)]
+library(xtable)
+T1 = rbind(
+  teachers[ , .(`Remain in Same School` = 100*sum(!move_school_next)/.N,
+                `Change Schools Within District` = 
+                  100*sum(move_within_next)/.N,
+                `Switch Districts` = 100*sum(move_district_next)/.N,
+                `Exit WI \mbox{Public Schools}` = 100*sum(quit_next)/.N,
+                `Number of Teachers` = prettyNum(.N, big.mark = ',')),
+            keyby = .(`Teacher Experience` = exp_split)],
+  teachers[ , .(`Teacher Experience` = 'All',
+                `Remain in Same School` = 100*sum(!move_school_next)/.N,
+                `Change Schools Within District` = 
+                  100*sum(move_within_next)/.N,
+                `Switch Districts` = 100*sum(move_district_next)/.N,
+                `Exit WI \mbox{Public Schools}` = 100*sum(quit_next)/.N,
+                `Number of Teachers` = prettyNum(.N, big.mark = ','))])
+tbl = capture.output(print(xtable(
+  T1, caption = 'Year-to-year Transitions of Teachers by Experience, 2000-08', 
+  label = 'tbl:move_by_exp', digits = 1L, 
+  align = paste0('lp{.14\\linewidth}p{.16\\linewidth}',
+                 'p{.2\\linewidth}p{.14\\linewidth}p{.19\\linewidth}R{.16}')),
+  include.rownames = FALSE))
+idx = grep('^Teacher', tbl) - 1L
+tbl = c(tbl[1L:idx], 
+        ' & \\multicolumn{4}{c}{Percent of Teachers Who} & \\\\ \\cline{2-5}',
+        tbl[(idx+1L):length(tbl)])
+cat(tbl, sep = '\n')
 ```
 
 ```{r table_2}
-#table 2a
-teachers[ , {
-  idx = move_district_next
-  N_move = sum(idx)
-  c(as.list(table2(urbanicity_s_next[idx], prop = TRUE)),
-    list(`# Changing Districts` = N_move, 
-         `% of origin teachers` = N_move/.N))
-}, keyby = urbanicity_s]
+share_change = 
+  #use 2006, not incl_rng, because of the artificial change in 
+  #  shares induced by the change in how urbanicity is calculated
+  teachers[year %in% c(2000, 2006), .N, by = .(year, urbanicity_s)
+           ][ , shr := N/sum(N), by = year
+              ][order(year), .(delta = diff(shr)), by = urbanicity_s]
+T2 = rbind(
+  teachers[ , {
+    idx = move_district_next
+    N_move = sum(idx)
+    c(as.list(table2(urbanicity_s_next[idx], prop = TRUE, pct = TRUE)),
+      list(n_change = prettyNum(N_move, big.mark = ','), 
+           pct_origin = 100*N_move/.N,
+           change_share = share_change[.BY, 100*delta, on = 'urbanicity_s']))
+  }, keyby = urbanicity_s],
+  teachers[total_exp_floor <= 3, {
+    idx = move_district_next
+    N_move = sum(idx)
+    c(as.list(table2(urbanicity_s_next[idx], prop = TRUE, pct = TRUE)),
+      list(n_change = prettyNum(N_move, big.mark = ','), 
+           pct_origin = 100*N_move/.N))
+  }, keyby = urbanicity_s],
+  fill = TRUE)
 
-#table 2b
-teachers[total_exp_floor <= 3, {
-  idx = move_district_next
-  N_move = sum(idx)
-  c(as.list(table2(urbanicity_s_next[idx], prop = TRUE)),
-    list(`# Changing Districts` = N_move, 
-         `% of origin teachers` = N_move/.N))
-}, keyby = urbanicity_s]
+setnames(T2, grep('[^y]_', names(T2)), character(3L))
+T2[ , c('Origin Community', 'urbanicity_s') :=
+      .(paste0('\\quad ', urbanicity_s), NULL)]
+setcolorder(T2, c(ncol(T2), seq_len(ncol(T2) - 1L)))
+
+tbl = capture.output(print(xtable(
+  T2, caption = paste('Destination Community Type for Teachers',
+                      'Changing Districts, by Origin Community',
+                      'Type and Teacher Experience Level'),
+  label = 'tbl:markov', digits = 1L, align = 'llrrrrrrr'),
+  include.rownames = FALSE, sanitize.text.function = identity,
+  floating.environment = 'longtable'))
+idx = grep('^Origin', tbl)
+mrow = function(x, n) paste0('\\multirow{', n, '}{*}{', x, '}')
+mcol = function(x, n) paste0('\\multicolumn{', n, '}{c}{', x, '}')
+pbox = function(x, p) paste0('\\parbox{', p, '\\linewidth}{', x, '}')
+tbl = c(tbl[1L:(idx - 1L)],
+        paste0(paste('', mcol(mrow('Percent of Teachers Who Move to', 2), 4),
+                     mrow(pbox('Number Teachers Changing Districts', .13), 4),
+                     mrow(pbox('Percent of Origin Teachers', .12), 4),
+                     mrow(pbox('Change in Share of Teachers 2000-06', .16), 4), 
+                     sep = ' & '), '\\\\'),
+        ' & \\multicolumn{4}{c}{} & & & \\\\ \\cline{2-5}',
+        '& & & & & & & \\\\', tbl[idx + 0L:1L],
+        'I. All teachers & & & & & & & \\\\', tbl[idx + (2L:5L)], 
+        '\\multicolumn{3}{l}{II. Probationary teachers ' %+% 
+          '(1-3 years experience)}' %+%
+          ' & & & & & \\\\', tbl[(idx+6L):length(tbl)])
+cat(tbl, sep = '\n')
 ```
 
 ```{r table_3}

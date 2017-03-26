@@ -53,8 +53,14 @@ teachers[ , exp_split := factor(total_exp_floor)]
 levels(teachers$exp_split) = setNames(list(1:3, 4:6, 7:11, 12:30), exp_lab)
 
 ###############################################################################
-#                           District-Level Covariates                         #
+#                               Salary Covariates                             #
 ###############################################################################
+payscales = 
+  fread(wds['data'] %+% 'wisconsin_salary_scales_imputed.csv',
+        colClasses = list(character = 'district_fill'),
+        select = c('year', 'district_fill', 'tenure', 'wage_ba', 'wage_ma'))
+payscales = payscales[year %between% incl_rng]
+
 districts = fread(wds['data'] %+% 'district_demographics.csv',
                   colClasses = list(character = 'district'), na.strings = '')
 
@@ -63,15 +69,6 @@ teachers[districts,
               pct_black_next = i.pct_black, pct_frl_next = i.pct_frl, 
               urbanicity_d_next = urbanicity), 
          on = c('year', district_next_main = 'district')]
-
-###############################################################################
-#                               Salary Covariates                             #
-###############################################################################
-payscales = 
-  fread(wds['data'] %+% 'wisconsin_salary_scales_imputed.csv',
-        colClasses = list(character = 'district_fill'),
-        select = c('year', 'district_fill', 'tenure', 'wage_ba', 'wage_ma'))
-payscales = payscales[year %between% incl_rng]
 
 payscales[districts, `:=`(n_students = i.n_students, pct_hisp = i.pct_hisp,
                           pct_black = i.pct_black, pct_frl = i.pct_frl,
@@ -133,6 +130,9 @@ teachers[melt(payscales, id.vars = c('year', 'district_fill', 'tenure'),
          on = c('year', 'district_fill', 
                 total_exp_floor = 'tenure', 'highest_degree')]
 
+###############################################################################
+#                           District-Level Covariates                         #
+###############################################################################
 districts[payscales[ , mean(lwage_ba_resid + lwage_ma_resid, na.rm = TRUE), 
                      by = .(district_fill, year)], 
           lwage_resid_avg := i.V1, on = c(district = 'district_fill', 'year')]

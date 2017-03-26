@@ -6,7 +6,6 @@
 ###############################################################################
 #                             Package Setup                                   #
 ###############################################################################
-
 rm(list = ls(all = TRUE))
 gc()
 wds = c(cc.s = "/media/data_drive/common_core/school",
@@ -17,10 +16,8 @@ library(funchir)
 library(data.table)
 
 ###############################################################################
-#                           Demographic Data                                  #
+#                   School-level Urbanicity, Ethnography                      #
 ###############################################################################
-
-# Urbanicity (school-level, via CCD)
 ## Focus on included years: 1999-2000 AY through 2007-2008 AY
 sf = grep('.*-0[0-8].*W', 
           list.files(wds['cc.s'], full.names = TRUE), value = TRUE)
@@ -52,11 +49,12 @@ urban_map = data.table(
 schools[urban_map, urbanicity := i.size, on = 'urbanicity']
 schools[urbanicity %in% c('M', 'N'), urbanicity := NA]
 
-# Ethnicity, poverty (district-level, via CCD)
-districts = schools[ , lapply(.SD, sum, na.rm = TRUE), 
-                     by = .(district, year),
-                     .SDcols = !c('school', 'urbanicity')]
+#Aggregate school-level ethnography to district level
+districts = 
+  schools[ , lapply(.SD, sum, na.rm = TRUE), 
+           by = .(district, year),  .SDcols = !c('school', 'urbanicity')]
 
+#Convert to % in both
 pct_col = c('n_hisp', 'n_black', 'n_frl')
 districts[ , (pct_col) := lapply(.SD, `/`, n_students), .SDcols = pct_col]
 schools[ , (pct_col) := lapply(.SD, `/`, n_students), .SDcols = pct_col]
@@ -66,9 +64,11 @@ setnames(schools, pct_col, gsub('^n', 'pct', pct_col))
 #no longer need in school-level data
 schools[ , n_students := NULL]
 
-# Test scores (district-level, via CCD)
+###############################################################################
+#                               WKCE Performance                              #
+###############################################################################
 
-## Available metrics
+## Note on available metrics
 ##  - WRCT (Wisconsin Reading Comprehension Test)
 ##     * "An Assessment of Primary-Level Reading at Grade Three"
 ##     * 93/94 - 04/05
@@ -89,8 +89,9 @@ schools[ , n_students := NULL]
 ##     * Available through WINSS Historical Files through 04/05,
 ##       then through WISEdash thereafter
 ##     * Only available at proficiency levels pre-06 
-#        (then average scale score available thereafter)
+##       (then average scale score available thereafter)
 
+#Break in historical records means stored in two types of file
 wsas1 = list.files(wds['wsas'], pattern = 'all_students.*-0[0-9]', 
                    full.names = TRUE)
 names(wsas1) = paste0('20', gsub('.*-(.*)\\.csv', '\\1', wsas1))
@@ -115,12 +116,14 @@ schools[grades1, c('n_tested', 'n_prof', 'n_advn') :=
           .(i.n, i.n_prof, i.n_advn),
         on = c('year', district = 'district_number', school = 'school_number')]
 
+#on-the-fly school-level aggregation, then join
 districts[grades1[ , lapply(.SD, sum, na.rm = TRUE), 
                    by = .(year, district = district_number),
                    .SDcols = c('n', 'n_prof', 'n_advn')], 
           c('n_tested', 'n_prof', 'n_advn') :=
             .(i.n, i.n_prof, i.n_advn), on = c('year', 'district')]
 
+#now for the second type of file
 wsas2 =  list.files(wds['wsas'], pattern = 'certified.*-0[0-8]', 
                     full.names = TRUE)
 names(wsas2) = paste0('20', gsub('.*-(.*)\\.csv', '\\1', wsas2))
@@ -150,6 +153,7 @@ schools[grades2, c('n_tested', 'n_prof', 'n_advn') :=
 schools[ , pct_prof := (n_prof + n_advn)/n_tested]
 schools[ , c('n_tested', 'n_prof', 'n_advn') := NULL]
 
+#again, aggregate & join
 districts[grades2[ , lapply(.SD, sum, na.rm = TRUE), 
                    by = .(year, district), .SDcols = !"school"],
           c('n_tested', 'n_prof', 'n_advn') :=
@@ -158,7 +162,9 @@ districts[grades2[ , lapply(.SD, sum, na.rm = TRUE),
 districts[ , pct_prof := (n_prof + n_advn)/n_tested]
 districts[ , c('n_tested', 'n_prof', 'n_advn') := NULL]
 
-# Urbanicity and STR, district-level
+###############################################################################
+#             District-Level Urbanicity, Student-Teacher Ratio                #
+###############################################################################
 df = grep('.*_0[1-8]_', 
           list.files(wds['cc.d'], full.names = TRUE), value = TRUE)
 names(df) = paste0('20', gsub('.*[0-9]{4}_([0-9]{2})_.*', '\\1', df))
@@ -187,6 +193,9 @@ dist_urb[ , c('n_teachers', 'n_students') := NULL]
 dist_urb[urban_map, urbanicity := i.size, on = 'urbanicity']
 dist_urb[urbanicity %in% c('M', 'N'), urbanicity := NA]
 
+###############################################################################
+#         'Manual' Calculation of Urbanicity in Certain Cases                 #
+###############################################################################
 # No urbanicity code at district level in 1999-2000, so use
 #   the "maximum" urbanicity at the school level. 59
 #   districts have >1 urbanicity at the school level.
@@ -246,5 +255,8 @@ schools[districts[schools[is.na(urbanicity), .(year, school, district)],
                   on = c('year', 'district')],
         urbanicity := i.urbanicity, on = c('year', 'district', 'school')]
 
+###############################################################################
+#                                Write Output                                 #
+###############################################################################
 fwrite(schools, wds['data'] %+% 'school_demographics.csv')
 fwrite(districts, wds['data'] %+% 'district_demographics.csv')

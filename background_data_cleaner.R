@@ -200,5 +200,51 @@ districts[dist_urb, `:=`(urbanicity = i.urbanicity,
                          class_size = i.class_size),
           on = c('district', 'year')]
 
+#In 2006 all urbanicity is missing. For districts that never
+#  saw a different urbanicity code, assign the unique code.
+districts[districts[ , if(any(is.na(urbanicity)) & 
+                          uniqueN(urbanicity, na.rm = TRUE) == 1L)
+  .(urbanicity = unique(na.omit(urbanicity))), by = district],
+  urbanicity := i.urbanicity, on = 'district']
+#If in 2005 & 2007, there was only one value of urbanicity
+#  in a district missing 2006, assign the observed constant value to 2006
+districts[districts[year %in% 2005:2007, 
+                    if(any(is.na(urbanicity)) & 
+                       uniqueN(urbanicity, na.rm = TRUE) == 1L)
+                      .(year = '2006', 
+                        urbanicity = unique(na.omit(urbanicity))), 
+                    by = district],
+  urbanicity := i.urbanicity, on = c('district', 'year')]
+#If more than 5 other years featured a single urbanicity,
+#  assign that to 2006
+districts[districts[year != 2006 & district %in% 
+                      districts[is.na(urbanicity), district], .N, 
+                    by = .(district, urbanicity)
+                    ][N>5, .(year = '2006', district, urbanicity)],
+          urbanicity := i.urbanicity, on = c('district', 'year')]
+#Just assign 2005's value for the rest
+districts[districts[year == 2005 & district %in% 
+                      districts[is.na(urbanicity), district],
+                    .(year = '2006', district, urbanicity)],
+          urbanicity := i.urbanicity, on = c('district', 'year')]
+
+#For schools that are missing urbanicity at least once
+#  but only ever observe one actual urbanicity value, assign this
+schools[schools[ , if(any(is.na(urbanicity)) & 
+                          uniqueN(urbanicity, na.rm = TRUE) == 1L)
+  .(urbanicity = unique(na.omit(urbanicity))), by = .(district, school)],
+  urbanicity := i.urbanicity, on = 'district']
+#For schools missing urbanicity that are in districts
+#  that have only one type of observed urbanicity, assign that
+schools[schools[ , if (any(is.na(urbanicity)) & 
+                       uniqueN(urbanicity, na.rm = TRUE) == 1L) 
+  .(urbanicity = unique(na.omit(urbanicity))), by = district],
+  urbanicity := i.urbanicity, on = 'district']
+#Lastly, assign district urbanicity to unmatched schools
+#  (matches exactly what I would have assigned by inspection)
+schools[districts[schools[is.na(urbanicity), .(year, school, district)], 
+                  on = c('year', 'district')],
+        urbanicity := i.urbanicity, on = c('year', 'district', 'school')]
+
 fwrite(schools, wds['data'] %+% 'school_demographics.csv')
 fwrite(districts, wds['data'] %+% 'district_demographics.csv')

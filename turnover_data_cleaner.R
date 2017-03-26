@@ -55,37 +55,8 @@ levels(teachers$exp_split) = setNames(list(1:3, 4:6, 7:11, 12:30), exp_lab)
 ###############################################################################
 #                           District-Level Covariates                         #
 ###############################################################################
-
 districts = fread(wds['data'] %+% 'district_demographics.csv',
                   colClasses = list(character = 'district'), na.strings = '')
-
-#In 2006 all urbanicity is missing. For districts that never
-#  saw a different urbanicity code, assign the unique code.
-districts[districts[ , if(any(is.na(urbanicity)) & 
-                          uniqueN(urbanicity, na.rm = TRUE) == 1L)
-  .(urbanicity = unique(na.omit(urbanicity))), by = district],
-  urbanicity := i.urbanicity, on = 'district']
-#If in 2005 & 2007, there was only one value of urbanicity
-#  in a district missing 2006, assign the observed constant value to 2006
-districts[districts[year %in% 2005:2007, 
-                    if(any(is.na(urbanicity)) & 
-                       uniqueN(urbanicity, na.rm = TRUE) == 1L)
-                      .(year = 2006L, 
-                        urbanicity = unique(na.omit(urbanicity))), 
-                    by = district],
-  urbanicity := i.urbanicity, on = c('district', 'year')]
-#If more than 5 other years featured a single urbanicity,
-#  assign that to 2006
-districts[districts[year != 2006 & district %in% 
-                      districts[is.na(urbanicity), district], .N, 
-                    by = .(district, urbanicity)
-                    ][N>5, .(year = 2006L, district, urbanicity)],
-          urbanicity := i.urbanicity, on = c('district', 'year')]
-#Just assign 2005's value for the rest
-districts[districts[year == 2005 & district %in% 
-                      districts[is.na(urbanicity), district],
-                    .(year = 2006L, district, urbanicity)],
-          urbanicity := i.urbanicity, on = c('district', 'year')]
 
 teachers[districts, 
          `:=`(pct_prof_next = i.pct_prof, pct_hisp_next = i.pct_hisp, 
@@ -96,7 +67,6 @@ teachers[districts,
 ###############################################################################
 #                               Salary Covariates                             #
 ###############################################################################
-
 payscales = 
   fread(wds['data'] %+% 'wisconsin_salary_scales_imputed.csv',
         colClasses = list(character = 'district_fill'),
@@ -188,28 +158,9 @@ setnames(teachers, 'urbanicity', 'urbanicity_d')
 ###############################################################################
 #                            School-Level Covariates                          #
 ###############################################################################
-
 schools = fread(wds['data'] %+% 'school_demographics.csv',
                 colClasses = list(character = c('district', 'school')), 
                 na.strings = '')
-
-#For schools that are missing urbanicity at least once
-#  but only ever observe one actual urbanicity value, assign this
-schools[schools[ , if(any(is.na(urbanicity)) & 
-                          uniqueN(urbanicity, na.rm = TRUE) == 1L)
-  .(urbanicity = unique(na.omit(urbanicity))), by = .(district, school)],
-  urbanicity := i.urbanicity, on = 'district']
-#For schools missing urbanicity that are in districts
-#  that have only one type of observed urbanicity, assign that
-schools[schools[ , if (any(is.na(urbanicity)) & 
-                       uniqueN(urbanicity, na.rm = TRUE) == 1L) 
-  .(urbanicity = unique(na.omit(urbanicity))), by = district],
-  urbanicity := i.urbanicity, on = 'district']
-#Lastly, assign district urbanicity to unmatched schools
-#  (matches exactly what I would have assigned by inspection)
-schools[districts[schools[is.na(urbanicity), .(year, school, district)], 
-                  on = c('year', 'district')],
-        urbanicity := i.urbanicity, on = c('year', 'district', 'school')]
 
 schools[ , urbanicity := 
            factor(urbanicity, levels = 

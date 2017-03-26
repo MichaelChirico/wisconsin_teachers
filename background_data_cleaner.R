@@ -46,7 +46,12 @@ setnames(schools08,
            'MEMBER', 'HISP', 'BLACK', 'ULOCAL') %+% '07',
          c('district', 'school', 'n_frl',
            'n_students', 'n_hisp', 'n_black', 'urbanicity'))
-schools = rbind(schools, schools08)
+schools = rbind(schools, schools08, 
+                #This Downtown Montessori school has employees
+                #  recorded from 2000 but shows up in CCD from 2001
+                data.table(year = '2000', district = '8101',
+                           school = '1056', urbanicity = 1),
+                fill = TRUE)
 
 schools[n_students == 0, n_students := NA]
 

@@ -120,10 +120,10 @@ teachers[payscales[ , .(year = year - 1L, district_fill,
 ###############################################################################
 #                           District-Level Covariates                         #
 ###############################################################################
-teachers[ , paste0(dist_cols, '_d_next') :=
+teachers[ , paste0(dist_cols, '_next_d') :=
             districts[.SD, ..dist_cols, 
                       on = c('year', district = 'district_next_main')]]
-districts[payscales[ , mean(lwage_ba_resid + lwage_ma_resid, na.rm = TRUE), 
+districts[payscales[ , mean(lwage_resid, na.rm = TRUE), 
                      by = .(district_fill, year)], 
           lwage_resid_avg := i.V1, on = c(district = 'district_fill', 'year')]
 districts[teachers[ , .N, by = .(district_fill, year)],
@@ -137,9 +137,11 @@ districts[ , paste0(q_var, '_q') := lapply(.SD, function(x) {
   factor(f, levels = 4:1, labels = c('Highest', '3rd', '2nd', 'Lowest'))
 }), .SDcols = q_var]
 
-dist_cols = c(paste0(dist_cols, '_d'), paste0(q_var, '_q'))
-teachers[ , (dist_cols) := 
+teachers[ , paste0(dist_cols, '_d') :=
             districts[.SD, ..dist_cols,
+                      on = c('year', district = 'district_fill')]]
+teachers[ , paste0(q_var, '_q') := 
+            districts[.SD, paste0(q_var, '_q'), with = FALSE,
                       on = c('year', district = 'district_fill')]]
 
 ###############################################################################

@@ -37,7 +37,7 @@ T1 = rbind(
                 `Change Schools Within District` = 
                   100*sum(move_within_next)/.N,
                 `Switch Districts` = 100*sum(move_district_next)/.N,
-                `Exit WI \mbox{Public Schools}` = 100*sum(quit_next)/.N,
+                `Exit WI \\mbox{Public Schools}` = 100*sum(quit_next)/.N,
                 `Number of Teachers` = prettyNum(.N, big.mark = ',')),
             keyby = .(`Teacher Experience` = exp_split)],
   teachers[ , .(`Teacher Experience` = 'All',
@@ -45,7 +45,7 @@ T1 = rbind(
                 `Change Schools Within District` = 
                   100*sum(move_within_next)/.N,
                 `Switch Districts` = 100*sum(move_district_next)/.N,
-                `Exit WI \mbox{Public Schools}` = 100*sum(quit_next)/.N,
+                `Exit WI \\mbox{Public Schools}` = 100*sum(quit_next)/.N,
                 `Number of Teachers` = prettyNum(.N, big.mark = ','))])
 tbl = capture.output(print(xtable(
   T1, caption = 'Year-to-year Transitions of Teachers by Experience, 2000-08', 
@@ -118,75 +118,54 @@ cat(tbl, sep = '\n')
 ```
 
 ```{r table_3}
-T3M = 
-  teachers[move_district_next & total_exp_floor <= 10, 
-           .(d_lsalary = 
-               mean(schedule_lsalary_next - 
-                      schedule_lsalary_next_cf, na.rm = TRUE), 
-             d_lsalary_resid = 
-               mean(schedule_lsalary_resid_next - 
-                      schedule_lsalary_resid_next_cf, na.rm = TRUE),
-             d_pct_prof = mean(pct_prof_next - pct_prof, na.rm = TRUE),
-             d_pct_hisp = mean(pct_hisp_next - pct_hisp, na.rm = TRUE),
-             d_pct_black = mean(pct_black_next - pct_black, na.rm = TRUE),
-             d_pct_frl = mean(pct_frl_next - pct_frl, na.rm = TRUE)),
-           keyby = .(exp_split, gender)
-           ][ , melt(.SD, measure.vars = patterns('^d_'))
-              ][ , dcast(.SD, variable ~ gender + exp_split, value.var = 'value')]
-T3M[ , all := 
-       teachers[move_district_next & total_exp_floor <= 10, 
-                c(mean(schedule_lsalary_next - 
-                         schedule_lsalary_next_cf, na.rm = TRUE),
-                  mean(schedule_lsalary_resid_next - 
-                         schedule_lsalary_resid_next_cf, na.rm = TRUE),
-                  mean(pct_prof_next - pct_prof, na.rm = TRUE),
-                  mean(pct_hisp_next - pct_hisp, na.rm = TRUE),
-                  mean(pct_black_next - pct_black, na.rm = TRUE),
-                  mean(pct_frl_next - pct_frl, na.rm = TRUE))]]
+T3 = 
+  teachers[move_district_next & total_exp_floor <= 10, {
+    dl = lapply(
+      list(schedule_lsalary_next - schedule_lsalary_next_cf,
+           schedule_lsalary_resid_next - schedule_lsalary_resid_next_cf,
+           pct_prof_next_d - pct_prof_d, pct_hisp_next_d - pct_hisp_d,
+           pct_black_next_d - pct_black_d, pct_frl_next_d - pct_frl_d),
+      na.omit)
+    .(var = paste0(rep(seq_len(6L), each = 2L), rep(c('M', 'S'), 6L)),
+      val = c(rbind(sapply(dl, mean),
+                    sapply(dl, function(x) sd(x)/sqrt(length(x))))))
+  }, keyby = .(exp_split, gender)
+  ][ , dcast(.SD, var ~ gender + exp_split, value.var = 'val')]
+T3[ , all := 
+      teachers[move_district_next & total_exp_floor <= 10, {
+        dl = lapply(
+          list(schedule_lsalary_next - schedule_lsalary_next_cf,
+               schedule_lsalary_resid_next - schedule_lsalary_resid_next_cf,
+               pct_prof_next_d - pct_prof_d, pct_hisp_next_d - pct_hisp_d,
+               pct_black_next_d - pct_black_d, pct_frl_next_d - pct_frl_d),
+          na.omit)
+        c(rbind(sapply(dl, mean),
+                sapply(dl, function(x) sd(x)/sqrt(length(x)))))}]]
 
-T3S = 
-  teachers[move_district_next & total_exp_floor <= 10, 
-           .(d_lsalary = 
-               sd(schedule_lsalary_next - 
-                      schedule_lsalary_next_cf, na.rm = TRUE), 
-             d_lsalary_resid = 
-               sd(schedule_lsalary_resid_next - 
-                      schedule_lsalary_resid_next_cf, na.rm = TRUE),
-             d_pct_prof = sd(pct_prof_next - pct_prof, na.rm = TRUE),
-             d_pct_hisp = sd(pct_hisp_next - pct_hisp, na.rm = TRUE),
-             d_pct_black = sd(pct_black_next - pct_black, na.rm = TRUE),
-             d_pct_frl = sd(pct_frl_next - pct_frl, na.rm = TRUE)),
-           keyby = .(exp_split, gender)
-           ][ , melt(.SD, measure.vars = patterns('^d_'))
-              ][ , dcast(.SD, variable ~ gender + exp_split, value.var = 'value')]
-T3S[ , all := 
-       teachers[move_district_next & total_exp_floor <= 10, 
-                c(sd(schedule_lsalary_next - 
-                       schedule_lsalary_next_cf, na.rm = TRUE),
-                  sd(schedule_lsalary_resid_next - 
-                       schedule_lsalary_resid_next_cf, na.rm = TRUE),
-                  sd(pct_prof_next - pct_prof, na.rm = TRUE),
-                  sd(pct_hisp_next - pct_hisp, na.rm = TRUE),
-                  sd(pct_black_next - pct_black, na.rm = TRUE),
-                  sd(pct_frl_next - pct_frl, na.rm = TRUE))]]
-T3S[ , variable := '']
-
-T3 = rbind(T3M, T3S, idcol = TRUE)[order(rowid(.id))][ , .id := NULL]
-rename = 
-  data.table(variable = 
-               paste0('d_', c('lsalary', 'lsalary_resid', 'pct_prof',
-                              'pct_hisp', 'pct_black', 'pct_frl')),
-             formal = c('Base year salary (log)', 'Adjusted salary (log)',
-                        'Percent proficient', 'Percent Hispanic',
-                        'Percent black', 'Percent subsidized lunch'))
-T3[rename, variable := i.formal, on = 'variable']
+T3[ , var := rep(c('Base year salary (log)', 'Adjusted salary (log)',
+                   'Percent proficient', 'Percent Hispanic',
+                   'Percent black', 'Percent subsidized lunch'), each = 2L)]
+T3[ , type := rep(c('m', 's'), 6L)]
+cols = setdiff(names(T3), c('var', 'type'))
+sidx = T3$type == 's'
+pidx = grepl('^Percent', T3$var)
+T3[ , (cols) := lapply(.SD, function(x) {
+  o = character(length(x))
+  o[!pidx & !sidx] = sprintf('%.3f', x[!pidx & !sidx])
+  o[!pidx & sidx] = sprintf('(%.3f)', x[!pidx & sidx])
+  o[pidx & !sidx] = sprintf('%.1f%%', 100*x[pidx & !sidx])
+  o[pidx & sidx] = sprintf('(%.1f%%)', 100*x[pidx & sidx])
+  o}), .SDcols = cols]
+T3[type == 's', var := '']
+T3[ , type := NULL]
 setnames(T3, c('', rep(exp_lab[-4L], 2L), ''))
 
 tbl = capture.output(print(xtable(
   T3, caption = paste('Average Change in Salary and District Student',
                       'Characteristics (and Standard Deviations) for',
                       'Teachers Changing Districts, by Gender and Experience'),
-  label = 'tbl:avg_d_cov'), include.rownames = FALSE, floating.environment = 'longtable'))
+  label = 'tbl:avg_d_cov', digits = 3L, align = 'llccccccc'), 
+  include.rownames = FALSE, floating.environment = 'longtable'))
 
 cat(tbl, sep = '\n')
 ```

@@ -9,7 +9,7 @@ header-includes:
   - \usepackage{theapa}
   - \usepackage{array}
   - \usepackage{multirow}
-  - \newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1\linewidth}}
+  - "\\newcolumntype{R}[1]{>{\\raggedleft\\arraybackslash}p{#1\\linewidth}}"
   - \usepackage{longtable}
 abstract: 'Turnover in Wisconsin'
 bibliography: references.bib
@@ -19,6 +19,10 @@ link-citations: true
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = FALSE, results = 'hide')
 knitr::read_chunk('turnover_data_cleaner.R')
+library(xtable)
+library(data.table)
+library(funchir)
+options(xtable.comment = FALSE)
 ```
 
 ```{r start_read, cache = TRUE, include = FALSE}
@@ -30,8 +34,7 @@ knitr::read_chunk('turnover_data_cleaner.R')
 
 # Results
 
-```{r table_1}
-library(xtable)
+```{r table_1, warning = FALSE, results = 'asis'}
 T1 = rbind(
   teachers[ , .(`Remain in Same School` = 100*sum(!move_school_next)/.N,
                 `Change Schools Within District` = 
@@ -52,7 +55,7 @@ tbl = capture.output(print(xtable(
   label = 'tbl:move_by_exp', digits = 1L, 
   align = paste0('lp{.14\\linewidth}p{.16\\linewidth}',
                  'p{.2\\linewidth}p{.14\\linewidth}p{.19\\linewidth}R{.16}')),
-  include.rownames = FALSE))
+  include.rownames = FALSE, sanitize.text.function = identity))
 idx = grep('^Teacher', tbl) - 1L
 tbl = c(tbl[1L:idx], 
         ' & \\multicolumn{4}{c}{Percent of Teachers Who} & \\\\ \\cline{2-5}',
@@ -60,7 +63,7 @@ tbl = c(tbl[1L:idx],
 cat(tbl, sep = '\n')
 ```
 
-```{r table_2}
+```{r table_2, results = 'asis'}
 share_change = 
   #use 2006, not incl_rng, because of the artificial change in 
   #  shares induced by the change in how urbanicity is calculated
@@ -75,7 +78,7 @@ T2 = rbind(
       list(n_change = prettyNum(N_move, big.mark = ','), 
            pct_origin = 100*N_move/.N,
            change_share = 
-             share_change[.BY, sprintf('%.1f%%', 100*delta), on = 'urbanicity_s']))
+             share_change[.BY, sprintf('%.1f\\%%', 100*delta), on = 'urbanicity_s']))
   }, keyby = urbanicity_s],
   teachers[total_exp_floor <= 3, {
     idx = move_district_next
@@ -117,7 +120,7 @@ tbl = c(tbl[1L:(idx - 1L)],
 cat(tbl, sep = '\n')
 ```
 
-```{r table_3}
+```{r table_3, results = 'asis'}
 T3 = 
   teachers[move_district_next & total_exp_floor <= 10, {
     dl = lapply(
@@ -179,7 +182,7 @@ tbl = c(tbl[1L:(idx - 1L)],
 cat(tbl, sep = '\n')
 ```
 
-```{r table_4}
+```{r table_4, results = 'asis'}
 T4D = 
   teachers[move_district_next & urbanicity_next_d == 'Suburban' & 
              urbanicity_d %in% c('Large Urban', 'Suburban') & 
@@ -255,7 +258,7 @@ tbl = c(tbl[1L:(idx - 1L)],
 cat(tbl, sep = '\n')
 ```
 
-```{r table_5}
+```{r table_5, results = 'asis'}
 T5D = 
   teachers[move_district_next & total_exp_floor <= 10 & 
            ethnicity_main %in% c('Black', 'Hispanic'), {
@@ -324,9 +327,9 @@ tbl = c(tbl[1L:(idx - 1L)],
 cat(tbl, sep = '\n')
 ```
 
-```{r table_6}
+```{r table_6, eval = FALSE}
 melt(teachers, id.vars = c('year', 'move_district_next', 
-                           'move_school_next', 'quit_next'), 
+                           'move_within_next', 'quit_next'), 
      measure.vars = paste0(q_var, '_q'), na.rm = TRUE,
      variable.name = 'Quartile of Distribution', value.name = 'quartile'
      )[ , .(`Probability Teachers Move to New School within District` = 
@@ -338,20 +341,21 @@ melt(teachers, id.vars = c('year', 'move_district_next',
         keyby = .(`Quartile of Distribution`, quartile)]
 ```
 
-```{r table_7}
+```{r table_7, eval = FALSE}
 reg_l = 
   lapply(split(teachers, by = 'exp_split', sorted = TRUE),
-         function(DT) DT[ , lm(move_district_next ~
-                                 schedule_lbase_ba_salary*gender + 
-                                 pct_prof_s + pct_frl_s + 
-                                 ethnicity_main*pct_black_s + 
-                                 ethnicity_main*pct_hisp_s + factor(year) + 
-                                 urbanicity_s + total_exp_floor + 
-                                 I(total_exp_floor^2) + n_students + class_size)])
+         function(DT) 
+           DT[ , lm(move_district_next ~
+                      schedule_lbase_ba_salary*gender + 
+                      pct_prof_s + pct_frl_s + 
+                      ethnicity_main*pct_black_s + 
+                      ethnicity_main*pct_hisp_s + factor(year) + 
+                      urbanicity_s + total_exp_floor + 
+                      I(total_exp_floor^2) + n_students_d + class_size_d)])
 texreg(reg_l)
 ```
 
-```{r table_8}
+```{r table_8, eval = FALSE}
 reg_l = 
   lapply(split(teachers, by = 'exp_split', sorted = TRUE),
          function(DT) DT[ , lm(move_district_next ~
@@ -364,7 +368,7 @@ reg_l =
 texreg(reg_l, omit.coef = '^factor')
 ```
 
-```{r table_9}
+```{r table_9, eval = FALSE}
 library(mlogit)
 teachersML = 
   melt(teachers, id.vars =

@@ -365,7 +365,7 @@ cat(tbl, sep = '\n')
 
 ```{r table_7, eval = FALSE}
 reg_l = 
-  lapply(split(teachers, by = 'exp_split', sorted = TRUE),
+  lapply(split(teachers, f = teachers$exp_split),
          function(DT) 
            DT[ , lm(move_district_next ~
                       schedule_lbase_ba_salary*gender + 
@@ -374,7 +374,42 @@ reg_l =
                       ethnicity_main*pct_hisp_s + factor(year) + 
                       urbanicity_s + total_exp_floor + 
                       I(total_exp_floor^2) + n_students_d + class_size_d)])
-texreg(reg_l)
+
+coefn = setNames(nm = names(coef(reg_l[[1L]])))
+coefn[seq_len(length(coefn))] = 'x'
+idx = match(c('schedule_lbase_ba_salary', 'schedule_lbase_ba_salary:genderF',
+              'pct_prof_s', 'pct_frl_s', 'pct_black_s', 'pct_hisp_s',
+              paste0('ethnicity_main', 
+                     c('Black', 'Black', 'Hispanic', 'Hispanic'), ':pct_',
+                     c('black', 'hisp', 'black', 'hisp'), '_s')), names(coefn))
+coefn[idx] = 
+  c('First year base salary (log)', 'First year base salary (log) * female',
+    'Percent proficient', 'Percent eligible for subsidized lunch',
+    'Percent Black', 'Percent Hispanic', 'Black * percent Black',
+    'Black * percent Hispanic', 'Hispanic * percent Black',
+    'Hispanic * percent Hispanic')
+reg_l = lapply(reg_l, function(x) {
+  names(x$coefficients) = coefn[names(coef(x))]; x})
+tbl = capture.output(texreg(
+  reg_l, omit.coef = '^x', label = 'tbl:reg_lpm', 
+  caption = paste('Estimated Effects of Starting Teacher Salary and Student',
+                  'Demographic Characteristics on the Probability that',
+                  'Teachers Leave School Districts, by Experience (linear',
+                  'probability models; standard errors in parentheses)'),
+  groups = list('Campus average student characteristics' = 3:6,
+                'Interactions' = 7:10), 
+  reorder.coef = c(1, 6, 2:5, 7:10),
+  include.rsquared = FALSE, include.adjrs = FALSE, include.rmse = FALSE))
+
+idx = grep('years', tbl)
+tbl = c(tbl[1L:(idx - 1L)],
+        ' & \\multicolumn{4}{c}{Teacher Experience} \\\\',
+        tbl[idx:length(tbl)])
+idx = grep('^Num.*obs', tbl)
+#print-formatting 1k+ numbers
+tbl[idx] = gsub('(\\d{1,3})(?=\\d{3}+(?!\\d))', '\\1,', tbl[idx], perl = TRUE)
+tbl[idx] = gsub('Num. obs.   ', 'Observations', tbl[idx], fixed = TRUE)
+cat(tbl, sep = '\n')
 ```
 
 ```{r table_8, eval = FALSE}

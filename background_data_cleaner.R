@@ -22,6 +22,9 @@ sf = grep('.*-0[0-8].*W',
 names(sf) = paste0('20', gsub('.*[0-9]{4}-([0-9]{2})_.*', '\\1', sf))
 schools = rbindlist(lapply(sf, function(ff) {
   DT = fread(ff)
+  #LOCALE through '05-'06, ULOCAL thereafter
+  #  (differing approaches to calculating urbanicity; attempting here
+  #   to map between those, but it's not perfect)
   incl_patt = 'STID|SEASCH|LOCALE|ULOCAL|MEMBER|^HISP|^BLACK|TOTFRL'
   incl_cols = grep(incl_patt, names(DT))
   DT = DT[FIPST == '55', ..incl_cols]

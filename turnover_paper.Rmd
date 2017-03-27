@@ -5,24 +5,21 @@ date: "March 17, 2017"
 output:
   pdf_document:
     keep_tex: yes
-header-includes:
-  - \usepackage{theapa}
-  - \usepackage{array}
-  - \usepackage{multirow}
-  - "\\newcolumntype{R}[1]{>{\\raggedleft\\arraybackslash}p{#1\\linewidth}}"
-  - \usepackage{longtable}
+    includes:
+      in_header: turnover_paper_header.tex
 abstract: 'Turnover in Wisconsin'
 bibliography: references.bib
 link-citations: true
 ---
 
-```{r setup, include = FALSE}
+```{r setup, include = FALSE, message = FALSE}
 knitr::opts_chunk$set(echo = FALSE, results = 'hide')
 knitr::read_chunk('turnover_data_cleaner.R')
 library(xtable)
-library(data.table)
 options(xtable.comment = FALSE)
 options(xtable.include.rownames = FALSE)
+library(data.table)
+library(texreg)
 ```
 
 ```{r start_read, cache = TRUE, include = FALSE}
@@ -352,7 +349,7 @@ tbl = capture.output(print(xtable(
                       'Characteristics (data weighted by number of',
                       'teachers in school)'),
   label = 'tbl:change_by_quartile',
-  align = 'p{.4\\textwidth}p{.2\\textwidth}p{.2\\textwidth}p{.2\\textwidth}'), 
+  align = 'lp{.4\\textwidth}p{.2\\textwidth}p{.2\\textwidth}p{.2\\textwidth}'), 
   sanitize.text.function = identity, NA.string = '---'))
 
 idx = grep('Highest', tbl)
@@ -471,7 +468,7 @@ teachersML =
          c('teacher_id', 'year', 'schedule_lbase_ba_salary', 
            'gender', 'pct_prof_s', 'pct_frl_s', 'urbanicity_s',
            'ethnicity_main', 'pct_black_s', 'pct_hisp_s',
-           'total_exp_floor', 'n_students', 'class_size','exp_split'), 
+           'total_exp_floor', 'n_students_d', 'class_size_d','exp_split'), 
        measure.vars = c('stay_next', 'move_district_next', 'quit_next'),
        variable.name = 'alternative', value.name = 'chosen')
 setorder(teachersML, teacher_id, year, alternative)
@@ -488,7 +485,7 @@ mnl_l =
              ethnicity_main*pct_black_s + ethnicity_main*pct_hisp_s + 
              #need to include dummy for year, but solution fails
              urbanicity_s + total_exp_floor + 
-             I(total_exp_floor^2) + n_students + class_size, data = DT)
+             I(total_exp_floor^2) + n_students_d + class_size_d, data = DT)
   })
 texreg(mnl_l)
 ```

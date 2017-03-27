@@ -101,17 +101,6 @@ Turnover in Wisconsin
 
 \section{Results}\label{results}
 
-\begin{verbatim}
-## 
-## Attaching package: 'funchir'
-\end{verbatim}
-
-\begin{verbatim}
-## The following object is masked from 'package:stats':
-## 
-##     D
-\end{verbatim}
-
 \begin{table}[ht]
 \centering
 \begin{tabular}{p{.14\linewidth}p{.16\linewidth}p{.2\linewidth}p{.14\linewidth}p{.19\linewidth}R{.16}}
@@ -119,16 +108,17 @@ Turnover in Wisconsin
  & \multicolumn{4}{c}{Percent of Teachers Who} & \\ \cline{2-5}
 Teacher Experience & Remain in Same School & Change Schools Within District & Switch Districts & Exit WI \mbox{Public Schools} & Number of Teachers \\ 
   \hline
-1-3 years & 81.7 & 11.6 & 6.7 & 0.0 & 42,566 \\ 
-  4-6 years & 86.7 & 9.7 & 3.6 & 0.0 & 40,003 \\ 
-  7-11 years & 88.9 & 9.0 & 2.1 & 0.0 & 58,549 \\ 
-  12-30 years & 92.2 & 7.1 & 0.7 & 0.0 & 131,645 \\ 
-  All & 89.0 & 8.6 & 2.4 & 0.0 & 272,763 \\ 
+1-3 years & 82.9 & 10.8 & 6.3 & 6.4 & 44,920 \\ 
+  4-6 years & 87.2 & 9.3 & 3.5 & 4.3 & 41,322 \\ 
+  7-11 years & 89.2 & 8.7 & 2.1 & 2.6 & 59,629 \\ 
+  12-30 years & 92.4 & 6.9 & 0.7 & 2.9 & 134,988 \\ 
+  All & 89.4 & 8.3 & 2.3 & 3.6 & 280,859 \\ 
    \hline
 \end{tabular}
 \caption{Year-to-year Transitions of Teachers by Experience, 2000-08} 
 \label{tbl:move_by_exp}
 \end{table}
+
 
 \begin{longtable}{lrrrrrrr}
   \hline
@@ -138,17 +128,16 @@ Teacher Experience & Remain in Same School & Change Schools Within District & Sw
 Origin Community & Large Urban & Small Urban & Suburban & Rural &  &  &  \\ 
   \hline
 I. All teachers & & & & & & & \\
-\quad Large Urban & 14.6 & 14.6 & 52.8 & 18.0 & 756 & 2.3 & 0.5\% \\ 
-  \quad Small Urban & 3.8 & 15.5 & 44.6 & 36.1 & 765 & 1.5 & 0.1\% \\ 
-  \quad Suburban & 5.4 & 16.1 & 44.2 & 34.2 & 1,700 & 2.4 & 4.1\% \\ 
-  \quad Rural & 0.9 & 11.8 & 22.9 & 64.3 & 3,286 & 2.8 & -4.8\% \\ 
+\quad Large Urban & 14.8 & 14.3 & 52.9 & 17.9 & 748 & 2.2 & 0.6\% \\ 
+  \quad Small Urban & 3.8 & 15.2 & 45.0 & 36.1 & 757 & 1.4 & 0.1\% \\ 
+  \quad Suburban & 5.4 & 16.1 & 44.3 & 34.2 & 1,696 & 2.3 & 3.9\% \\ 
+  \quad Rural & 0.9 & 11.8 & 23.0 & 64.3 & 3,276 & 2.7 & -4.5\% \\ 
 \multicolumn{3}{l}{II. Probationary teachers (1-3 years experience)} & & & & & \\
-  \quad Large Urban & 14.3 & 16.3 & 51.1 & 18.3 & 422 & 4.6 &  \\ 
-  \quad Small Urban & 4.3 & 13.6 & 47.1 & 35.0 & 355 & 4.7 &  \\ 
-  \quad Suburban & 7.5 & 17.1 & 38.6 & 36.7 & 683 & 6.5 &  \\ 
-  \quad Rural & 1.1 & 11.2 & 23.7 & 64.0 & 1,386 & 9.0 &  \\ 
+  \quad Large Urban & 14.5 & 16.0 & 51.5 & 18.0 & 417 & 4.3 &  \\ 
+  \quad Small Urban & 4.3 & 13.6 & 47.2 & 34.8 & 354 & 4.4 &  \\ 
+  \quad Suburban & 7.5 & 17.2 & 38.7 & 36.6 & 682 & 6.1 &  \\ 
+  \quad Rural & 1.1 & 11.2 & 23.7 & 63.9 & 1,379 & 8.5 &  \\ 
    \hline
-
 \caption{Destination Community Type for Teachers Changing Districts, by Origin Community Type and Teacher Experience Level} 
 \label{tbl:markov}
 \end{longtable}
@@ -159,18 +148,18 @@ I. All teachers & & & & & & & \\
  & \multicolumn{3}{c}{Men by Experience Class} & \multicolumn{3}{c}{Women by Experience Class} & \multirow{2}{*}{\parbox{0.16\linewidth}{All Teachers 0-9 Years}}\\ \cline{2-4} \cline{5-7}
  & 1-3 years & 4-6 years & 7-11 years & 1-3 years & 4-6 years & 7-11 years &  \\ 
   \hline
-Base year salary (log) & 0.015 & 0.005 & -0.017 & 0.013 & 0.002 & -0.020 & 0.004 \\ 
-   & (0.009) & (0.012) & (0.017) & (0.005) & (0.008) & (0.010) & (0.003) \\ 
-  Adjusted salary (log) & -0.007 & 0.009 & 0.016 & 0.006 & 0.012 & 0.021 & 0.009 \\ 
+Base year salary (log) & 0.015 & 0.003 & -0.019 & 0.016 & 0.003 & -0.017 & 0.006 \\ 
+   & (0.009) & (0.012) & (0.016) & (0.005) & (0.008) & (0.010) & (0.003) \\ 
+  Adjusted salary (log) & -0.007 & 0.007 & 0.013 & 0.008 & 0.013 & 0.024 & 0.009 \\ 
    & (0.006) & (0.008) & (0.011) & (0.003) & (0.005) & (0.007) & (0.002) \\ 
-  Percent proficient & 3.1\% & 2.8\% & 1.8\% & 4.4\% & 3.7\% & 2.8\% & 3.6\% \\ 
+  Percent proficient & 3.1\% & 2.8\% & 1.8\% & 4.4\% & 3.7\% & 2.9\% & 3.6\% \\ 
    & (0.6\%) & (0.8\%) & (0.8\%) & (0.4\%) & (0.5\%) & (0.5\%) & (0.2\%) \\ 
   Percent Hispanic & -0.9\% & -0.5\% & -0.2\% & -0.8\% & -0.7\% & 0.1\% & -0.6\% \\ 
    & (0.4\%) & (0.4\%) & (0.5\%) & (0.2\%) & (0.3\%) & (0.3\%) & (0.1\%) \\ 
-  Percent black & -4.7\% & -2.2\% & -1.9\% & -5.3\% & -3.8\% & -3.6\% & -4.3\% \\ 
-   & (0.9\%) & (1.0\%) & (0.9\%) & (0.5\%) & (0.7\%) & (0.8\%) & (0.3\%) \\ 
-  Percent subsidized lunch & -5.9\% & -4.5\% & -2.7\% & -6.8\% & -4.1\% & -3.5\% & -5.3\% \\ 
-   & (1.1\%) & (1.3\%) & (1.3\%) & (0.6\%) & (0.8\%) & (0.9\%) & (0.4\%) \\ 
+  Percent black & -4.6\% & -2.2\% & -1.9\% & -5.3\% & -3.7\% & -3.6\% & -4.2\% \\ 
+   & (0.9\%) & (1.0\%) & (0.9\%) & (0.5\%) & (0.7\%) & (0.7\%) & (0.3\%) \\ 
+  Percent subsidized lunch & -5.8\% & -4.5\% & -2.7\% & -6.8\% & -4.0\% & -3.6\% & -5.3\% \\ 
+   & (1.1\%) & (1.4\%) & (1.3\%) & (0.6\%) & (0.8\%) & (0.9\%) & (0.4\%) \\ 
    \hline
 \caption{Average Change in Salary and District Student Characteristics (and Standard Deviations) for Teachers Changing Districts, by Gender and Experience} 
 \label{tbl:change_by_ge}
@@ -183,15 +172,15 @@ Base year salary (log) & 0.015 & 0.005 & -0.017 & 0.013 & 0.002 & -0.020 & 0.004
  & \multicolumn{2}{c}{District Average Characteristics} & \multicolumn{2}{c}{Campus Average Characteristics}\\ \cline{2-5}
  & Large Urban to Suburban & Suburban to Suburban & Large Urban to Suburban & Suburban to Suburban \\
   \hline
-Base year salary (log) & -0.005 & 0.013 & --- & --- \\ 
+Base year salary (log) & -0.001 & 0.013 & --- & --- \\ 
    & (0.011) & (0.007) &  &  \\ 
-  Adjusted salary (log) & -0.018 & 0.012 & --- & --- \\ 
-   & (0.009) & (0.005) &  &  \\ 
+  Adjusted salary (log) & -0.015 & 0.012 & --- & --- \\ 
+   & (0.010) & (0.005) &  &  \\ 
   Percent proficient & 37.3\% & 0.7\% & 34.4\% & 0.3\% \\ 
    & (0.5\%) & (0.4\%) & (1.1\%) & (0.5\%) \\ 
-  Percent Hispanic & -12.2\% & 0.4\% & -8.0\% & 0.5\% \\ 
+  Percent Hispanic & -12.2\% & 0.4\% & -7.9\% & 0.5\% \\ 
    & (0.3\%) & (0.4\%) & (1.1\%) & (0.4\%) \\ 
-  Percent black & -55.5\% & 0.5\% & -60.0\% & 0.6\% \\ 
+  Percent black & -55.5\% & 0.5\% & -60.1\% & 0.6\% \\ 
    & (0.7\%) & (0.5\%) & (1.6\%) & (0.5\%) \\ 
   Percent subsidized lunch & -56.9\% & -0.4\% & -60.0\% & -0.4\% \\ 
    & (1.1\%) & (0.5\%) & (1.2\%) & (0.7\%) \\ 
@@ -221,6 +210,125 @@ Percent proficient & 9.6\% & 2.5\% & 2.7\% & 1.8\% \\
 \end{tabular}
 \caption{Average Change in District and Campus Student Characteristics (and Standard Deviations) for Black and Hispanic Teachers with 1-10 Years of Experience who Change Campuses} 
 \label{tbl:change_by_eth}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{p{.4\textwidth}p{.2\textwidth}p{.2\textwidth}p{.2\textwidth}}
+  \hline
+Quartile of Distribution & Probability Teachers Move to New School within District & Probability Teachers Move to New District & Probability Teachers Exit Public Schools \\ 
+  \hline
+Residual salary & & & \\
+\quad Highest & --- & 1.7\% & 3.7\% \\ 
+  \quad 3rd & --- & 1.8\% & 3.7\% \\ 
+  \quad 2nd & --- & 2.0\% & 3.7\% \\ 
+  \quad Lowest & --- & 2.4\% & 4.2\% \\ 
+Percent proficient & & & \\
+  \quad Highest & 7.3\% & 2.2\% & 3.4\% \\ 
+  \quad 3rd & 8.4\% & 2.5\% & 3.1\% \\ 
+  \quad 2nd & 8.0\% & 2.2\% & 4.1\% \\ 
+  \quad Lowest & 9.2\% & 2.3\% & 3.8\% \\ 
+Percent eligible for reduced-price lunch & & & \\
+  \quad Highest & 10.0\% & 2.0\% & 4.6\% \\ 
+  \quad 3rd & 8.9\% & 2.0\% & 3.1\% \\ 
+  \quad 2nd & 7.9\% & 2.6\% & 3.2\% \\ 
+  \quad Lowest & 6.2\% & 2.7\% & 3.6\% \\ 
+Percent Black & & & \\
+  \quad Highest & 8.9\% & 2.0\% & 5.1\% \\ 
+  \quad 3rd & 7.3\% & 1.9\% & 3.4\% \\ 
+  \quad 2nd & 8.4\% & 2.3\% & 3.2\% \\ 
+  \quad Lowest & 8.4\% & 2.9\% & 2.8\% \\ 
+Percent Hispanic & & & \\
+  \quad Highest & 9.3\% & 1.8\% & 4.9\% \\ 
+  \quad 3rd & 7.3\% & 2.4\% & 3.4\% \\ 
+  \quad 2nd & 7.7\% & 2.4\% & 3.4\% \\ 
+  \quad Lowest & 8.7\% & 2.6\% & 2.9\% \\ 
+   \hline
+\end{tabular}
+\caption{School Average Transition Rates by Distribution of Residual Teacher Salary and Student Demographic Characteristics (data weighted by number of teachers in school)} 
+\label{tbl:change_by_quartile}
+\end{table}
+
+\begin{table}
+\begin{center}
+\begin{tabular}{l c c c c }
+\hline
+ & \multicolumn{4}{c}{Teacher Experience} \\ \cline{2-5}
+ & 1-3 years & 4-6 years & 7-11 years & 12-30 years \\
+\hline
+First year base salary (log)                & $-0.02$     & $-0.00$      & $-0.02$       & $0.00$        \\
+                                            & $(0.03)$    & $(0.02)$     & $(0.02)$      & $(0.01)$      \\
+First year base salary (log) * female       & $-0.04$     & $-0.03$      & $0.01$        & $-0.00$       \\
+                                            & $(0.03)$    & $(0.02)$     & $(0.02)$      & $(0.01)$      \\
+Campus average student characteristics      &             &              &               &               \\
+                                            &             &              &               &               \\
+\quad Percent proficient                    & $-0.02^{*}$ & $0.01$       & $-0.01$       & $-0.00$       \\
+                                            & $(0.01)$    & $(0.01)$     & $(0.01)$      & $(0.00)$      \\
+\quad Percent eligible for subsidized lunch & $-0.02$     & $-0.01$      & $-0.02^{***}$ & $-0.01^{***}$ \\
+                                            & $(0.01)$    & $(0.01)$     & $(0.01)$      & $(0.00)$      \\
+\quad Percent Black                         & $0.02$      & $0.04^{***}$ & $0.02^{**}$   & $0.01^{**}$   \\
+                                            & $(0.01)$    & $(0.01)$     & $(0.01)$      & $(0.00)$      \\
+\quad Percent Hispanic                      & $0.01$      & $0.02$       & $0.03^{***}$  & $0.00$        \\
+                                            & $(0.01)$    & $(0.01)$     & $(0.01)$      & $(0.00)$      \\
+Interactions                                &             &              &               &               \\
+                                            &             &              &               &               \\
+\quad Black * percent Black                 & $-0.07^{*}$ & $-0.01$      & $-0.01$       & $-0.00$       \\
+                                            & $(0.03)$    & $(0.02)$     & $(0.01)$      & $(0.01)$      \\
+\quad Hispanic * percent Black              & $-0.06$     & $-0.10^{**}$ & $-0.08^{**}$  & $0.00$        \\
+                                            & $(0.04)$    & $(0.03)$     & $(0.03)$      & $(0.01)$      \\
+\quad Black * percent Hispanic              & $-0.08$     & $0.01$       & $-0.03$       & $0.00$        \\
+                                            & $(0.05)$    & $(0.04)$     & $(0.02)$      & $(0.01)$      \\
+\quad Hispanic * percent Hispanic           & $-0.05$     & $-0.07^{**}$ & $-0.08^{***}$ & $-0.01$       \\
+                                            & $(0.03)$    & $(0.03)$     & $(0.02)$      & $(0.01)$      \\
+\hline
+Observations                                & 34,194       & 31,110        & 44,824         & 98,102         \\
+\hline
+\multicolumn{5}{l}{\scriptsize{$^{***}p<0.001$, $^{**}p<0.01$, $^*p<0.05$}}
+\end{tabular}
+\caption{Estimated Effects of Starting Teacher Salary and Student Demographic Characteristics on the Probability that Teachers Leave School Districts, by Experience (linear probability models; standard errors in parentheses)}
+\label{tbl:reg_lpm}
+\end{center}
+\end{table}
+
+\begin{table}
+\begin{center}
+\begin{tabular}{l c c c c }
+\hline
+ & \multicolumn{4}{c}{Teacher Experience} \\ \cline{2-5}
+ & 1-3 years & 12-30 years & 4-6 years & 7-11 years \\
+\hline
+First year base salary (log)                & $-0.02$      & $-0.01$      & $-0.00$      & $-0.03$       \\
+                                            & $(0.03)$     & $(0.01)$     & $(0.02)$     & $(0.02)$      \\
+First year base salary (log) * female       & $-0.04$      & $-0.00$      & $-0.03$      & $0.01$        \\
+                                            & $(0.03)$     & $(0.01)$     & $(0.02)$     & $(0.02)$      \\
+Campus average student characteristics      &              &              &              &               \\
+                                            &              &              &              &               \\
+\quad Percent proficient                    & $-0.02^{*}$  & $-0.01^{**}$ & $0.00$       & $-0.01^{*}$   \\
+                                            & $(0.01)$     & $(0.00)$     & $(0.01)$     & $(0.01)$      \\
+\quad Percent eligible for subsidized lunch & $-0.02$      & $-0.00$      & $0.00$       & $-0.01$       \\
+                                            & $(0.01)$     & $(0.00)$     & $(0.01)$     & $(0.01)$      \\
+\quad Percent Black                         & $0.02$       & $-0.00$      & $0.02$       & $0.00$        \\
+                                            & $(0.01)$     & $(0.00)$     & $(0.01)$     & $(0.01)$      \\
+\quad Percent Hispanic                      & $0.01$       & $-0.00$      & $-0.01$      & $0.01$        \\
+                                            & $(0.02)$     & $(0.00)$     & $(0.01)$     & $(0.01)$      \\
+Interactions                                &              &              &              &               \\
+                                            &              &              &              &               \\
+\quad Black * percent Black                 & $-0.08^{**}$ & $0.00$       & $-0.01$      & $-0.01$       \\
+                                            & $(0.03)$     & $(0.01)$     & $(0.02)$     & $(0.01)$      \\
+\quad Hispanic * percent Black              & $-0.06$      & $0.00$       & $-0.10^{**}$ & $-0.07^{**}$  \\
+                                            & $(0.04)$     & $(0.01)$     & $(0.03)$     & $(0.03)$      \\
+\quad Black * percent Hispanic              & $-0.09$      & $0.01$       & $0.02$       & $-0.02$       \\
+                                            & $(0.05)$     & $(0.01)$     & $(0.04)$     & $(0.02)$      \\
+\quad Hispanic * percent Hispanic           & $-0.06$      & $-0.00$      & $-0.06^{*}$  & $-0.07^{***}$ \\
+                                            & $(0.03)$     & $(0.01)$     & $(0.03)$     & $(0.02)$      \\
+\hline
+Observations                                & 34,194        & 98,102        & 31,110        & 44,824         \\
+\hline
+\multicolumn{5}{l}{\scriptsize{$^{***}p<0.001$, $^{**}p<0.01$, $^*p<0.05$}}
+\end{tabular}
+\caption{Estimated Effects of Starting Teacher Salary and Student Demographic Characteristics on the Probability that Teachers Leave School Districts with District Fixed Effects, by Experience (linear probability models; standard errors in parentheses)}
+\label{tbl:reg_lpm_fe}
+\end{center}
 \end{table}
 
 \section{Conclusion}\label{conclusion}

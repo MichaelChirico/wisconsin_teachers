@@ -36,13 +36,14 @@ incl_rng = range(incl_yrs)
 teachers = teachers[year %between% incl_rng & highest_degree %in% 4:5 & 
                       #should exclude these earlier in the pipeline
                       !grepl('^[79]', district_fill) & nzchar(school_fill) & 
-                      nzchar(district_next_main) & nzchar(school_next_main) & 
-                      !grepl('^09', school_fill) & nzchar(ethnicity_main)]
+                      (quit_next | (nzchar(district_next_main) & 
+                                      nzchar(school_next_main))) & 
+                      !grepl('^09', school_fill) & ethnicity_main != '']
 
 teachers = 
   unique(teachers[order(-full_time_equiv)], by = c('teacher_id', 'year'))
 
-teachers[ , ethnicity_main =
+teachers[ , ethnicity_main :=
             factor(ethnicity_main, levels = c('White', 'Black', 'Hispanic'))]
 
 #move_school/district_next if and only if quit_next

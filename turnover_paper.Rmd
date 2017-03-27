@@ -164,38 +164,93 @@ tbl = capture.output(print(xtable(
   T3, caption = paste('Average Change in Salary and District Student',
                       'Characteristics (and Standard Deviations) for',
                       'Teachers Changing Districts, by Gender and Experience'),
-  label = 'tbl:avg_d_cov', digits = 3L, align = 'llccccccc'), 
+  label = 'tbl:change_by_ge', digits = 3L, align = 'llccccccc'), 
   include.rownames = FALSE, floating.environment = 'longtable'))
+
+idx = grep('years', tbl)
+
+tbl = c(tbl[1L:(idx - 1L)],
+        paste0(paste('', mcol('Men by Experience Class', 3L),
+                     mcol('Women by Experience Class', 3L),
+                     mrow(pbox('All Teachers 0-9 Years', .16), 2L),
+                     sep = ' & '), '\\\\ \\cline{2-4} \\cline{5-7}'),
+        tbl[idx:length(tbl)])
 
 cat(tbl, sep = '\n')
 ```
 
 ```{r table_4}
-teachers[move_district_next & urbanicity_d %in% c('Large Urban', 'Suburban') & 
-           urbanicity_d_next == 'Suburban' & total_exp_floor <= 10,
-         .(d_lsalary = 
-             mean(schedule_lsalary_next - 
-                    schedule_lsalary_next_cf, na.rm = TRUE), 
-           d_lsalary_resid = 
-             mean(schedule_lsalary_resid_next - 
-                    schedule_lsalary_resid_next_cf, na.rm = TRUE),
-           d_pct_prof = mean(pct_prof_next - pct_prof, na.rm = TRUE),
-           d_pct_hisp = mean(pct_hisp_next - pct_hisp, na.rm = TRUE),
-           d_pct_black = mean(pct_black_next - pct_black, na.rm = TRUE),
-           d_pct_frl = mean(pct_frl_next - pct_frl, na.rm = TRUE)),
-         keyby = urbanicity_d
-         ][ , melt(.SD, measure.vars = patterns('^d_'))
-            ][ , dcast(.SD, variable ~ urbanicity_d, value.var = 'value')]
+T4D = 
+  teachers[move_district_next & urbanicity_next_d == 'Suburban' & 
+             urbanicity_d %in% c('Large Urban', 'Suburban') & 
+             total_exp_floor <= 10, {
+    dl = lapply(
+      list(schedule_lsalary_next - schedule_lsalary_next_cf,
+           schedule_lsalary_resid_next - schedule_lsalary_resid_next_cf,
+           pct_prof_next_d - pct_prof_d, pct_hisp_next_d - pct_hisp_d,
+           pct_black_next_d - pct_black_d, pct_frl_next_d - pct_frl_d),
+      na.omit)
+    .(var = paste0(rep(seq_len(6L), each = 2L), rep(c('M', 'S'), 6L)),
+      val = c(rbind(sapply(dl, mean),
+                    sapply(dl, function(x) sd(x)/sqrt(length(x))))))
+  }, keyby = urbanicity_d
+  ][ , dcast(.SD, var ~ urbanicity_d, value.var = 'val')]
 
-teachers[move_district_next & urbanicity_d %in% c('Large Urban', 'Suburban') & 
-           urbanicity_d_next == 'Suburban' & total_exp_floor <= 10,
-         .(d_pct_prof_s = mean(pct_prof_next_s - pct_prof_s, na.rm = TRUE),
-           d_pct_hisp_s = mean(pct_hisp_next_s - pct_hisp_s, na.rm = TRUE),
-           d_pct_black_s = mean(pct_black_next_s - pct_black_s, na.rm = TRUE),
-           d_pct_frl_s = mean(pct_frl_next_s - pct_frl_s, na.rm = TRUE)),
-         keyby = urbanicity_d
-         ][ , melt(.SD, measure.vars = patterns('^d_'))
-            ][ , dcast(.SD, variable ~ urbanicity_d, value.var = 'value')]
+T4S = 
+  teachers[move_district_next & urbanicity_next_d == 'Suburban' & 
+             urbanicity_d %in% c('Large Urban', 'Suburban') & 
+             total_exp_floor <= 10, {
+    dl = lapply(
+      list(pct_prof_next_s - pct_prof_s, pct_hisp_next_s - pct_hisp_s,
+           pct_black_next_s - pct_black_s, pct_frl_next_s - pct_frl_s),
+      na.omit)
+    .(var = paste0(rep(3L:6L, each = 2L), rep(c('M', 'S'), 4L)),
+      val = c(rbind(sapply(dl, mean),
+                    sapply(dl, function(x) sd(x)/sqrt(length(x))))))
+  }, keyby = urbanicity_d
+  ][ , dcast(.SD, var ~ urbanicity_d, value.var = 'val')]
+
+T4 = merge(T4D, T4S, by = 'var', all.x = TRUE)
+
+T4[ , var := rep(c('Base year salary (log)', 'Adjusted salary (log)',
+                   'Percent proficient', 'Percent Hispanic',
+                   'Percent black', 'Percent subsidized lunch'), each = 2L)]
+T4[ , type := rep(c('m', 's'), 6L)]
+cols = setdiff(names(T4), c('var', 'type'))
+sidx = T4$type == 's'
+pidx = grepl('^Percent', T4$var)
+T4[ , (cols) := lapply(.SD, function(x) {
+  o = character(length(x))
+  o[!pidx & !sidx] = sprintf('%.3f', x[!pidx & !sidx])
+  o[!pidx & sidx] = sprintf('(%.3f)', x[!pidx & sidx])
+  o[pidx & !sidx] = sprintf('%.1f%%', 100*x[pidx & !sidx])
+  o[pidx & sidx] = sprintf('(%.1f%%)', 100*x[pidx & sidx])
+  o[is.na(x) & !sidx] = '---'
+  o[is.na(x) & sidx] = ''
+  o}), .SDcols = cols]
+T4[type == 's', var := '']
+T4[ , type := NULL]
+
+tbl = capture.output(print(xtable(
+  T4, caption = paste('Average Change in Salary and in District and Campus',
+                      'Student Characteristics (and Standard Deviations)',
+                      'for Teachers with 1-10 Years of Experience Who',
+                      'Change Districts, by Community Type of Origin',
+                      'and Destination District'),
+  label = 'tbl:change_by_urb', digits = 3L, align = 'llcccc'), 
+  include.rownames = FALSE))
+
+idx = grep('Urban', tbl)
+
+tbl = c(tbl[1L:(idx - 1L)],
+        paste0(paste('', mcol('District Average Characteristics', 2L),
+                     mcol('Campus Average Characteristics', 2L),
+                     sep = ' & '), '\\\\ \\cline{2-5}'),
+        ' & Large Urban to Suburban & Suburban to Suburban & ' %+%
+          'Large Urban to Suburban & Suburban to Suburban \\\\',
+        tbl[(idx + 1L):length(tbl)])
+
+cat(tbl, sep = '\n')
 ```
 
 ```{r table_5}

@@ -164,7 +164,7 @@ tbl = capture.output(print(xtable(
   T3, caption = paste('Average Change in Salary and District Student',
                       'Characteristics (and Standard Deviations) for',
                       'Teachers Changing Districts, by Gender and Experience'),
-  label = 'tbl:change_by_ge', digits = 3L, align = 'llccccccc'), 
+  label = 'tbl:change_by_ge', align = 'llccccccc'), 
   include.rownames = FALSE, floating.environment = 'longtable'))
 
 idx = grep('years', tbl)
@@ -237,7 +237,9 @@ tbl = capture.output(print(xtable(
                       'for Teachers with 1-10 Years of Experience Who',
                       'Change Districts, by Community Type of Origin',
                       'and Destination District'),
-  label = 'tbl:change_by_urb', digits = 3L, align = 'llcccc'), 
+  label = 'tbl:change_by_urb', 
+  align = paste0('llp{.16\\textwidth}p{.16\\textwidth}',
+                 'p{.16\\textwidth}p{.16\\textwidth}')), 
   include.rownames = FALSE))
 
 idx = grep('Urban', tbl)
@@ -254,25 +256,72 @@ cat(tbl, sep = '\n')
 ```
 
 ```{r table_5}
-teachers[move_district_next & total_exp_floor <= 10 & 
-           ethnicity_main %in% c('Black', 'Hispanic'),
-         .(d_pct_prof = mean(pct_prof_next - pct_prof, na.rm = TRUE),
-           d_pct_hisp = mean(pct_hisp_next - pct_hisp, na.rm = TRUE),
-           d_pct_black = mean(pct_black_next - pct_black, na.rm = TRUE),
-           d_pct_frl = mean(pct_frl_next - pct_frl, na.rm = TRUE), N = .N),
-         keyby = ethnicity_main
-         ][ , melt(.SD, measure.vars = patterns('^d_|N'))
-            ][ , dcast(.SD, variable ~ ethnicity_main, value.var = 'value')]
+T5D = 
+  teachers[move_district_next & total_exp_floor <= 10 & 
+           ethnicity_main %in% c('Black', 'Hispanic'), {
+    dl = lapply(
+      list(pct_prof_next_s - pct_prof_s, pct_hisp_next_s - pct_hisp_s,
+           pct_black_next_s - pct_black_s, pct_frl_next_s - pct_frl_s),
+      na.omit)
+    .(var = c(paste0(rep(1L:4L, each = 2L), rep(c('M', 'S'), 4L)), 'N'),
+      val = c(rbind(sapply(dl, mean),
+                    sapply(dl, function(x) sd(x)/sqrt(length(x)))), .N))
+  }, keyby = ethnicity_main
+  ][ , dcast(.SD, var ~ ethnicity_main, value.var = 'val')]
 
-teachers[move_within_next & total_exp_floor <= 10 &
-           ethnicity_main %in% c('Black', 'Hispanic'),
-         .(d_pct_prof = mean(pct_prof_next_s - pct_prof_s, na.rm = TRUE),
-           d_pct_hisp = mean(pct_hisp_next_s - pct_hisp_s, na.rm = TRUE),
-           d_pct_black = mean(pct_black_next_s - pct_black_s, na.rm = TRUE),
-           d_pct_frl = mean(pct_frl_next_s - pct_frl_s, na.rm = TRUE), N = .N),
-         keyby = ethnicity_main
-         ][ , melt(.SD, measure.vars = patterns('^d_|N'))
-            ][ , dcast(.SD, variable ~ ethnicity_main, value.var = 'value')]
+T5S = 
+  teachers[move_within_next & total_exp_floor <= 10 & 
+           ethnicity_main %in% c('Black', 'Hispanic'), {
+    dl = lapply(
+      list(pct_prof_next_s - pct_prof_s, pct_hisp_next_s - pct_hisp_s,
+           pct_black_next_s - pct_black_s, pct_frl_next_s - pct_frl_s),
+      na.omit)
+    .(var = c(paste0(rep(1L:4L, each = 2L), rep(c('M', 'S'), 4L)), 'N'),
+      val = c(rbind(sapply(dl, mean),
+                    sapply(dl, function(x) sd(x)/sqrt(length(x)))), .N))
+  }, keyby = ethnicity_main
+  ][ , dcast(.SD, var ~ ethnicity_main, value.var = 'val')]
+
+T5 = merge(T5D, T5S, by = 'var', all.x = TRUE)
+
+T5[ , var := rep(c('Percent proficient', 'Percent Hispanic',
+                   'Percent black', 'Percent subsidized lunch',
+                   'Number of teachers'), c(2L, 2L, 2L, 2L, 1L))]
+T5[ , type := c(rep(c('m', 's'), 4L), 'n')]
+cols = setdiff(names(T5), c('var', 'type'))
+sidx = T5$type == 's'
+pidx = grepl('^Percent', T5$var)
+nidx = T5$type == 'n'
+T5[ , (cols) := lapply(.SD, function(x) {
+  o = character(length(x))
+  o[pidx & !sidx] = sprintf('%.1f%%', 100*x[pidx & !sidx])
+  o[pidx & sidx] = sprintf('(%.1f%%)', 100*x[pidx & sidx])
+  o[nidx] = prettyNum(x[nidx], big.mark = ',')
+  o}), .SDcols = cols]
+T5[type == 's', var := '']
+T5[ , type := NULL]
+
+tbl = capture.output(print(xtable(
+  T5, caption = paste('Average Change in District and Campus Student',
+                      'Characteristics (and Standard Deviations)',
+                      'for Black and Hispanic Teachers with 1-10',
+                      'Years of Experience who Change Campuses'),
+  label = 'tbl:change_by_eth', 
+  align = paste0('llp{.16\\textwidth}p{.16\\textwidth}',
+                 'p{.16\\textwidth}p{.16\\textwidth}')), 
+  include.rownames = FALSE))
+
+idx = grep('Black.x', tbl)
+
+tbl = c(tbl[1L:(idx - 1L)],
+        paste0(paste('', mcol('Between District Moves', 2L),
+                     mcol('Within District Moves', 2L),
+                     sep = ' & '), '\\\\ \\cline{2-5}'),
+        ' & Black Teachers & Hispanic Teachers & ' %+%
+          'Black Teachers & Hispanic Teachers \\\\',
+        tbl[(idx + 1L):length(tbl)])
+
+cat(tbl, sep = '\n')
 ```
 
 ```{r table_6}

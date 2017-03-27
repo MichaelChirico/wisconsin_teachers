@@ -31,7 +31,7 @@ library(texreg)
 
 # Results
 
-```{r table_1, warning = FALSE, results = 'asis'}
+```{r table_1, warning = FALSE, results = 'asis', message = FALSE}
 library(funchir)
 T1 = rbind(
   teachers[ , .(`Remain in Same School` = 100*sum(!move_school_next)/.N,
@@ -97,7 +97,7 @@ tbl = capture.output(print(xtable(
                       'Changing Districts, by Origin Community',
                       'Type and Teacher Experience Level'),
   label = 'tbl:markov', digits = 1L, align = 'llrrrrrrr'),
-  sanitize.text.function = identity, floating.environment = 'longtable'))
+  sanitize.text.function = identity, floating.environment = 'sidewaystable'))
 idx = grep('^Origin', tbl)
 mrow = function(x, n) paste0('\\multirow{', n, '}{*}{', x, '}')
 mcol = function(x, n) paste0('\\multicolumn{', n, '}{c}{', x, '}')
@@ -165,7 +165,7 @@ tbl = capture.output(print(xtable(
                       'Characteristics (and Standard Deviations) for',
                       'Teachers Changing Districts, by Gender and Experience'),
   label = 'tbl:change_by_ge', align = 'llccccccc'), 
-  floating.environment = 'longtable'))
+  floating.environment = 'sidewaystable'))
 
 idx = grep('years', tbl)
 
@@ -402,11 +402,14 @@ idx = grep('years', tbl)
 tbl = c(tbl[1L:(idx - 1L)],
         ' & \\multicolumn{4}{c}{Teacher Experience} \\\\ \\cline{2-5}',
         tbl[idx:length(tbl)])
+
 idx = grep('^Num.*obs', tbl)
 #print-formatting 1k+ numbers
 tbl[idx] = gsub('(\\d{1,3})(?=\\d{3}+(?!\\d))', '\\1,', tbl[idx], perl = TRUE)
 tbl[idx] = gsub('Num. obs.   ', 'Observations', tbl[idx], fixed = TRUE)
-cat(tbl, sep = '\n')
+
+#exclude the extra blank rows introduced by texreg's group option
+cat(tbl[grep('[^ &\\]', tbl)], sep = '\n')
 ```
 
 ```{r table_8, results = 'asis', cache = TRUE}
@@ -458,7 +461,8 @@ idx = grep('^Num.*obs', tbl)
 #print-formatting 1k+ numbers
 tbl[idx] = gsub('(\\d{1,3})(?=\\d{3}+(?!\\d))', '\\1,', tbl[idx], perl = TRUE)
 tbl[idx] = gsub('Num. obs.   ', 'Observations', tbl[idx], fixed = TRUE)
-cat(tbl, sep = '\n')
+#exclude the extra blank rows introduced by texreg's group option
+cat(tbl[grep('[^ &\\]', tbl)], sep = '\n')
 ```
 
 ```{r table_9, eval = FALSE}

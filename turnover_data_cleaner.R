@@ -61,80 +61,68 @@ payscales =
   fread(wds['data'] %+% 'wisconsin_salary_scales_imputed.csv',
         colClasses = list(character = 'district_fill'),
         select = c('year', 'district_fill', 'tenure', 'wage_ba', 'wage_ma'))
-payscales = payscales[year %between% incl_rng]
+payscales = melt(payscales[year %between% incl_rng], 
+                 id.vars = c('year', 'district_fill', 'tenure'),
+                 measure.vars = patterns('^wage_'),
+                 variable.name = 'highest_degree', value.name = 'wage')
+payscales[ , highest_degree := 4L + (highest_degree == 'wage_ma')]
+payscales[ , lwage := log(wage)]
 
+#confirmed: 1-1 mapping b/w district & cesa (even across years)
+payscales[unique(teachers[ , .(district_fill, cesa)]), 
+          cesa := i.cesa, on = 'district_fill']
+
+#now add controls to generate residual/unexplained wages
 districts = fread(wds['data'] %+% 'district_demographics.csv',
                   colClasses = list(character = 'district'), na.strings = '')
+dist_cols = setdiff(names(districts), c('district', 'year'))
 
-teachers[districts, 
-         `:=`(pct_prof_next = i.pct_prof, pct_hisp_next = i.pct_hisp, 
-              pct_black_next = i.pct_black, pct_frl_next = i.pct_frl, 
-              urbanicity_d_next = urbanicity), 
-         on = c('year', district_next_main = 'district')]
+payscales[ , (dist_cols) :=
+             districts[.SD, ..dist_cols, 
+                       on = c('year', district = 'district_fill')]]
 
-payscales[districts, `:=`(n_students = i.n_students, pct_hisp = i.pct_hisp,
-                          pct_black = i.pct_black, pct_frl = i.pct_frl,
-                          pct_prof = i.pct_prof,
-                          urbanicity = i.urbanicity),
-          on = c(district_fill = 'district', 'year')]
-#confirmed: 1-1 mapping b/w district & cesa (even across years)
-cesa_map = unique(teachers[ , .(district_fill, cesa)])
-payscales[cesa_map, cesa := cesa, on = 'district_fill']
-payscales[ , lwage_ba_resid := 
-             resid(lm(log(wage_ba) ~ cesa + urbanicity + scale(pct_prof) + 
-                        pct_black + pct_hisp + pct_frl, 
+payscales[ , lwage_resid := 
+             resid(lm(log(wage) ~ cesa + urbanicity + scale(pct_prof) + 
+                        scale(pct_black) + scale(pct_hisp) + scale(pct_frl), 
                       na.action = na.exclude)),
-           by = tenure]
-payscales[ , lwage_ma_resid := 
-             resid(lm(log(wage_ma) ~ cesa + urbanicity + scale(pct_prof) + 
-                        pct_black + pct_hisp + pct_frl, 
-                      na.action = na.exclude)),
-           by = tenure]
+           by = .(highest_degree, tenure)]
 
-teachers[payscales[ , log(wage_ba[1L]), by = .(district_fill, year)], 
+teachers[payscales[, log(wage[highest_degree == 4L & tenure == 1L]),
+                   by = .(district_fill, year)], 
          schedule_lbase_ba_salary := i.V1, on = c('year', 'district_fill')]
 
-teachers[melt(payscales, id.vars = c('year', 'district_fill', 'tenure'),
-              measure.vars = c('wage_ba', 'wage_ma')
-              )[ , highest_degree := 4L + (variable == 'wage_ma')], 
-         schedule_lsalary := log(i.value),
+#what was the scheduled wage for this teacher, 
+#  as determined by the year, their district, seniority & certification?
+teachers[payscales, schedule_lsalary := i.lwage,
          on = c('year', 'district_fill', 
                 total_exp_floor = 'tenure', 'highest_degree')]
+#what is the scheduled wage in the subsequent year
 teachers[order(year), schedule_lsalary_next := 
-           shift(schedule_lsalary, n = 1, type = 'lead'), by = teacher_id]
+           shift(schedule_lsalary, n = 1L, type = 'lead'), by = teacher_id]
 
-teachers[melt(payscales, id.vars = c('year', 'district_fill', 'tenure'),
-              measure.vars = c('lwage_ba_resid', 'lwage_ma_resid')
-              )[ , highest_degree := 4L + (variable == 'lwage_ma_resid')], 
-         schedule_lsalary_resid := i.value,
+#what is the unexplained part of their scheduled wage?
+teachers[payscales, schedule_lsalary_resid := i.lwage_resid,
          on = c('year', 'district_fill', 
                 total_exp_floor = 'tenure', 'highest_degree')]
 teachers[order(year), schedule_lsalary_resid_next := 
-           shift(schedule_lsalary_resid, n = 1, type = 'lead'), 
+           shift(schedule_lsalary_resid, n = 1L, type = 'lead'), 
          by = teacher_id]
 
-teachers[melt(payscales, id.vars = c('year', 'district_fill', 'tenure'),
-              measure.vars = c('wage_ba', 'wage_ma')
-              )[ , c('highest_degree', 'tenure') := 
-                   #increment tenure to get counterfactual subsequent wage
-                   #  by matching, e.g, experience 4 to 
-                   #  experience 5 in the table
-                   .(4L + (variable == 'wage_ma'), tenure + 1L)], 
-         schedule_lsalary_next_cf := log(i.value),
-         on = c('year', 'district_fill', 
-                total_exp_floor = 'tenure', 'highest_degree')]
-
-teachers[melt(payscales, id.vars = c('year', 'district_fill', 'tenure'),
-              measure.vars = c('lwage_ba_resid', 'lwage_ma_resid')
-              )[ , c('highest_degree', 'tenure') := 
-                   .(4L + (variable == 'lwage_ma_resid'), tenure + 1L)], 
-         schedule_lsalary_resid_next_cf := i.value,
+#if the teacher moved, what would their wage have been had they stayed?
+teachers[payscales[ , .(year = year - 1L, district_fill, 
+                        tenure = tenure - 1L, highest_degree, 
+                        lwage, lwage_resid)], 
+         c('schedule_lsalary_next_cf', 'schedule_lsalary_resid_next_cf') := 
+           .(i.lwage, i.lwage_resid),
          on = c('year', 'district_fill', 
                 total_exp_floor = 'tenure', 'highest_degree')]
 
 ###############################################################################
 #                           District-Level Covariates                         #
 ###############################################################################
+teachers[ , paste0(dist_cols, '_d_next') :=
+            districts[.SD, ..dist_cols, 
+                      on = c('year', district = 'district_next_main')]]
 districts[payscales[ , mean(lwage_ba_resid + lwage_ma_resid, na.rm = TRUE), 
                      by = .(district_fill, year)], 
           lwage_resid_avg := i.V1, on = c(district = 'district_fill', 'year')]
@@ -149,13 +137,10 @@ districts[ , paste0(q_var, '_q') := lapply(.SD, function(x) {
   factor(f, levels = 4:1, labels = c('Highest', '3rd', '2nd', 'Lowest'))
 }), .SDcols = q_var]
 
-from_dist = c('pct_prof', 'pct_hisp', 'pct_black', 'pct_frl',
-              'urbanicity', 'n_students', 'class_size',
-              paste0(q_var, '_q'))
-teachers[ , (from_dist) := 
-            districts[.SD, ..from_dist,
+dist_cols = c(paste0(dist_cols, '_d'), paste0(q_var, '_q'))
+teachers[ , (dist_cols) := 
+            districts[.SD, ..dist_cols,
                       on = c('year', district = 'district_fill')]]
-setnames(teachers, 'urbanicity', 'urbanicity_d')
 
 ###############################################################################
 #                            School-Level Covariates                          #

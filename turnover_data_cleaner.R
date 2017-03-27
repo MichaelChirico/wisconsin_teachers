@@ -21,25 +21,72 @@ incl_cols = c('year', 'cesa', 'district_fill', 'school_fill',
               'teacher_id', 'highest_degree', 'total_exp_floor',
               'district_next_main', 'school_next_main',
               'full_time_equiv', 'gender', 'ethnicity_main',
-              'move_school_next', 'move_district_next', 'quit_next')
+              'move_school_next', 'move_district_next', 'quit_next',
+              #only needed for data cleaning
+              'position_code', 'area', 'district_work_type', 
+              'months_employed', 'days_of_contract', 'category')
 colClasses = with(
   fread(wds['data'] %+% 
-          'wisconsin_teacher_data_matched_colClass.csv', header = FALSE),
+          'wisconsin_teacher_data_full_colClass.csv', header = FALSE),
   setNames(V2[V1 %in% incl_cols], V1[V1 %in% incl_cols]))
 
-teachers = fread(wds['data'] %+% 'wisconsin_teacher_data_matched.csv',
-                 select = incl_cols, colClasses = colClasses)
+teachers = 
+  fread(wds['data'] %+% "wisconsin_teacher_data_full.csv",
+        select = incl_cols, colClasses = colClasses)
 
 #subset to focus timeframe, eliminate teachers outside 
 incl_yrs = 2000:2008
 incl_rng = range(incl_yrs)
-teachers = teachers[year %between% incl_rng & highest_degree %in% 4:5 & 
-                      #should exclude these earlier in the pipeline
-                      !grepl('^[79]', district_fill) & nzchar(school_fill) & 
-                      (quit_next | (nzchar(district_next_main) & 
-                                      nzchar(school_next_main))) & 
-                      !grepl('^09', school_fill) & ethnicity_main != '']
+teachers = teachers[year %between% incl_rng]
 
+#position_code: 53 = full-time teacher
+teachers = teachers[position_code == '53']
+  
+#area: 0050 (all-purpose elementary teachers)
+#      0300 (English, typically middle/high school)
+#      0400 (Mathematics, typically mid/high school)
+teachers = teachers[area %in% c('0050', '0300', '0400')]
+
+#highest_degree: 4 = BA, 5 = MA
+teachers = teachers[highest_degree %in% 4L:5L]
+
+#district_fill: 7xxx and 9xxx are positions at a CESA
+#  or at an otherwise exceptional school (mental institution, etc.)
+teachers = teachers[!grepl('^[79]', district_fill)]
+
+#school_fill: should be assigned to an actual school
+#  09xx are district-wide/multiple-school appointments
+teachers = teachers[nzchar(school_fill) & !grepl('^09', school_fill)]
+
+#district_next_main & school_next_main should not be
+#  missing if not quitting
+teachers = teachers[quit_next | (nzchar(district_next_main) & 
+                                   nzchar(school_next_main))]
+
+#50 years seems a reasonable enough cap
+teachers = teachers[total_exp_floor <= 50L & total_exp_floor > 0]
+             
+#district_work_type: 04 are regular public schools
+teachers = teachers[district_work_type == "04"]
+
+#months_employed / days_of_contract
+#  Through 2003-04, months used, days thereafter
+#    *Eliminate those who never worked >=8.75 months
+#    *Eliminate those who never worked >=175 days
+teachers = teachers[(months_employed %between% c(875, 1050) | year > 2003) &
+                      (days_of_contract %between% c(175, 195) | year <= 2003)]
+
+#ethnicity_main / gender: eliminate teachers for whom this is unstable,
+#  and eliminate the small number of non-white/hispanic/black teachers
+teachers = teachers[ , if (uniqueN(ethnicity_main) == 1L &&
+                           !any(ethnicity_main == '') &&
+                           uniqueN(gender) == 1L) .SD, by = teacher_id]
+
+#category: 1 are professional, regular education teachers
+teachers = teachers[category == "1"]
+
+#eliminate multiple positions for a teacher by choosing the
+#  one with the highest intensity (highest FTE)
 teachers = 
   unique(teachers[order(-full_time_equiv)], by = c('teacher_id', 'year'))
 
@@ -54,9 +101,10 @@ teachers[ , gender := factor(gender, levels = c('M', 'F'))]
 teachers[ , move_within_next := move_school_next & !move_district_next]
 teachers[ , stay_next := !move_district_next & !quit_next]
 
-exp_lab = c('1-3 years', '4-6 years', '7-11 years', '12-30 years')
+exp_lab = c('1-3 years', '4-6 years', '7-11 years', '12-30 years', '>30 years')
 teachers[ , exp_split := factor(total_exp_floor)]
-levels(teachers$exp_split) = setNames(list(1:3, 4:6, 7:11, 12:30), exp_lab)
+levels(teachers$exp_split) = 
+  setNames(list(1:3, 4:6, 7:11, 12:30, 31:50), exp_lab)
 
 ###############################################################################
 #                               Salary Covariates                             #

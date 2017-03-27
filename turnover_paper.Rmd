@@ -158,7 +158,7 @@ T3[ , (cols) := lapply(.SD, function(x) {
   o}), .SDcols = cols]
 T3[type == 's', var := '']
 T3[ , type := NULL]
-setnames(T3, c('', rep(exp_lab[-4L], 2L), ''))
+setnames(T3, c('', rep(exp_lab[1L:3L], 2L), ''))
 
 tbl = capture.output(print(xtable(
   T3, caption = paste('Average Change in Salary and District Student',

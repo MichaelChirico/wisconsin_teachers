@@ -21,8 +21,8 @@ knitr::opts_chunk$set(echo = FALSE, results = 'hide')
 knitr::read_chunk('turnover_data_cleaner.R')
 library(xtable)
 library(data.table)
-library(funchir)
 options(xtable.comment = FALSE)
+options(xtable.include.rownames = FALSE)
 ```
 
 ```{r start_read, cache = TRUE, include = FALSE}
@@ -35,6 +35,7 @@ options(xtable.comment = FALSE)
 # Results
 
 ```{r table_1, warning = FALSE, results = 'asis'}
+library(funchir)
 T1 = rbind(
   teachers[ , .(`Remain in Same School` = 100*sum(!move_school_next)/.N,
                 `Change Schools Within District` = 
@@ -55,7 +56,7 @@ tbl = capture.output(print(xtable(
   label = 'tbl:move_by_exp', digits = 1L, 
   align = paste0('lp{.14\\linewidth}p{.16\\linewidth}',
                  'p{.2\\linewidth}p{.14\\linewidth}p{.19\\linewidth}R{.16}')),
-  include.rownames = FALSE, sanitize.text.function = identity))
+  sanitize.text.function = identity))
 idx = grep('^Teacher', tbl) - 1L
 tbl = c(tbl[1L:idx], 
         ' & \\multicolumn{4}{c}{Percent of Teachers Who} & \\\\ \\cline{2-5}',
@@ -99,8 +100,7 @@ tbl = capture.output(print(xtable(
                       'Changing Districts, by Origin Community',
                       'Type and Teacher Experience Level'),
   label = 'tbl:markov', digits = 1L, align = 'llrrrrrrr'),
-  include.rownames = FALSE, sanitize.text.function = identity,
-  floating.environment = 'longtable'))
+  sanitize.text.function = identity, floating.environment = 'longtable'))
 idx = grep('^Origin', tbl)
 mrow = function(x, n) paste0('\\multirow{', n, '}{*}{', x, '}')
 mcol = function(x, n) paste0('\\multicolumn{', n, '}{c}{', x, '}')
@@ -168,7 +168,7 @@ tbl = capture.output(print(xtable(
                       'Characteristics (and Standard Deviations) for',
                       'Teachers Changing Districts, by Gender and Experience'),
   label = 'tbl:change_by_ge', align = 'llccccccc'), 
-  include.rownames = FALSE, floating.environment = 'longtable'))
+  floating.environment = 'longtable'))
 
 idx = grep('years', tbl)
 
@@ -242,8 +242,7 @@ tbl = capture.output(print(xtable(
                       'and Destination District'),
   label = 'tbl:change_by_urb', 
   align = paste0('llp{.16\\textwidth}p{.16\\textwidth}',
-                 'p{.16\\textwidth}p{.16\\textwidth}')), 
-  include.rownames = FALSE))
+                 'p{.16\\textwidth}p{.16\\textwidth}'))))
 
 idx = grep('Urban', tbl)
 
@@ -311,8 +310,7 @@ tbl = capture.output(print(xtable(
                       'Years of Experience who Change Campuses'),
   label = 'tbl:change_by_eth', 
   align = paste0('llp{.16\\textwidth}p{.16\\textwidth}',
-                 'p{.16\\textwidth}p{.16\\textwidth}')), 
-  include.rownames = FALSE))
+                 'p{.16\\textwidth}p{.16\\textwidth}'))))
 
 idx = grep('Black.x', tbl)
 
@@ -328,17 +326,41 @@ cat(tbl, sep = '\n')
 ```
 
 ```{r table_6, eval = FALSE}
-melt(teachers, id.vars = c('year', 'move_district_next', 
-                           'move_within_next', 'quit_next'), 
-     measure.vars = paste0(q_var, '_q'), na.rm = TRUE,
-     variable.name = 'Quartile of Distribution', value.name = 'quartile'
-     )[ , .(`Probability Teachers Move to New School within District` = 
-              mean(move_within_next),
-            `Probability Teachers Move to New District` = 
-              mean(move_district_next),
-            `Probability Teachers Exit Public Schools` = 
-              mean(quit_next)), 
-        keyby = .(`Quartile of Distribution`, quartile)]
+T6 = 
+  melt(teachers, id.vars = c('year', 'move_district_next', 
+                             'move_within_next', 'quit_next'), 
+       measure.vars = paste0(q_var, '_q'), na.rm = TRUE, value.factor = TRUE
+       )[ , .(`Probability Teachers Move to New School within District` = 
+                mean(move_within_next),
+              `Probability Teachers Move to New District` = 
+                mean(move_district_next),
+              `Probability Teachers Exit Public Schools` = 
+                mean(quit_next)), 
+          keyby = .(variable, value)]
+T6[variable == 'lwage_resid_avg_q', grep('within', names(T6)) := NA]
+T6[ , variable := NULL]
+cols = grep('^Prob', names(T6))
+T6[ , (cols) := lapply(.SD, function(x) {
+  o = sprintf('%.1f\\%%', 100*x)
+  is.na(o) = is.na(x); o}), .SDcols = cols]
+T6[ , value := paste0('\\quad ', value)]
+setnames(T6, 'value', 'Quartile of Distribution')
+  
+tbl = capture.output(print(xtable(
+  T6, caption = paste('School Average Transition Rates by Distribution of',
+                      'Residual Teacher Salary and Student Demographic',
+                      'Characteristics (data weighted by number of',
+                      'teachers in school)'),
+  label = 'tbl:change_by_quartile',
+  align = 'p{.4\\textwidth}p{.2\\textwidth}p{.2\\textwidth}p{.2\\textwidth}'), 
+  sanitize.text.function = identity, NA.string = '---'))
+
+idx = grep('Highest', tbl)
+tbl[idx] = paste0(c('Residual salary', 'Percent proficient',
+                    'Percent eligible for reduced-price lunch',
+                    'Percent Black', 'Percent Hispanic'),
+                  ' & & & \\\\\n', tbl[idx])
+cat(tbl, sep = '\n')
 ```
 
 ```{r table_7, eval = FALSE}

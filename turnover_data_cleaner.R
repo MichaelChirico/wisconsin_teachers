@@ -39,12 +39,19 @@ incl_yrs = 2000:2008
 incl_rng = range(incl_yrs)
 teachers = teachers[year %between% incl_rng]
 
+N_full = uniqueN(teachers$teacher_id)
+
 #position_code: 53 = full-time teacher
+#  mostly eliminating support staff and substitutes
 teachers = teachers[position_code == '53']
   
 #area: 0050 (all-purpose elementary teachers)
 #      0300 (English, typically middle/high school)
 #      0400 (Mathematics, typically mid/high school)
+#  potential to include for robustness (desc. order of frequency):
+#    0550(Art)/0701(Social Studies)/0620(General Science)/
+#    0725(History)/0316(Reading)/0605(Biology)/
+#    0910(Health)/0610(Chemistry)
 teachers = teachers[area %in% c('0050', '0300', '0400')]
 
 #highest_degree: 4 = BA, 5 = MA
@@ -57,11 +64,6 @@ teachers = teachers[!grepl('^[79]', district_fill)]
 #school_fill: should be assigned to an actual school
 #  09xx are district-wide/multiple-school appointments
 teachers = teachers[nzchar(school_fill) & !grepl('^09', school_fill)]
-
-#district_next_main & school_next_main should not be
-#  missing if not quitting
-teachers = teachers[quit_next | (nzchar(district_next_main) & 
-                                   nzchar(school_next_main))]
 
 #50 years seems a reasonable enough cap
 teachers = teachers[total_exp_floor <= 50L & total_exp_floor > 0]
@@ -76,19 +78,31 @@ teachers = teachers[district_work_type == "04"]
 teachers = teachers[(months_employed %between% c(875, 1050) | year > 2003) &
                       (days_of_contract %between% c(175, 195) | year <= 2003)]
 
+#category: 1 are professional, regular education teachers
+teachers = teachers[category == "1"]
+
+N_subset_I = uniqueN(teachers$teacher_id)
+
+#district_next_main & school_next_main should not be
+#  missing if not quitting
+teachers = teachers[quit_next | (nzchar(district_next_main) & 
+                                   nzchar(school_next_main))]
+
 #ethnicity_main / gender: eliminate teachers for whom this is unstable,
 #  and eliminate the small number of non-white/hispanic/black teachers
+pct_nonwhite = teachers[ , round(100*mean(ethnicity_main == ''))]
 teachers = teachers[ , if (uniqueN(ethnicity_main) == 1L &&
                            !any(ethnicity_main == '') &&
                            uniqueN(gender) == 1L) .SD, by = teacher_id]
 
-#category: 1 are professional, regular education teachers
-teachers = teachers[category == "1"]
+N_subset_II = uniqueN(teachers$teacher_id)
 
 #eliminate multiple positions for a teacher by choosing the
 #  one with the highest intensity (highest FTE)
 teachers = 
   unique(teachers[order(-full_time_equiv)], by = c('teacher_id', 'year'))
+
+pct_white = teachers[ , round(100*mean(ethnicity_main == 'White'))]
 
 teachers[ , ethnicity_main :=
             factor(ethnicity_main, levels = c('White', 'Black', 'Hispanic'))]

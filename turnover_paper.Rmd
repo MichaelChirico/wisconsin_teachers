@@ -172,7 +172,7 @@ idx = grep('years', tbl)
 tbl = c(tbl[1L:(idx - 1L)],
         paste0(paste('', mcol('Men by Experience Class', 3L),
                      mcol('Women by Experience Class', 3L),
-                     mrow(pbox('All Teachers 0-9 Years', .16), 2L),
+                     mrow(pbox('All Teachers 0-9 Years', .09), 2L),
                      sep = ' & '), '\\\\ \\cline{2-4} \\cline{5-7}'),
         tbl[idx:length(tbl)])
 

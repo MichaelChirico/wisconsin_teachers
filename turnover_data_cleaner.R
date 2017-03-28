@@ -100,6 +100,7 @@ teachers[is.na(move_district_next), move_district_next := FALSE]
 teachers[ , gender := factor(gender, levels = c('M', 'F'))]
 teachers[ , move_within_next := move_school_next & !move_district_next]
 teachers[ , stay_next := !move_district_next & !quit_next]
+teachers[ , leave_next := !stay_next]
 
 exp_lab = c('1-3 years', '4-6 years', '7-11 years', '12-30 years', '>30 years')
 teachers[ , exp_split := factor(total_exp_floor)]

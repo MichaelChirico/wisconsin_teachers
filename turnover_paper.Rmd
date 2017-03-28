@@ -313,8 +313,8 @@ tbl = capture.output(print(xtable(
                       'for Black and Hispanic Teachers with 1-10',
                       'Years of Experience who Change Campuses'),
   label = 'tbl:change_by_eth', 
-  align = paste0('llp{.16\\textwidth}p{.16\\textwidth}',
-                 'p{.16\\textwidth}p{.16\\textwidth}'))))
+  align = paste0('llp{.1\\textwidth}p{.1\\textwidth}',
+                 'p{.1\\textwidth}p{.1\\textwidth}'))))
 
 idx = grep('Black.x', tbl)
 
@@ -356,7 +356,7 @@ tbl = capture.output(print(xtable(
                       'Characteristics (data weighted by number of',
                       'teachers in school)'),
   label = 'tbl:change_by_quartile',
-  align = 'lp{.4\\textwidth}p{.2\\textwidth}p{.2\\textwidth}p{.2\\textwidth}'), 
+  align = 'lp{.25\\textwidth}p{.13\\textwidth}p{.13\\textwidth}p{.13\\textwidth}'), 
   sanitize.text.function = identity, NA.string = '---'))
 
 idx = grep('Highest', tbl)
@@ -371,7 +371,7 @@ cat(tbl, sep = '\n')
 reg_l = 
   lapply(split(teachers, f = teachers$exp_split),
          function(DT) 
-           DT[ , lm(move_district_next ~
+           DT[ , lm(leave_next ~
                       schedule_lbase_ba_salary*gender + 
                       pct_prof_s + pct_frl_s + 
                       ethnicity_main*pct_black_s + 
@@ -422,7 +422,7 @@ cat(tbl[grep('[^ &\\]', tbl)], sep = '\n')
 ```{r table_8, results = 'asis', cache = TRUE}
 reg_l = 
   lapply(split(teachers, by = 'exp_split', sorted = TRUE),
-         function(DT) DT[ , lm(move_district_next ~
+         function(DT) DT[ , lm(leave_next ~
                                  schedule_lbase_ba_salary*gender + 
                                  pct_prof_s + pct_frl_s + 
                                  ethnicity_main*pct_black_s + 

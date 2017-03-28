@@ -38,7 +38,7 @@ T1 = rbind(
                 `Change Schools Within District` = 
                   100*sum(move_within_next)/.N,
                 `Switch Districts` = 100*sum(move_district_next)/.N,
-                `Exit WI \\mbox{Public Schools}` = 100*sum(quit_next)/.N,
+                `Exit Wisconsin \\mbox{Public Schools}` = 100*sum(quit_next)/.N,
                 `Number of Teachers` = prettyNum(.N, big.mark = ',')),
             keyby = .(`Teacher Experience` = exp_split)],
   teachers[ , .(`Teacher Experience` = 'All',
@@ -46,13 +46,13 @@ T1 = rbind(
                 `Change Schools Within District` = 
                   100*sum(move_within_next)/.N,
                 `Switch Districts` = 100*sum(move_district_next)/.N,
-                `Exit WI \\mbox{Public Schools}` = 100*sum(quit_next)/.N,
+                `Exit Wisconsin \\mbox{Public Schools}` = 100*sum(quit_next)/.N,
                 `Number of Teachers` = prettyNum(.N, big.mark = ','))])
 tbl = capture.output(print(xtable(
   T1, caption = 'Year-to-year Transitions of Teachers by Experience, 2000-08', 
   label = 'tbl:move_by_exp', digits = 1L, 
-  align = paste0('lp{.14\\linewidth}p{.16\\linewidth}',
-                 'p{.2\\linewidth}p{.14\\linewidth}p{.19\\linewidth}R{.16}')),
+  align = paste0('lp{.103\\linewidth}p{.14\\linewidth}',
+                 'p{.15\\linewidth}p{.09\\linewidth}p{.16\\linewidth}R{.16}')),
   sanitize.text.function = identity))
 idx = grep('^Teacher', tbl) - 1L
 tbl = c(tbl[1L:idx], 
@@ -104,9 +104,9 @@ mcol = function(x, n) paste0('\\multicolumn{', n, '}{c}{', x, '}')
 pbox = function(x, p) paste0('\\parbox{', p, '\\linewidth}{', x, '}')
 tbl = c(tbl[1L:(idx - 1L)],
         paste0(paste('', mcol(mrow('Percent of Teachers Who Move to', 2), 4),
-                     mrow(pbox('Number Teachers Changing Districts', .13), 4),
-                     mrow(pbox('Percent of Origin Teachers', .12), 4),
-                     mrow(pbox('Change in Share of Teachers 2000-06', .16), 4), 
+                     mrow(pbox('Number Teachers Changing Districts', .09), 4),
+                     mrow(pbox('Percent of Origin Teachers', .07), 4),
+                     mrow(pbox('Change in Share of Teachers 2000-06', .07), 4), 
                      sep = ' & '), '\\\\'),
         ' & \\multicolumn{4}{c}{} & & & \\\\ \\cline{2-5}',
         '& & & & & & & \\\\', tbl[idx + 0L:1L],

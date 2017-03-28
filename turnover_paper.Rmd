@@ -407,7 +407,7 @@ tbl = capture.output(texreg(
 
 idx = grep('years', tbl)
 tbl = c(tbl[1L:(idx - 1L)],
-        ' & \\multicolumn{4}{c}{Teacher Experience} \\\\ \\cline{2-5}',
+        ' & \\multicolumn{4}{c}{Teacher Experience} \\\\ \\cline{2-6}',
         tbl[idx:length(tbl)])
 
 idx = grep('^Num.*obs', tbl)
@@ -462,7 +462,7 @@ tbl = capture.output(texreg(
 
 idx = grep('years', tbl)
 tbl = c(tbl[1L:(idx - 1L)],
-        ' & \\multicolumn{4}{c}{Teacher Experience} \\\\ \\cline{2-5}',
+        ' & \\multicolumn{4}{c}{Teacher Experience} \\\\ \\cline{2-6}',
         tbl[idx:length(tbl)])
 idx = grep('^Num.*obs', tbl)
 #print-formatting 1k+ numbers

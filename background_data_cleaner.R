@@ -191,18 +191,34 @@ names(df) = paste0('20', gsub('.*[0-9]{4}_([0-9]{2})_.*', '\\1', df))
 dist_urb = rbindlist(lapply(df, function(ff) {
   #fread failed to guess column class and errored
   DT = fread(ff, colClasses = 'character')
-  incl_cols = grep('STID|LOCALE|ULOCAL|MEMBER|TOTTCH', names(DT))
+  incl_cols = grep('LEAID|STID|LOCALE|ULOCAL|MEMBER|TOTTCH', names(DT))
   DT[FIPST == '55', ..incl_cols]
 }), idcol = 'year')
 
-setnames(dist_urb, 2L:5L,
-         c('district', 'urbanicity', 'n_students', 'n_teachers'))
+setnames(dist_urb, 2L:6L,
+         c('leaid', 'district', 'urbanicity', 'n_students', 'n_teachers'))
 
+#yes, dist_urb00 does not include urbanicity. shh...
 dist_urb00 = 
   fread(wds['cc.d'] %+% '/universe_1999_00_1b.csv',
         select = c('FIPST', paste0(c('STID', 'MEMBER', 'TOTTCH'), '99')),
         col.names = c('fipst', 'district', 'n_students', 'n_teachers'))
 dist_urb00[ , year := '2000']
+
+#Per Mark Glander at Common Core of Data, in 2005-06, Wisconsin
+#  is missing all locale codes because Wisconsin had already started
+#  using the urban-centric locale codes (which are used in the wider
+#  Common Core LEA data starting from 2006-07); he pointed me to this
+#  page, which contains data files for WI in '05-06 & for mapping the codes
+#  https://nces.ed.gov/ccd/CCDLocaleCodeDistrict.asp
+ccd_map = fread(wds['cc.d'] %+% '/al051a.csv',
+                select = c('LEAID', 'LSTATE05', 'ulocale'),
+                col.names = c('leaid', 'state', 'ulocale'),
+                colClasses = 'character')
+ccd_map[ , year := '2006']
+
+dist_urb[ccd_map, urbanicity := i.ulocale, on = c('year', 'leaid')]
+dist_urb[ , leaid := NULL]
 
 dist_urb = rbind(dist_urb, dist_urb00[fipst == '55', !"fipst"], fill = TRUE)
 
@@ -228,33 +244,12 @@ districts[dist_urb, `:=`(urbanicity = i.urbanicity,
                          class_size = i.class_size),
           on = c('district', 'year')]
 
-#In 2006 all urbanicity is missing. For districts that never
-#  saw a different urbanicity code, assign the unique code.
+#For districts that never saw a different urbanicity code,
+#  assign the unique code.
 districts[districts[ , if(any(is.na(urbanicity)) & 
                           uniqueN(urbanicity, na.rm = TRUE) == 1L)
   .(urbanicity = unique(na.omit(urbanicity))), by = district],
   urbanicity := i.urbanicity, on = 'district']
-#If in 2005 & 2007, there was only one value of urbanicity
-#  in a district missing 2006, assign the observed constant value to 2006
-districts[districts[year %in% 2005:2007, 
-                    if(any(is.na(urbanicity)) & 
-                       uniqueN(urbanicity, na.rm = TRUE) == 1L)
-                      .(year = '2006', 
-                        urbanicity = unique(na.omit(urbanicity))), 
-                    by = district],
-  urbanicity := i.urbanicity, on = c('district', 'year')]
-#If more than 5 other years featured a single urbanicity,
-#  assign that to 2006
-districts[districts[year != 2006 & district %in% 
-                      districts[is.na(urbanicity), district], .N, 
-                    by = .(district, urbanicity)
-                    ][N>5, .(year = '2006', district, urbanicity)],
-          urbanicity := i.urbanicity, on = c('district', 'year')]
-#Just assign 2005's value for the rest
-districts[districts[year == 2005 & district %in% 
-                      districts[is.na(urbanicity), district],
-                    .(year = '2006', district, urbanicity)],
-          urbanicity := i.urbanicity, on = c('district', 'year')]
 
 #For schools that are missing urbanicity at least once
 #  but only ever observe one actual urbanicity value, assign this

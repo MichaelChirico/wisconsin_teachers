@@ -49,7 +49,7 @@ T1 = rbind(
                 `Exit Wisconsin \\mbox{Public Schools}` = 100*sum(quit_next)/.N,
                 `Number of Teachers` = prettyNum(.N, big.mark = ','))])
 suppressWarnings(
-  tbl = capture.output(print(xtable(
+  tbl <- capture.output(print(xtable(
     T1, caption =
       'Year-to-year Transitions of Teachers by Experience, 2000-08', 
     label = 'tbl:move_by_exp', digits = 1L, 

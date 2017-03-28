@@ -56,7 +56,7 @@ schools = rbind(schools, schools08,
                            school = '1056', urbanicity = 1),
                 fill = TRUE)
 
-schools[n_students == 0, n_students := NA]
+schools[n_students <= 0, n_students := NA]
 
 urban_map = data.table(
   urbanicity = paste0(c(1:8, 11:13, 21:23, 31:33, 41:43)),
@@ -72,6 +72,7 @@ schools[urbanicity %in% c('M', 'N'), urbanicity := NA]
 districts = 
   schools[ , lapply(.SD, sum, na.rm = TRUE), 
            by = .(district, year),  .SDcols = !c('school', 'urbanicity')]
+districts[n_students <= 0, n_students := NA]
 
 #Convert to % in both
 pct_col = c('n_hisp', 'n_black', 'n_frl')
@@ -221,9 +222,12 @@ dist_urb[ccd_map, urbanicity := i.ulocale, on = c('year', 'leaid')]
 dist_urb[ , leaid := NULL]
 
 dist_urb = rbind(dist_urb, dist_urb00[fipst == '55', !"fipst"], fill = TRUE)
+ns = c('n_teachers', 'n_students')
+dist_urb[ , (ns) := lapply(.SD, as.numeric), .SDcols = ns]
+for (v in ns) set(dist_urb, which(dist_urb[[v]] <= 0), v, NA)
 
-dist_urb[ , class_size := as.numeric(n_students)/as.numeric(n_teachers)]
-dist_urb[ , c('n_teachers', 'n_students') := NULL]
+dist_urb[ , class_size := n_students/n_teachers]
+dist_urb[ , (ns) := NULL]
 
 dist_urb[urban_map, urbanicity := i.size, on = 'urbanicity']
 dist_urb[urbanicity %in% c('M', 'N'), urbanicity := NA]

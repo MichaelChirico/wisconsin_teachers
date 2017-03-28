@@ -223,13 +223,14 @@ T4[ , (cols) := lapply(.SD, function(x) {
   o = character(length(x))
   o[!pidx & !sidx] = sprintf('%.3f', x[!pidx & !sidx])
   o[!pidx & sidx] = sprintf('(%.3f)', x[!pidx & sidx])
-  o[pidx & !sidx] = sprintf('%.1f%%', 100*x[pidx & !sidx])
-  o[pidx & sidx] = sprintf('(%.1f%%)', 100*x[pidx & sidx])
+  o[pidx & !sidx] = sprintf('%.1f\\%%', 100*x[pidx & !sidx])
+  o[pidx & sidx] = sprintf('(%.1f\\%%)', 100*x[pidx & sidx])
   o[is.na(x) & !sidx] = '---'
   o[is.na(x) & sidx] = ''
   o}), .SDcols = cols]
 T4[type == 's', var := '']
 T4[ , type := NULL]
+T4[grepl('^Percent', var), var := paste('\\quad', var)]
 
 tbl = capture.output(print(xtable(
   T4, caption = paste('Average Change in Salary and in District and Campus',
@@ -238,18 +239,24 @@ tbl = capture.output(print(xtable(
                       'Change Districts, by Community Type of Origin',
                       'and Destination District'),
   label = 'tbl:change_by_urb', 
-  align = paste0('llp{.16\\textwidth}p{.16\\textwidth}',
-                 'p{.16\\textwidth}p{.16\\textwidth}'))))
+  align = paste0('llp{.12\\textwidth}p{.12\\textwidth}',
+                 'p{.12\\textwidth}p{.12\\textwidth}')),
+  sanitize.text.function = identity))
 
-idx = grep('Urban', tbl)
+idx = grep('Urban', tbl) - 1L
 
-tbl = c(tbl[1L:(idx - 1L)],
+tbl = c(tbl[1L:idx],
         paste0(paste('', mcol('District Average Characteristics', 2L),
                      mcol('Campus Average Characteristics', 2L),
                      sep = ' & '), '\\\\ \\cline{2-5}'),
         ' & Large Urban to Suburban & Suburban to Suburban & ' %+%
           'Large Urban to Suburban & Suburban to Suburban \\\\',
-        tbl[(idx + 1L):length(tbl)])
+        tbl[(idx + 2L):length(tbl)])
+
+idx = grep('quad', tbl)[1L] - 1L
+
+tbl = c(tbl[1L:idx], 'Average Student Characteristics & & & & \\\\',
+        tbl[(idx+1L):length(tbl)])
 
 cat(tbl, sep = '\n')
 ```

@@ -92,14 +92,216 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-Turnover in Wisconsin
+Given the consistently-affirmed importance of teacher quality to student
+success, understanding teacher churn is crucial to formulating and
+evaluating teacher labor market policy. This paper replicates the
+analysis of Hanushek, Kain, and Rivkin
+(\protect\hyperlink{ref-hanushek}{2004}) over a longer and more recent
+time period in Wisconsin and confirms all of its major findings, namely
+that while pay is a inter-district pay differentials are a significant
+determinant of turnover, school quality measures are much better
+predictors of all three types of churn -- within and between school
+districts and out of local public schools.
 \end{abstract}
 
 \section{Introduction}\label{introduction}
 
+\section{Literature Review}\label{literature-review}
+
+Because the potential policy implications of turnover in the teaching
+profession (from human capital and equity/distributional perspectives
+both) are far-reaching and polypartisan, the literature on
+turnover-related topics in education is extensive. As relates to this
+paper, there are five broad (and often overlapping) categories of
+inquiry: the relationship between turnover and wages, which has tended
+to focus on ``opportunity wages'' outside of the field of education; the
+relationship between turnover, school demographics, and other
+nonpecuniary benefits, which has tended to focus on distributional
+inequalities--whether teachers with certain characteristics are more or
+less likely to be teaching certain disadvantaged groups; the
+relationship between turnover and teacher quality as measured by student
+performance, usually value added; collective bargaining agreements in
+education, focusing by and large on the implications (or lack thereof)
+of seniority-preferential clauses; and the recent phenomenon of specific
+retention incentives, the provisioning of wage bonuses to teachers
+willing to teach in high-needs schools.
+
+One of the earliest papers attempting to rigorously investigate turnover
+was a panel study of teachers in Michigan by Murnane and Olsen
+(\protect\hyperlink{ref-murnane}{1990}), who used college degree field
+wages outside of education as opportunity wages, finding the expected
+lower exit rate for teachers with higher wages in teaching relative to
+the authors' defined alternative. Dolton and Van der Klaauw
+(\protect\hyperlink{ref-dolton}{1999}) use panel data on university
+graduates in the United Kingdom to estimate a competing risks model of
+the decision to leave teaching entirely, finding results in line with
+Murnane and Olsen (\protect\hyperlink{ref-murnane}{1990}). Returning to
+panel studies in the US, Loeb and Page
+(\protect\hyperlink{ref-loeb}{2000}) use PUMS data to get an idea of
+teacher relative wages in many states and find that dropout rates fall
+when teacher relative wages are high. Stinebrickner
+(\protect\hyperlink{ref-stinebrickner}{2002}) also uses panel data (this
+time NLS-72) to track both teachers and non-teachers, focusing in
+particular on young teachers who leave the profession for long stints,
+and finds that the best predictor of female exit is recent childbearing,
+which is an important consideration for all work related to teacher
+turnover because such a high percentage (76 nationwide) of teachers are
+female. Lastly, Hanushek, Kain, and Rivkin
+(\protect\hyperlink{ref-hanushek}{2004}) focuses on teachers in Texas
+and emphasizes that the characteristics of students are much stronger
+factors in predicting teacher exit than are wages (while also affirming
+the statistical significance of pay).
+
+While wages have been found consistently to have some measurable effect
+on teacher turnover, it is impossible to explain within-district
+migration (which constitutes a large portion of switching--as much as
+50\%) through wage-only channels because contracts are fixed at the
+district level. As such, another strand of literature has chosen to
+focus on the nonpecuniary aspects of the decision to take a teaching
+job--school environment/rapport, student enthusiasm, neighborhood
+characteristics, etc.--usually by directing attention to a single
+district so that any wage-based considerations are stifled, as is the
+case for Boyd et al. (\protect\hyperlink{ref-boyd}{2005}) and Engel,
+Jacob, and Curran (\protect\hyperlink{ref-engel}{2014}). Boyd et al.
+(\protect\hyperlink{ref-boyd}{2005}) track early-career teachers in New
+York City as they quit or transfer out of the city, and most importantly
+finds that commuting time is an important, often overlooked aspect of
+location preference. Engel, Jacob, and Curran
+(\protect\hyperlink{ref-engel}{2014}) leverages a unique data set from
+Chicago Public School job fairs which affords them a rather strong
+measure of teachers' demand for vacancies, neutralizing the influence of
+school administration's behavior on turnover (through poor match
+selection or other means). The authors contribute evidence that the
+school's neighborhood (perhaps due to ambient crime or other
+reputational effects good and bad) is a better predictor of teachers'
+preference than distance from home, going somewhat against the grain of
+Boyd et al. (\protect\hyperlink{ref-boyd}{2005}). Scafidi, Sjoquist, and
+Stinebrickner (\protect\hyperlink{ref-scafidi}{2007}) examine statewide
+data from Georgia, but ignore wage effects, choosing instead to focus on
+disentangling the contributions of low student achievement and minority
+status to turnover; they find that minority status is the more salient
+associate of teacher exit.
+
+The key element missing from all of the above studies is perhaps the
+most important consideration in the issue of teacher turnover--teacher
+quality. None of the studies above have student-teacher matched data,
+and so are unable to directly associate student outcomes with any given
+teacher. If, with respect to any measure of quality you would like, we
+find that transitioning teachers are identical to their replacements,
+the issue of teacher turnover is not, in fact, much of an issue--it
+leans closer to hot air and wasted ink. Thus, the recent trend in the
+literature to incorporate measures of teacher quality (in large part
+made possible by a trend towards administrative records allowing
+students to be linked to teachers and tracked over time) in
+considerations of teacher turnover has made big strides in addressing
+the most policy-relevant questions to be asked. The most common and
+widely accepted measure of teacher quality is value added\footnote{The
+  most commonly cited expositions on value added, its validity, and so
+  on are probably Rivkin, Hanushek, and Kain
+  (\protect\hyperlink{ref-rivkin}{2005}), an extensive exploration of
+  the predictive powers of empirical Bayes VA measures; and Chetty,
+  Friedman, and Rockoff
+  (\protect\hyperlink{ref-chettyI}{2014}\protect\hyperlink{ref-chettyI}{a})
+  and Chetty, Friedman, and Rockoff
+  (\protect\hyperlink{ref-chettyII}{2014}\protect\hyperlink{ref-chettyII}{b}),
+  the largest-scale study of long-term inferences based on value added.}
+(in its various guises), and the literature has begun to incorporate
+such measures into studies of teacher turnover. Hanushek and Rivkin
+(\protect\hyperlink{ref-hanushek2010}{2010}) considers value added as a
+measure of teacher productivity, and ask if common results of labor
+search theory (namely that turnover falls with tenure and that turnover
+is negatively associated with match-specific productivity) continue to
+hold in the education labor market. In fact, the authors find that the
+teachers most likely to switch schools are those with low measured match
+quality, and especially that those who leave teaching entirely are those
+with the lowest match quality. The results are more pronounced for
+schools with high proportions of low-SES students, which has strong
+policy implications, as it appears the best teachers in high needs
+schools are the least likely to change jobs. Goldhaber, Gross, and
+Player (\protect\hyperlink{ref-goldhaber2007}{2007}) performs a similar
+analysis with the longitudinal data of North Carolina and comes to
+similar conclusions, strengthening the robustness of the results.
+Lastly, Goldhaber, Lavery, and Theobald
+(\protect\hyperlink{ref-goldhaber2015}{2015}) examine the inequity in
+the distribution of teacher quality by high-needs groups in Washington
+state, and find that for all three measures of quality (teacher
+experience, licensure exam score, and value added), the distribution of
+teachers favors the less needy (as measured by free/reduced-price lunch
+status, minority status, and low prior academic achievement).
+
+The aforementioned papers have tended to keep the collective bargaining
+aspect of salary determination for teachers out of the spotlight, if
+largely for reasons of data restrictions. Nevertheless, it stands to
+reason to believe that the rigid structure of union-negotiated contracts
+could serve to contribute in a large way to teacher turnover. Ballou and
+Podgursky (\protect\hyperlink{ref-ballou}{2002}) give much descriptive
+evidence of the shape of the wage-tenure profile, rooted in a data set
+collected by the Department of Defense and published by the AFT. They
+find that seniority premia in education largely mirror those in more
+traditional white collar professins, that steeper profiles are
+associated with less turnover, and that district financial and
+demographic conditions alone are insufficient to explain variation in
+contracts. Another common (and recently quite controversial, as
+evidenced by the contention in the ongoing contract negotiations in
+Philadelphia) feature of union-negotiated teacher contracts are
+seniority priviliges--preferential treatments granted to teachers in
+voluntary and involuntary transfers. Moe
+(\protect\hyperlink{ref-moe}{2006}) codes contracts from 158 districts
+in California according to the strength of seniority rights therein
+guaranteed to teachers and finds that such rights are associated with
+the distribution of teachers across schools (measuring quality as
+experience and certification) in a way that serves to harm minorities.
+Revisiting California with a slightly different sample and definition of
+the ``determinacy'' of the contracts with respect to seniority, Koski
+and Horng (\protect\hyperlink{ref-koski}{2007}) come to the opposite
+conclusion--that there is no such relationship. As a rebuttal, Anzia and
+Moe (\protect\hyperlink{ref-anzia}{2014}) pin the difference in results
+on the exclusion in Moe (\protect\hyperlink{ref-moe}{2006}) of small
+school districts, where it appears that the entrenchment of bureaucracy
+falters and the rigidity of contract language wane, a claim which they
+support by repeating their analysis with the inclusion of an interaction
+for district size--indeed, for small districts the result of Koski and
+Horng (\protect\hyperlink{ref-koski}{2007}) holds, while the insight of
+Moe (\protect\hyperlink{ref-moe}{2006}) holds in larger districts.
+Cohen-Vogel, Feng, and Osborne-Lampkin
+(\protect\hyperlink{ref-cohenvogel}{2013}) use data from Florida and
+their results align with those of Koski and Horng
+(\protect\hyperlink{ref-koski}{2007}) (though they neglect to nuance
+their results by district size).
+
+Finally, an emerging but still immature strand of literature is
+beginning to look at the potential for transfer bonuses and retention
+incentives to positively affect student outcomes. Fulbeck
+(\protect\hyperlink{ref-fulbeck}{2014}) analyzes a scheme in place in
+Denver whereby teachers who choose to transfer to high-needs schools
+(low-performing) are given recurring bonus pay, and those initially
+stationed there are given retention incentives. She concludes that
+recipients of incentives are significantly less likely to switch jobs,
+as driven by a reduction in district exit rates and especially by
+teachers whos incentive payments exceed \$5,000. Glazerman et al.
+(\protect\hyperlink{ref-glazerman}{2013}) evaluate the Talent Transfer
+Initiative, a randomized controlled trial conducted in 10 districts
+whereby high-performance teachers were given \$20,000 over the course of
+two years as reward for transferring the identified high-needs schools,
+and conclude that there were significant effects on teacher retention as
+well as on student outcomes.
+
 \section{Data}\label{data}
 
 \section{Results}\label{results}
+
+Like Hanushek, Kain, and Rivkin (\protect\hyperlink{ref-hanushek}{2004})
+(HKR) found in Texas, most turnover in Wisconsin is happening within
+districts and out of the profession. In Wisconsin, the fraction of
+teachers transitioning among districts is vanishingly small after a
+``burn-in'' period of roughly 6 years -- only 0.8 of such teachers do so
+(compared with 3.1\% for the comparable group in HKR), but is still
+relatively higher among the youngest teachers -- roughly twice as high
+for the ``probationary'' teachers (1-3 years' experience) as for
+teachers with 7-11 years' experience in both states. Movement patterns
+within districts in the two states are very similar, lending weight to
+teachers ``earning their stripes'' within a district to be able to
+choose the best schools.
 
 \begin{table}[ht]
 \centering
@@ -335,7 +537,124 @@ Observations                                & 28,287         & 81,801        & 2
 
 \section{Conclusion}\label{conclusion}
 
-\section{References}\label{references}
+\section*{References}\label{references}
+\addcontentsline{toc}{section}{References}
+
+\hypertarget{refs}{}
+\hypertarget{ref-anzia}{}
+Anzia, Sarah F, and Terry M Moe. 2014. ``Collective Bargaining, Transfer
+Rights, and Disadvantaged Schools.'' \emph{Educational Evaluation and
+Policy Analysis} 36 (1). SAGE Publications Sage CA: Los Angeles, CA:
+83--111.
+
+\hypertarget{ref-ballou}{}
+Ballou, Dale, and Michael Podgursky. 2002. ``Returns to Seniority Among
+Public School Teachers.'' \emph{Journal of Human Resources}. JSTOR,
+892--912.
+
+\hypertarget{ref-boyd}{}
+Boyd, Donald, Hamilton Lankford, Susanna Loeb, and James Wyckoff. 2005.
+``Explaining the Short Careers of High-Achieving Teachers in Schools
+with Low-Performing Students.'' \emph{The American Economic Review} 95
+(2). JSTOR: 166--71.
+
+\hypertarget{ref-chettyI}{}
+Chetty, Raj, John N Friedman, and Jonah E Rockoff. 2014a. ``Measuring
+the Impacts of Teachers I: Evaluating Bias in Teacher Value-Added
+Estimates.'' \emph{The American Economic Review} 104 (9). American
+Economic Association: 2593--2632.
+
+\hypertarget{ref-chettyII}{}
+---------. 2014b. ``Measuring the Impacts of Teachers II: Teacher
+Value-Added and Student Outcomes in Adulthood.'' \emph{The American
+Economic Review} 104 (9). American Economic Association: 2633--79.
+
+\hypertarget{ref-cohenvogel}{}
+Cohen-Vogel, Lora, Li Feng, and La'Tara Osborne-Lampkin. 2013.
+``Seniority Provisions in Collective Bargaining Agreements and the
+`Teacher Quality Gap'.'' \emph{Educational Evaluation and Policy
+Analysis} 35 (3). SAGE Publications Sage CA: Los Angeles, CA: 324--43.
+
+\hypertarget{ref-dolton}{}
+Dolton, Peter, and Wilbert Van der Klaauw. 1999. ``The Turnover of
+Teachers: A Competing Risks Explanation.'' \emph{Review of Economics and
+Statistics} 81 (3). MIT Press: 543--50.
+
+\hypertarget{ref-engel}{}
+Engel, Mimi, Brian A Jacob, and F Chris Curran. 2014. ``New Evidence on
+Teacher Labor Supply.'' \emph{American Educational Research Journal} 51
+(1). SAGE Publications Sage CA: Los Angeles, CA: 36--72.
+
+\hypertarget{ref-fulbeck}{}
+Fulbeck, Eleanor S. 2014. ``Teacher Mobility and Financial Incentives: A
+Descriptive Analysis of Denver's Procomp.'' \emph{Educational Evaluation
+and Policy Analysis} 36 (1). SAGE Publications: 67--82.
+
+\hypertarget{ref-glazerman}{}
+Glazerman, Steven, Ali Protik, Bing-Ru Teh, Julie Bruch, and Jeffrey
+Max. 2013. ``Transfer Incentives for High-Performing Teachers: Final
+Results from a Multisite Randomized Experiment.'' \emph{National Center
+for Education Evaluation and Regional Assistance}. ERIC.
+
+\hypertarget{ref-goldhaber2007}{}
+Goldhaber, Dan, Betheny Gross, and Daniel Player. 2007. ``Are Public
+Schools Really Losing Their Best? Assessing the Career Transitions of
+Teachers and Their Implications for the Quality of the Teacher
+Workforce.'' \emph{National Center for Analysis of Longitudinal Data in
+Education Research}. ERIC.
+
+\hypertarget{ref-goldhaber2015}{}
+Goldhaber, Dan, Lesley Lavery, and Roddy Theobald. 2015. ``Uneven
+Playing Field? Assessing the Teacher Quality Gap Between Advantaged and
+Disadvantaged Students.'' \emph{Educational Researcher} 44 (5). SAGE
+Publications Sage CA: Los Angeles, CA: 293--307.
+
+\hypertarget{ref-hanushek2010}{}
+Hanushek, Eric A, and Steven G Rivkin. 2010. ``Constrained Job Matching:
+Does Teacher Job Search Harm Disadvantaged Urban Schools?'' National
+Bureau of Economic Research.
+
+\hypertarget{ref-hanushek}{}
+Hanushek, Eric A, John F Kain, and Steven G Rivkin. 2004. ``Why Public
+Schools Lose Teachers.'' \emph{Journal of Human Resources} 39 (2).
+University of Wisconsin Press: 326--54.
+
+\hypertarget{ref-koski}{}
+Koski, William S, and Eileen L Horng. 2007. ``Facilitating the Teacher
+Quality Gap? Collective Bargaining Agreements, Teacher Hiring and
+Transfer Rules, and Teacher Assignment Among Schools in California.''
+\emph{Education} 2 (3). MIT Press: 262--300.
+
+\hypertarget{ref-loeb}{}
+Loeb, Susanna, and Marianne E Page. 2000. ``Examining the Link Between
+Teacher Wages and Student Outcomes: The Importance of Alternative Labor
+Market Opportunities and Non-Pecuniary Variation.'' \emph{Review of
+Economics and Statistics} 82 (3). MIT Press: 393--408.
+
+\hypertarget{ref-moe}{}
+Moe, Terry M. 2006. ``Bottom-up Structure: Collective Bargaining,
+Transfer Rights, and the Plight of Disadvantaged Schools.''
+\emph{Education Working Paper Archive}. ERIC.
+
+\hypertarget{ref-murnane}{}
+Murnane, Richard J, and Randall J Olsen. 1990. ``The Effects of Salaries
+and Opportunity Costs on Length of Stay in Teaching: Evidence from North
+Carolina.'' \emph{Journal of Human Resources}. JSTOR, 106--24.
+
+\hypertarget{ref-rivkin}{}
+Rivkin, Steven G, Eric A Hanushek, and John F Kain. 2005. ``Teachers,
+Schools, and Academic Achievement.'' \emph{Econometrica} 73 (2). Wiley
+Online Library: 417--58.
+
+\hypertarget{ref-scafidi}{}
+Scafidi, Benjamin, David L Sjoquist, and Todd R Stinebrickner. 2007.
+``Race, Poverty, and Teacher Mobility.'' \emph{Economics of Education
+Review} 26 (2). Elsevier: 145--59.
+
+\hypertarget{ref-stinebrickner}{}
+Stinebrickner, Todd R. 2002. ``An Analysis of Occupational Change and
+Departure from the Labor Force: Evidence of the Reasons That Teachers
+Leave.'' \emph{Journal of Human Resources}. JSTOR, 192--216.
 
 
 \end{document}

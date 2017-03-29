@@ -53,6 +53,16 @@ As noted in the companion paper, the introduction of Wisconsin Act 10 introduced
 
 [^ethnicity]: Wisconsin teachers are predominantly white (`r pct_white`%).
 
+This data is also used for the incorporation of counterfactual salary calculations, by incorporating the salary schedules estimated in the companion paper. Details of the fit procedure can be found there, but essentially salary schedules are computed as monotonicity- and concavity-constrained median-targeted splines [@ng] for each level of certification (Bachelor's or Master's degree) in each district in each year. Data sparsity led this procedure to be unreliable in many cases, so ultimately around `r teachers[ , round(100*mean(is.na(schedule_lsalary)))]`% of teachers have missing salary information[^na_salary], mostly in rural districts or other districts with only one or two schools and a small number of students.
+
+[^na_salary]: More specifically, we eliminate district-years featuring less than 20 teachers, less than 7 distinct levels of observed experience, or less than 5 unique values of the two measures of pay (salary and fringe benefits) in either degree track. HKR include like-minded restrictions, but combine teachers of different certification within an experience level.
+
+We supplement the DPI teacher salary data set in several ways to incorporate data about other characteristics of schools and districts in Wisconsin. To get school- and district-level measures of socioeconomic makeup (percentage of students who are black or Hispanic or eligible for free/reduced lunches) and community type/urbanicity, we tap the National Center for Education Statistics' Common Core of Data's Universe Surveys, which provide this information on a yearly basis for all years in the study[^urbanicity_details]. At the district level, we also use this data to compute class size and the size of the student body.
+
+[^urbanicity_details]: The method of recording urbanicity by the Common Core switched from being "metropolitan-centric" to being "urban-centric" for Wisconsin from 2006 [@sable]. We map the codes corresponding codes to match those used by HKR as well as possible, and use the data file from 2006, which has both types of code for all US districts, to confirm that this correspondence is by and large working as intended. For a small number of districts/schools with missing urbanicity codes in certain years, we use information from other years to inform urbanicity.
+
+Lastly, we turn to DPI's public data again to get school- and district-level performance metrics. While @hanushek were able to obtain school- and district-level average scale scores on a standardized test in Texas, such a metric is not publicly available in Wisconsin for all years. Instead, we calculate student proficiency rates for each school and district as the percentage of test-takers deemed to be at grade level in mathematics or reading in a given year on the Wisconsin Knowledge and Concepts Examination (WKCE), which is administered to 4th, 8th, and 10th-grade students.
+
 # Results
 
 Table \ref{tbl:move_by_exp} replicates Table 1 of @hanushek (HKR), and as HKR found in Texas, most turnover in Wisconsin is happening within districts and out of the profession. In Wisconsin, the fraction of teachers transitioning among districts is vanishingly small after a "burn-in" period of roughly 6 years -- only `r round(100*teachers[total_exp_floor >= 7, mean(move_district_next)], 1)` of such teachers do so (compared with `r round((4.5*75284 + 2.5*165873 + 0.7*6978)/(75284+165873+6978), 1)`% for the comparable group in HKR), but is still relatively higher among the youngest teachers -- roughly twice as high for the "probationary" teachers (1-3 years' experience) as for teachers with 7-11 years' experience in both states.
@@ -127,6 +137,7 @@ As mentioned in the discussion of Table \ref{tbl:move_by_exp}, the major differe
 # - probationary urban & suburban slightly more likely to quit
 # - count # of new teachers each year in suburbs to support lack of
 #     of constraint on demand side for new teachers (re: no urban switching)
+# - fix urbanicity for each district to overcome re-coding issue
 share_change = 
   #use 2006, not incl_rng, because of the artificial change in 
   #  shares induced by the change in how urbanicity is calculated
@@ -184,6 +195,10 @@ cat(tbl, sep = '\n')
 ```
 
 ```{r table_3, results = 'asis'}
+#** TO DO **
+# - subset to years with scale scores available, use this instead
+# - WKCE data for 2001-02 and earlier are NOT comparable to
+#   performance level data for 2002-03 and later years...
 T3 = 
   teachers[move_district_next & total_exp_floor <= 10, {
     dl = lapply(

@@ -333,6 +333,54 @@ multiple positions by keeping only the highest-intensity position for
 each teacher, as measured by full-time equivalency, resulting in a final
 count of 253,935 teacher-year observations.
 
+This data is also used for the incorporation of counterfactual salary
+calculations, by incorporating the salary schedules estimated in the
+companion paper. Details of the fit procedure can be found there, but
+essentially salary schedules are computed as monotonicity- and
+concavity-constrained median-targeted splines (Ng and Maechler
+\protect\hyperlink{ref-ng}{2007}) for each level of certification
+(Bachelor's or Master's degree) in each district in each year. Data
+sparsity led this procedure to be unreliable in many cases, so
+ultimately around 29\% of teachers have missing salary
+information\footnote{More specifically, we eliminate district-years
+  featuring less than 20 teachers, less than 7 distinct levels of
+  observed experience, or less than 5 unique values of the two measures
+  of pay (salary and fringe benefits) in either degree track. HKR
+  include like-minded restrictions, but combine teachers of different
+  certification within an experience level.}, mostly in rural districts
+or other districts with only one or two schools and a small number of
+students.
+
+We supplement the DPI teacher salary data set in several ways to
+incorporate data about other characteristics of schools and districts in
+Wisconsin. To get school- and district-level measures of socioeconomic
+makeup (percentage of students who are black or Hispanic or eligible for
+free/reduced lunches) and community type/urbanicity, we tap the National
+Center for Education Statistics' Common Core of Data's Universe Surveys,
+which provide this information on a yearly basis for all years in the
+study\footnote{The method of recording urbanicity by the Common Core
+  switched from being ``metropolitan-centric'' to being
+  ``urban-centric'' for Wisconsin from 2006 (Sable
+  \protect\hyperlink{ref-sable}{2009}). We map the codes corresponding
+  codes to match those used by HKR as well as possible, and use the data
+  file from 2006, which has both types of code for all US districts, to
+  confirm that this correspondence is by and large working as intended.
+  For a small number of districts/schools with missing urbanicity codes
+  in certain years, we use information from other years to inform
+  urbanicity.}. At the district level, we also use this data to compute
+class size and the size of the student body.
+
+Lastly, we turn to DPI's public data again to get school- and
+district-level performance metrics. While Hanushek, Kain, and Rivkin
+(\protect\hyperlink{ref-hanushek}{2004}) were able to obtain school- and
+district-level average scale scores on a standardized test in Texas,
+such a metric is not publicly available in Wisconsin for all years.
+Instead, we calculate student proficiency rates for each school and
+district as the percentage of test-takers deemed to be at grade level in
+mathematics or reading in a given year on the Wisconsin Knowledge and
+Concepts Examination (WKCE), which is administered to 4th, 8th, and
+10th-grade students.
+
 \section{Results}\label{results}
 
 Table \ref{tbl:move_by_exp} replicates Table 1 of Hanushek, Kain, and
@@ -635,19 +683,18 @@ Observations                                & 28,287         & 81,801        & 2
 \hypertarget{ref-anzia}{}
 Anzia, Sarah F, and Terry M Moe. 2014. ``Collective Bargaining, Transfer
 Rights, and Disadvantaged Schools.'' \emph{Educational Evaluation and
-Policy Analysis} 36 (1). SAGE Publications Sage CA: Los Angeles, CA:
-83--111.
+Policy Analysis} 36 (1). SAGE: 83--111.
 
 \hypertarget{ref-ballou}{}
 Ballou, Dale, and Michael Podgursky. 2002. ``Returns to Seniority Among
-Public School Teachers.'' \emph{Journal of Human Resources}. JSTOR,
-892--912.
+Public School Teachers.'' \emph{Journal of Human Resources}. University
+of Wisconsin Press, 892--912.
 
 \hypertarget{ref-boyd}{}
 Boyd, Donald, Hamilton Lankford, Susanna Loeb, and James Wyckoff. 2005.
 ``Explaining the Short Careers of High-Achieving Teachers in Schools
 with Low-Performing Students.'' \emph{The American Economic Review} 95
-(2). JSTOR: 166--71.
+(2). American Economic Association: 166--71.
 
 \hypertarget{ref-chettyI}{}
 Chetty, Raj, John N Friedman, and Jonah E Rockoff. 2014a. ``Measuring
@@ -664,7 +711,7 @@ Economic Review} 104 (9). American Economic Association: 2633--79.
 Cohen-Vogel, Lora, Li Feng, and La'Tara Osborne-Lampkin. 2013.
 ``Seniority Provisions in Collective Bargaining Agreements and the
 `Teacher Quality Gap'.'' \emph{Educational Evaluation and Policy
-Analysis} 35 (3). SAGE Publications Sage CA: Los Angeles, CA: 324--43.
+Analysis} 35 (3). SAGE: 324--43.
 
 \hypertarget{ref-dolton}{}
 Dolton, Peter, and Wilbert Van der Klaauw. 1999. ``The Turnover of
@@ -674,12 +721,12 @@ Statistics} 81 (3). MIT Press: 543--50.
 \hypertarget{ref-engel}{}
 Engel, Mimi, Brian A Jacob, and F Chris Curran. 2014. ``New Evidence on
 Teacher Labor Supply.'' \emph{American Educational Research Journal} 51
-(1). SAGE Publications Sage CA: Los Angeles, CA: 36--72.
+(1). SAGE: 36--72.
 
 \hypertarget{ref-fulbeck}{}
 Fulbeck, Eleanor S. 2014. ``Teacher Mobility and Financial Incentives: A
 Descriptive Analysis of Denver's Procomp.'' \emph{Educational Evaluation
-and Policy Analysis} 36 (1). SAGE Publications: 67--82.
+and Policy Analysis} 36 (1). SAGE: 67--82.
 
 \hypertarget{ref-glazerman}{}
 Glazerman, Steven, Ali Protik, Bing-Ru Teh, Julie Bruch, and Jeffrey
@@ -692,13 +739,13 @@ Goldhaber, Dan, Betheny Gross, and Daniel Player. 2007. ``Are Public
 Schools Really Losing Their Best? Assessing the Career Transitions of
 Teachers and Their Implications for the Quality of the Teacher
 Workforce.'' \emph{National Center for Analysis of Longitudinal Data in
-Education Research}. ERIC.
+Education Research}. CALDER.
 
 \hypertarget{ref-goldhaber2015}{}
 Goldhaber, Dan, Lesley Lavery, and Roddy Theobald. 2015. ``Uneven
 Playing Field? Assessing the Teacher Quality Gap Between Advantaged and
-Disadvantaged Students.'' \emph{Educational Researcher} 44 (5). SAGE
-Publications Sage CA: Los Angeles, CA: 293--307.
+Disadvantaged Students.'' \emph{Educational Researcher} 44 (5). SAGE:
+293--307.
 
 \hypertarget{ref-hanushek2010}{}
 Hanushek, Eric A, and Steven G Rivkin. 2010. ``Constrained Job Matching:
@@ -730,7 +777,13 @@ Transfer Rights, and the Plight of Disadvantaged Schools.''
 \hypertarget{ref-murnane}{}
 Murnane, Richard J, and Randall J Olsen. 1990. ``The Effects of Salaries
 and Opportunity Costs on Length of Stay in Teaching: Evidence from North
-Carolina.'' \emph{Journal of Human Resources}. JSTOR, 106--24.
+Carolina.'' \emph{Journal of Human Resources}. University of Wisconsin
+Press, 106--24.
+
+\hypertarget{ref-ng}{}
+Ng, Pin, and Martin Maechler. 2007. ``A Fast and Efficient
+Implementation of Qualitatively Constrained Quantile Smoothing
+Splines.'' \emph{Statistical Modelling} 7 (4). SAGE: 315--28.
 
 \hypertarget{ref-dpi}{}
 Public Instruction, Wisconsin Department of. 2017. ``School Staff:
@@ -739,8 +792,14 @@ Salary, Position \& Demographic Reports.''
 
 \hypertarget{ref-rivkin}{}
 Rivkin, Steven G, Eric A Hanushek, and John F Kain. 2005. ``Teachers,
-Schools, and Academic Achievement.'' \emph{Econometrica} 73 (2). Wiley
-Online Library: 417--58.
+Schools, and Academic Achievement.'' \emph{Econometrica} 73 (2). Journal
+of the Econometric Society: 417--58.
+
+\hypertarget{ref-sable}{}
+Sable, Jennifer. 2009. ``Documentation to the Nces Common Core of Data
+Local Education Agency Universe Survey: School Year 2006-07 (Nces
+2009-301).'' \emph{U.S. Department of Education}. Washington, DC:
+National Center for Education Statistics.
 
 \hypertarget{ref-scafidi}{}
 Scafidi, Benjamin, David L Sjoquist, and Todd R Stinebrickner. 2007.
@@ -750,7 +809,8 @@ Review} 26 (2). Elsevier: 145--59.
 \hypertarget{ref-stinebrickner}{}
 Stinebrickner, Todd R. 2002. ``An Analysis of Occupational Change and
 Departure from the Labor Force: Evidence of the Reasons That Teachers
-Leave.'' \emph{Journal of Human Resources}. JSTOR, 192--216.
+Leave.'' \emph{Journal of Human Resources}. University of Wisconsin
+Press, 192--216.
 
 
 \end{document}

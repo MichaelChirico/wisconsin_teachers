@@ -339,9 +339,13 @@ companion paper. Details of the fit procedure can be found there, but
 essentially salary schedules are computed as monotonicity- and
 concavity-constrained median-targeted splines (Ng and Maechler
 \protect\hyperlink{ref-ng}{2007}) for each level of certification
-(Bachelor's or Master's degree) in each district in each year. Data
-sparsity led this procedure to be unreliable in many cases, so
-ultimately around 29\% of teachers have missing salary
+(Bachelor's or Master's degree) in each district in each year\footnote{One
+  difference is that the salaries included in the payscales estimation
+  were less restrictive with respect to included subject areas. This was
+  done since contracts are collectively bargained at the district level
+  for all teachers, with scant mention of subject area in wage
+  determination.}. Data sparsity led this procedure to be unreliable in
+many cases, so ultimately around 29\% of teachers have missing salary
 information\footnote{More specifically, we eliminate district-years
   featuring less than 20 teachers, less than 7 distinct levels of
   observed experience, or less than 5 unique values of the two measures
@@ -485,6 +489,52 @@ I. All teachers & & & & & & & \\
 \caption{Destination Community Type for Teachers Changing Districts, by Origin Community Type and Teacher Experience Level} 
 \label{tbl:markov}
 \end{sidewaystable}
+
+Table \ref{tbl:change_by_ge} replicates Table 3 of HKR, and confirms its
+most important insights. Raw salary differentials predict teacher
+mobility, but the pay differential is not on average very large -- only
+about \$200, or 0.4\% higher than the counterfactually expected wage
+that would have obtained had the district-switching teacher remained in
+their current district. This premium declines with age for both male and
+female teachers, eventually dipping negative (though this estimate is
+imprecise/underpowered due to the limited quantity of teachers changing
+districts after 6 years).
+
+Attempting to isolate the influence of district characteristics on wage
+effects, HKR suggest comparing the differential leverage of residual
+wages to get a more focused estimate of the association between wages
+and mobility. We run a similar regression using the payscales estimated
+in the companion paper, but evaluate separate regressions not just for
+each level of experience, but also for each certification track. This
+leads to a boost in the overall fraction of explained variance from 60\%
+cited by HKR to NA\% here; as in HKR, other included covariates are
+consistently significant, suggesting their strong independent
+correlation with salary levels.
+
+As in HKR, we find the demographic-independent wage differentials to be
+even more important than the uncontrolled raw wages, with the predicted
+wage improvement nearly doubling to 0.8\%. In contrast to HKR, however,
+we find a positive relationship between experience and residual wage
+differentials, with mid-career district switchers experiencing 2-3\%
+higher wages upon arrival to their new employer, by contrast to the null
+relationship for probationary teachers.
+
+Student demographic differentials are very important for predicting
+teacher turnover, a finding which held in Texas as it does in Wisconsin.
+Most important in all experience classes and for both genders are the
+measures of student performance and student poverty -- district
+switchers end up at schools with 4\% more students at grade level
+overall, an effect which is stronger for female teachers and for young
+teachers. They also end up on average with about 7\% fewer students
+(school-wide) eligible for subsidized lunch. While this finding would
+need to be bolstered with experimental or quasi-experimental evidence,
+it hints at the potentially limited scope of teacher labor market
+policies intended to ameliorate teacher supply problems in hard-to-serve
+districts -- schools can much more easily exert influence over their
+compensation policies than they can dictate their student bodies, but
+the latter is more efficacious (see Fulbeck
+\protect\hyperlink{ref-fulbeck}{2014} and Glazerman et al.
+(\protect\hyperlink{ref-glazerman}{2013})).
 
 \begin{sidewaystable}[ht]
 \centering

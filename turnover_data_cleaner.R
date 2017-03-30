@@ -148,11 +148,12 @@ payscales[ , (dist_cols) :=
              districts[.SD, ..dist_cols, 
                        on = c('year', district = 'district_fill')]]
 
-payscales[ , lwage_resid := 
-             resid(lm(log(wage) ~ cesa + urbanicity + scale(pct_prof) + 
-                        scale(pct_black) + scale(pct_hisp) + scale(pct_frl), 
-                      na.action = na.exclude)),
-           by = .(highest_degree, tenure)]
+pr = c('_pred', '_resid')
+payscales[ , paste0('lwage', pr) := {
+  reg = lm(log(wage) ~ cesa + urbanicity + pct_prof + 
+             pct_black + pct_hisp + pct_frl) 
+  .(predict(reg, .SD), resid(reg))
+}, by = .(highest_degree, tenure)]
 
 teachers[payscales[, log(wage[highest_degree == 4L & tenure == 1L]),
                    by = .(district_fill, year)], 
@@ -168,19 +169,21 @@ teachers[order(year), schedule_lsalary_next :=
            shift(schedule_lsalary, n = 1L, type = 'lead'), by = teacher_id]
 
 #what is the unexplained part of their scheduled wage?
-teachers[payscales, schedule_lsalary_resid := i.lwage_resid,
+teachers[payscales, paste0('schedule_lsalary', pr) := 
+           .(i.lwage_pred, i.lwage_resid),
          on = c('year', 'district_fill', 
                 total_exp_floor = 'tenure', 'highest_degree')]
-teachers[order(year), schedule_lsalary_resid_next := 
-           shift(schedule_lsalary_resid, n = 1L, type = 'lead'), 
+teachers[order(year), paste0('schedule_lsalary', pr, '_next') := 
+           .(shift(schedule_lsalary_resid, n = 1L, type = 'lead'),
+             shift(schedule_lsalary_resid, n = 1L, type = 'lead')), 
          by = teacher_id]
 
 #if the teacher moved, what would their wage have been had they stayed?
 teachers[payscales[ , .(year = year - 1L, district_fill, 
                         tenure = tenure - 1L, highest_degree, 
-                        lwage, lwage_resid)], 
-         c('schedule_lsalary_next_cf', 'schedule_lsalary_resid_next_cf') := 
-           .(i.lwage, i.lwage_resid),
+                        lwage, lwage_pred, lwage_resid)], 
+         paste0('schedule_lsalary', c('', pr), '_next_cf') := 
+           .(i.lwage, i.lwage_pred, i.lwage_resid),
          on = c('year', 'district_fill', 
                 total_exp_floor = 'tenure', 'highest_degree')]
 

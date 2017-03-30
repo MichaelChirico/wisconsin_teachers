@@ -7,7 +7,7 @@ output:
     keep_tex: yes
     includes:
       in_header: turnover_paper_header.tex
-abstract: 'Given the consistently-affirmed importance of teacher quality to student success, understanding teacher churn is crucial to formulating and evaluating teacher labor market policy. This paper replicates the analysis of @hanushek over a longer and more recent time period in Wisconsin and confirms all of its major findings, namely that while pay is a inter-district pay differentials are a significant determinant of turnover, school quality measures are much better predictors of all three types of churn -- within and between school districts and out of local public schools.'
+abstract: 'Given the consistently-affirmed importance of teacher quality to student success, understanding teacher churn is crucial to formulating and evaluating teacher labor market policy. This paper replicates the analysis of @hanushek over a longer and more recent time period in Wisconsin and confirms all of its major findings, namely that while inter-district pay differentials are a significant determinant of turnover, school quality measures are much better predictors of all three types of churn -- within and between school districts and out of local public schools.'
 bibliography: references.bib
 link-citations: true
 ---
@@ -71,9 +71,9 @@ Table \ref{tbl:move_by_exp} replicates Table 1 of @hanushek (HKR), and as HKR fo
 
 By contrast, movement patterns within districts in the two states are very similar, lending weight to teachers "earning their stripes" within a district to be able to choose the best schools as a privilege of seniority. As expected, we also observe a U-shaped pattern in teachers exiting Wisconsin public schools, which jives with two types of quits. Early-career quitters who change to private schools, change state of residence, or change professions, and late-career quitters who retire. Results not included here break down the exit rates by experience level, where this dichotomy is even more dramatic -- first-year exit rates are about 9 percent and quickly level off at around 2 percent before spiking again past around 25 years.
 
-As examined further below, the low rate of switches between districts appears to be owing to the generally more rural nature of Wisconsin vis-\`{a}-vis. Texas. To wit, Milwaukee is the only major urban area in the state, and its population (2010 Census) of 594,833 would rank 7th in Texas. This means that two major types of movers in the HKR data -- Large Urban - Large Urban and Suburban - Large Urban -- are limited within the state to ending up in a relatively minor metropolitan area. HKR don't provide any results disaggregated by city, precluding any attempts to compare these numbers more comparably to those that would obtain from eliminating the largest cities in Texas.
+As examined further below, the low rate of switches between districts appears to be owing to the generally more rural nature of Wisconsin vis-à-vis. Texas. To wit, Milwaukee is the only major urban area in the state, and its population (2010 Census) of 594,833 would rank 7th in Texas. This means that two major types of movers in the HKR data -- Large Urban - Large Urban and Suburban - Large Urban -- are limited within the state to ending up in a relatively minor metropolitan area. HKR don't provide any results disaggregated by city, precluding any attempts to compare these numbers more comparably to those that would obtain from eliminating the largest cities in Texas.
 
-```{r table_1, results = 'asis', message = FALSE}
+```{r table_1_move_by_exp, results = 'asis', message = FALSE}
 library(funchir)
 T1 = rbind(
   teachers[ , .(`Remain in Same School` = 100*sum(!move_school_next)/.N,
@@ -129,7 +129,7 @@ As mentioned in the discussion of Table \ref{tbl:move_by_exp}, the major differe
 
 [^share]: We also note a difference in the relative shift in population between the two states -- Texas observed dramatic changes in its community type distribution over the period of study of only 4 years, while Wisconsin only saw some movement from Rural to Suburban communities.
 
-```{r table_2, results = 'asis'}
+```{r table_2_markov, results = 'asis'}
 #** TO DO **
 # - evidence for total cumulative pipeline from inner city to suburbs?
 # - calculate steady-state distribution of markov chain
@@ -198,13 +198,13 @@ cat(tbl, sep = '\n')
 
 Table \ref{tbl:change_by_ge} replicates Table 3 of HKR, and confirms its most important insights. Raw salary differentials predict teacher mobility, but the pay differential is not on average very large -- only about \$200, or 0.4% higher than the counterfactually expected wage that would have obtained had the district-switching teacher remained in their current district. This premium declines with age for both male and female teachers, eventually dipping negative (though this estimate is imprecise/underpowered due to the limited quantity of teachers changing districts after 6 years).
 
-Attempting to isolate the influence of district characteristics on wage effects, HKR suggest comparing the differential leverage of residual wages to get a more focused estimate of the association between wages and mobility. We run a similar regression using the payscales estimated in the companion paper, but evaluate separate regressions not just for each level of experience, but also for each certification track. This leads to a boost in the overall fraction of explained variance from 60% cited by HKR to `r teachers[ , round(100*var(schedule_lsalary_pred)/var(schedule_lsalary))]`% here; as in HKR, other included covariates are consistently significant, suggesting their strong independent correlation with salary levels.
+Attempting to isolate the influence of district characteristics on wage effects, HKR suggest comparing the differential leverage of residual wages to get a more focused estimate of the association between wages and mobility. We run a similar regression using the payscales estimated in the companion paper, but evaluate separate regressions not just for each level of experience, but also for each certification track. This leads to a boost in the overall fraction of explained variance from 60% cited by HKR to `r teachers[ , round(100*var(schedule_lsalary_pred, na.rm = TRUE)/var(schedule_lsalary, na.rm = TRUE))]`% here; as in HKR, other included covariates are consistently significant, suggesting their strong independent correlation with salary levels.
 
-As in HKR, we find the demographic-independent wage differentials to be even more important than the uncontrolled raw wages, with the predicted wage improvement nearly doubling to 0.8%. In contrast to HKR, however, we find a positive relationship between experience and residual wage differentials, with mid-career district switchers experiencing 2-3% higher wages upon arrival to their new employer, by contrast to the null relationship for probationary teachers. 
+As in HKR, we find the demographic-independent wage differentials to be even more important than the uncontrolled raw wages, with the predicted wage improvement nearly doubling to 0.8%. In contrast to HKR, however, we find a positive relationship between experience and residual wage differentials, with mid-career district switchers experiencing 2-3% higher wages upon arrival to their new employer, by contrast to the null relationship for probationary teachers. This pattern is consistent across the dimension of certification which was ignored by HKR, suggesting the opposite result cannot be attributed to bias introduced by movement patterns of Bachelor's- vs. Master's-certified instructors.
 
 Student demographic differentials are very important for predicting teacher turnover, a finding which held in Texas as it does in Wisconsin. Most important in all experience classes and for both genders are the measures of student performance and student poverty -- district switchers end up at schools with 4% more students at grade level overall, an effect which is stronger for female teachers and for young teachers. They also end up on average with about 7% fewer students (school-wide) eligible for subsidized lunch. While this finding would need to be bolstered with experimental or quasi-experimental evidence, it hints at the potentially limited scope of teacher labor market policies intended to ameliorate teacher supply problems in hard-to-serve districts -- schools can much more easily exert influence over their compensation policies than they can dictate their student bodies, but the latter is more efficacious [see @fulbeck and @glazerman]. 
 
-```{r table_3, results = 'asis'}
+```{r table_3_change_by_ge, results = 'asis'}
 #** TO DO **
 # - subset to years with scale scores available, use this instead
 # - WKCE data for 2001-02 and earlier are NOT comparable to
@@ -213,7 +213,11 @@ Student demographic differentials are very important for predicting teacher turn
 # - bootstrap adjusted wage procedure to incorporate
 #   first-stage variability into standard errors
 # - explore _why_ differential wages become more important with experience;
-#   does ignoring certification bias this result in this way?
+#    : ignoring certification? breaking down results by
+#      certification shows the patterns consistent, but _could_ in
+#      principal be related to the residual wages themselves picking up
+#      unexpected patterns by ignoring certification.
+se = function(x) sd(x)/sqrt(length(x))
 T3 = 
   teachers[move_district_next & total_exp_floor <= 10, {
     dl = lapply(
@@ -223,8 +227,7 @@ T3 =
            pct_black_next_d - pct_black_d, pct_frl_next_d - pct_frl_d),
       na.omit)
     .(var = paste0(rep(seq_len(6L), each = 2L), rep(c('M', 'S'), 6L)),
-      val = c(rbind(sapply(dl, mean),
-                    sapply(dl, function(x) sd(x)/sqrt(length(x))))))
+      val = c(rbind(sapply(dl, mean), sapply(dl, se))))
   }, keyby = .(exp_split, gender)
   ][ , dcast(.SD, var ~ gender + exp_split, value.var = 'val')]
 T3[ , all := 
@@ -235,8 +238,7 @@ T3[ , all :=
                pct_prof_next_d - pct_prof_d, pct_hisp_next_d - pct_hisp_d,
                pct_black_next_d - pct_black_d, pct_frl_next_d - pct_frl_d),
           na.omit)
-        c(rbind(sapply(dl, mean),
-                sapply(dl, function(x) sd(x)/sqrt(length(x)))))}]]
+        c(rbind(sapply(dl, mean), sapply(dl, se)))}]]
 
 T3[ , var := rep(c('Base year salary (log)', 'Adjusted salary (log)',
                    'Percent proficient', 'Percent Hispanic',
@@ -275,8 +277,35 @@ tbl = c(tbl[1L:(idx - 1L)],
 cat(tbl, sep = '\n')
 ```
 
-```{r table_4, results = 'asis'}
-se = function(x) sd(x)/sqrt(length(x))
+Table \ref{tbl:change_by_urb}, which parallels Table 4 of HKR, is the first analysis where the mechanisms of the teacher labor market appear to be working differently from those found in Texas. In particular, while HKR found Large Urban - Suburban district switchers to penalize themselves in pay but to gain in demographic-adjusted pay, Wisconsin teachers lose out on both measures when leaving Large Urban districts, and in fact are even worse off in residual pay than they are in nominal pay. This difference can at least partially be attributed to HKR's exclusion of certification as a conditioning variable, as the pattern here differs substantially by degree. While district switchers with a Bachelor's degree experience a .8% nominal and 3.8% residual drop in wages, Master's degree switchers experience a 6% nominal, but only a 3% residual drop in wages.
+
+The other results of HKR are confirmed in even more dramatic fashion. There is strong evidence of selection on the student performance metric, which does vary quite widely in suburban districts. Teachers leaving Milwaukee tend to end up at districts with 37% more students deemed to be at grade level on the state standardized test. On the other hand, teachers leaving Large Urban districts (i.e, Milwaukee) for the suburbs experience a precipitous drop of 53% black students and 60% subsidized lunch eligibility. This is practically a tautological result, as the student demographics outside of urban areas in Wisconsin are pretty uniformly non-minority -- about 90% of suburban districts have fewer than 10% black students, and more than 60% have fewer than 2% black students, whereas Milwaukee is about 62% black. Similarly, teachers leaving Milwaukee for the suburbs have little choice but to end up in a district with far fewer economically disadvantaged students -- whereas 71% of Milwaukee Public Schools students are eligible, the median percentage in suburban schools is 11%. 
+
+This phenomenon is reflected further in the suburban-to-suburban moves, which reflect little change in the ethnic/racial makeup of student bodies, since a dramatic shift would demonstrate very strong influence of this factor. We also find evidence of selection into economically better-off districts among suburban switchers, but the magnitude of this difference is attenuated with respect to that reported by HKR. We do not find patterns of selection on student performance as strongly as was found in HKR. This may be a reflection of the crudeness of the proficiency measure as compared to the more variable raw scale score measures used by HKR. Lastly, we confirm the finding of HKR that there does not appear to be evidence that teachers are able to select into the more desirable schools within their target districts -- The differences in campus-level characteristics are almost identical to the differences in district-level characteristics. This is likely a reflection of supply-side constraints, as the choicest appointments in a district may be awarded to long-serving serving teachers (promotion from within), as well as suburban districts perhaps having only a small number of schools at which to teach a given grade level/subject.
+
+```{r table_4_change_by_urb, results = 'asis'}
+#** TO DO **
+# - Why do I have such huge SEs?
+# - Why are teachers even worse off
+#   in terms of adjusted than unadjusted pay?
+# - How to express drop in %Black/Hispanic/FRL
+#   RELATIVELY (i.e., accounting for the fact
+#   that there are no minority/poor students outside MWK)
+# - Compare within-urban differntial in achievement
+#   (require MWK charter schools back in data)
+# - Use scale scores, not proficiency
+#Code to get nominal vs. residual pay differential for Urban-Suburban
+#  switchers, _by highest_degree_
+# teachers[move_district_next & urbanicity_next_d == 'Suburban' & 
+#            urbanicity_d == 'Large Urban' & total_exp_floor <= 10, {
+#              dl = lapply(
+#                list(schedule_lsalary_next - schedule_lsalary_next_cf,
+#                     schedule_lsalary_resid_next -
+#                       schedule_lsalary_resid_next_cf),
+#                na.omit)
+#              .(var = c('1M', '1S', '2M', '2S'),
+#                val = c(rbind(sapply(dl, mean), sapply(dl, se))))
+#            }, keyby = .(urbanicity_d, highest_degree)]
 T4D = 
   teachers[move_district_next & urbanicity_next_d == 'Suburban' & 
              urbanicity_d %in% c('Large Urban', 'Suburban') & 
@@ -362,7 +391,7 @@ tbl = c(tbl[1L:idx], 'Average Student Characteristics & & & & \\\\',
 cat(tbl, sep = '\n')
 ```
 
-```{r table_5, results = 'asis'}
+```{r table_5_change_by_eth, results = 'asis'}
 T5D = 
   teachers[move_district_next & total_exp_floor <= 10 & 
              ethnicity_main %in% c('Black', 'Hispanic'), {
@@ -435,7 +464,7 @@ tbl = c(tbl[1L:(idx - 1L)],
 cat(tbl, sep = '\n')
 ```
 
-```{r table_6, results = 'asis'}
+```{r table_6_change_by_quartile, results = 'asis'}
 T6 = 
   melt(teachers, id.vars = c('year', 'move_district_next', 
                              'move_within_next', 'quit_next'), 
@@ -473,7 +502,7 @@ tbl[idx] = paste0(c('Residual salary', 'Percent proficient',
 cat(tbl, sep = '\n')
 ```
 
-```{r table_7, results = 'asis'}
+```{r table_7_reg_lpm, results = 'asis'}
 reg_l = 
   lapply(split(teachers, f = teachers$exp_split),
          function(DT) 
@@ -525,7 +554,7 @@ tbl[idx] = gsub('Num. obs.   ', 'Observations', tbl[idx], fixed = TRUE)
 cat(tbl[grep('[^ &\\]', tbl)], sep = '\n')
 ```
 
-```{r table_8, results = 'asis', cache = TRUE}
+```{r table_8_reg_lpm_fe, results = 'asis', cache = TRUE}
 reg_l = 
   lapply(split(teachers, by = 'exp_split', sorted = TRUE),
          function(DT) DT[ , lm(leave_next ~

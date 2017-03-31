@@ -217,6 +217,10 @@ Student demographic differentials are very important for predicting teacher turn
 #      certification shows the patterns consistent, but _could_ in
 #      principal be related to the residual wages themselves picking up
 #      unexpected patterns by ignoring certification.
+# - proficiency rates over time fluctuate dramatically
+#   (huge dropoff 2005-06) -- express as position in distribution?
+# - % black/hispanic/FRL also on steady upward trend
+#   throughout measurement period
 se = function(x) sd(x)/sqrt(length(x))
 T3 = 
   teachers[move_district_next & total_exp_floor <= 10, {
@@ -391,7 +395,12 @@ tbl = c(tbl[1L:idx], 'Average Student Characteristics & & & & \\\\',
 cat(tbl, sep = '\n')
 ```
 
+HKR examine the state of Texas, which features substantially more ethnic heterogeneity than does Wisconsin. As a result, they are better-equipped to identify heterogeneity in preferences by teacher ethnicity. Wisconsin, however, only has `r teachers[ethnicity_main %in% c('Black', 'Hispanic'), prettyNum(uniqueN(teacher_id), big.mark = ',')]` of its `r teachers[ , prettyNum(uniqueN(teacher_id), big.mark = ',')]` teachers non-white, so our results are underpowered relative to HKR. Table \ref{tbl:change_by_eth} presents these results, which parallel HKR Table 5. Given how few observations we have of black or Hispanic teachers switching districts, we eschew any temptation to interpret these results. Only black switchers within districts provide enough records to interpret meaningfully; in Wisconsin, we find (in contrast to white within-district switchers) black teachers tend to migrate to economically better-off and higher-performing schools (white teachers only tend to select on the latter characteristic). 
+
 ```{r table_5_change_by_eth, results = 'asis'}
+# - to do: re-cast heterogeneity Q in terms
+#   of white vs. non-white
+# - do black teachers _start_ at lower-quality schools?
 T5D = 
   teachers[move_district_next & total_exp_floor <= 10 & 
              ethnicity_main %in% c('Black', 'Hispanic'), {
@@ -464,7 +473,32 @@ tbl = c(tbl[1L:(idx - 1L)],
 cat(tbl, sep = '\n')
 ```
 
+To the end of examining heterogeneity in the impact of school and district characteristic differentials on teacher mobility, HKR present their Table 6, which breaks down the three exit rates for each (weighted) quartile of the covariate distribution. We replicate that analysis here in Table \ref{tbl:change_by_quartile}. Saliently, our results for the correlation of school characteristics for within-district movers are nearly identical to those found in Texas, which gives a stronger indication that we have identified some fundamental nonpecuniary mechanisms driving sorting among schools in a district.
+
+Differences with respect to the results in Texas begin to emerge for the other destinations of school leavers (other districts and other professions). As noted in Table \ref{tbl:move_by_exp}, overall rates of switching districts are quite low compared to Texas and national averages; conditional on this, the patterns of movement by quartile of residual salary exhibit a similar pattern to that in Texas, with teachers in the lowest quartile about 35% more likely to change districts than teachers in the highest residual pay quartile.  By contrast to HKR, however, who found the opposite association, we find the same trend (at attenuated magnitudes) with respect to leaving Wisconsin public schools, suggesting salary considerations are also important for teachers considering options outside of public school teaching (or in other states).
+
+We also find fairly strong patterns in quitting associated with subsidized lunch eligibility and with the ethnic makeup of schools, with teachers at the most economically advantaged schools 15% less likely to exit teaching; similar numbers obtain for both the quantity of black and of Hispanic students. For teachers moving within districts, however, we observe the opposite pattern, which is difficult to explain _prima facie_, and suggests the presence of confounding factors distorting the patterns away from what should be expected.
+
 ```{r table_6_change_by_quartile, results = 'asis'}
+#** TO DO **
+# - weight by SCHOOL not DISTRICT size (?)
+# - HKR suggested they would have like to use
+#   student body size for weighting instead of
+#   teacher workforce size; investigate doing so
+# - ? include residual salary rows for within-district
+#   movers (should in principal all show up null, but
+#   could reveal confounding effects that are likely
+#   to be present elsewhere in the table -- use
+#   as a motivation, or is it just distraction?)
+# - Why do teachers in lowest-FRL districts move
+#   more often than those in highest-FRL districts?
+#   : teachers[pct_frl_d > 0, mean(move_district_next), 
+#              keyby = .(cut(pct_frl_d, breaks = 0:20/20))
+#              ][ , plot(1:19/20, V1)]
+#     ^ just noise? ^
+# - for Hanushek/Rivkin -- is Table 6 also restricted
+#   to younger teachers??
+# - how much is Milwaukee alone driving some of these results?
 T6 = 
   melt(teachers, id.vars = c('year', 'move_district_next', 
                              'move_within_next', 'quit_next'), 

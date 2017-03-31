@@ -18,8 +18,11 @@ knitr::read_chunk('turnover_data_cleaner.R')
 library(xtable)
 options(xtable.comment = FALSE)
 options(xtable.include.rownames = FALSE)
+options(xtable.table.placement = 'htbp')
 library(data.table)
 library(texreg)
+library(sandwich)
+library(lmtest)
 ```
 
 ```{r start_read, cache = TRUE, include = FALSE}
@@ -536,6 +539,8 @@ tbl[idx] = paste0(c('Residual salary', 'Percent proficient',
 cat(tbl, sep = '\n')
 ```
 
+Having identified some key patterns in moments of the data, we now move on to try and separate the confounding effects of each of these and other factors in affecting teacher turnover with the aim of identifying more fundamentally the association between salient district and school characteristics on teacher turnover. Table \ref{tbl:reg_lpm} provides a simple regression model
+
 ```{r table_7_reg_lpm, results = 'asis'}
 reg_l = 
   lapply(split(teachers, f = teachers$exp_split),
@@ -563,6 +568,10 @@ coefn[idx] =
     'Hispanic * percent Hispanic')
 reg_l = lapply(reg_l, function(x) {
   names(x$coefficients) = coefn[names(coef(x))]; x})
+SEs = lapply(reg_l, vcovHC, 'HC1')
+se_vcov = function(x) sqrt(diag(x))
+pvals = lapply(seq_along(reg_l), function(ii)
+  coeftest(reg_l[[ii]], SEs[[ii]])[ , 'Pr(>|t|)']) 
 tbl = capture.output(texreg(
   reg_l, omit.coef = '^x', label = 'tbl:reg_lpm', 
   caption = paste('Estimated Effects of Starting Teacher Salary and Student',
@@ -570,8 +579,8 @@ tbl = capture.output(texreg(
                   'Teachers Leave School Districts, by Experience (linear',
                   'probability models; standard errors in parentheses)'),
   groups = list('Campus average student characteristics' = 3:6,
-                'Interactions' = 7:10), 
-  reorder.coef = c(1, 6, 2:5, 7:10),
+                'Interactions' = 7:10), override.pvalues = pvals,
+  reorder.coef = c(1, 6, 2:5, 7:10), override.se = lapply(SEs, se_vcov),
   include.rsquared = FALSE, include.adjrs = FALSE, include.rmse = FALSE))
 
 idx = grep('years', tbl)
@@ -617,6 +626,9 @@ coefn[idx] =
     'Hispanic * percent Hispanic')
 reg_l = lapply(reg_l, function(x) {
   names(x$coefficients) = coefn[names(coef(x))]; x})
+SEs = lapply(reg_l, vcovHC, 'HC1')
+pvals = lapply(seq_along(reg_l), function(ii)
+  coeftest(reg_l[[ii]], SEs[[ii]])[ , 'Pr(>|t|)']) 
 tbl = capture.output(texreg(
   reg_l, omit.coef = '^x', label = 'tbl:reg_lpm_fe', 
   caption = paste('Estimated Effects of Starting Teacher Salary and Student',
@@ -625,8 +637,8 @@ tbl = capture.output(texreg(
                   'Effects, by Experience (linear probability models;',
                   'standard errors in parentheses)'),
   groups = list('Campus average student characteristics' = 3:6,
-                'Interactions' = 7:10), 
-  reorder.coef = c(1, 6, 2:5, 7:10),
+                'Interactions' = 7:10), override.pvalues = pvals,
+  reorder.coef = c(1, 6, 2:5, 7:10), override.se = lapply(SEs, se_vcov),
   include.rsquared = FALSE, include.adjrs = FALSE, include.rmse = FALSE))
 
 idx = grep('years', tbl)

@@ -762,10 +762,14 @@ specification. Only for probationary teachers does district-level
 average proficiency independently predict turnover (to the tune of a 6
 percent drop). The same goes for base salary differentials -- in
 contrast to HKR, we find little evidence of an independent influence of
-salary on turnover rates, for males nor for female teachers. This does
-not appear to be due to imprecision -- the magnitude of HKR's standard
-errors follows closely those found for the Wisconsin data, despite our
-smaller sample sizes.
+salary on turnover rates, for males nor for female teachers\footnote{HKR
+  also mention results not printed in their paper suggesting a paucity
+  of evidence suggesting class size is an important factor in teacher
+  turnover decisions; we give tepid support to this statement, as class
+  size does indeed appear to be related to turnover, but somewhat weakly
+  and only for younger teachers.}. This does not appear to be due to
+imprecision -- the magnitude of HKR's standard errors follows closely
+those found for the Wisconsin data, despite our smaller sample sizes.
 
 HKR also found little independent evidence in favor of student economic
 status factoring in to teachers' mobility decisions, but in fact this is
@@ -826,37 +830,55 @@ Observations                                & 29,815        & 27,093        & 37
 \end{center}
 \end{table}
 
+To account in a rudimentary way for district-specific hiring policies,
+HKR move on to their Table 8 which repeats Table 7 with district fixed
+effects. HKR note that the patterns in responsiveness to wages are the
+same, though attenuated; that coefficients involving student ethnicity
+are qualitatively unaffected; and that schools with high achievement
+continue to exhibit lower propensities for turnover. Our results,
+presented in Table \ref{tbl:reg_lpm_fe}, are similar in that they
+closely resemble the results without fixed effects, but with noted
+attenuation and weaker precision.
+
+The most notable difference relative to table \ref{tbl:reg_lpm} is the
+weakening of results regarding the importance of student characteristics
+for white teachers. While partially attributable to a decline in
+precision, this adjustment suggests much of the discovered correlation
+between student characteristics and exit probability for which teachers
+can be chalked up to district-to-district heterogeneity in preferences
+or hiring policies.
+
 \begin{table}
 \begin{center}
 \begin{tabular}{l c c c c c }
 \hline
  & \multicolumn{4}{c}{Teacher Experience} \\ \cline{2-6}
- & 1-3 years & 12-30 years & 4-6 years & 7-11 years & >30 years \\
+ & 1-3 years & 4-6 years & 7-11 years & 12-30 years & >30 years \\
 \hline
-First year base salary (log)                & $-0.08$      & $-0.02$      & $-0.11^{**}$ & $-0.12^{***}$ & $-0.31^{***}$ \\
-                                            & $(0.05)$     & $(0.02)$     & $(0.04)$     & $(0.03)$      & $(0.10)$      \\
-First year base salary (log) * female       & $-0.07$      & $-0.02$      & $0.05$       & $0.06$        & $0.12$        \\
-                                            & $(0.04)$     & $(0.02)$     & $(0.04)$     & $(0.03)$      & $(0.08)$      \\
-Campus average student characteristics      &              &              &              &               &               \\
-\quad Percent proficient                    & $-0.17$      & $-0.02$      & $0.00$       & $-0.05$       & $0.08$        \\
-                                            & $(0.09)$     & $(0.02)$     & $(0.07)$     & $(0.04)$      & $(0.11)$      \\
-\quad Percent eligible for subsidized lunch & $-0.05$      & $-0.02$      & $-0.04$      & $-0.05$       & $-0.12$       \\
-                                            & $(0.09)$     & $(0.03)$     & $(0.07)$     & $(0.04)$      & $(0.12)$      \\
-\quad Percent Black                         & $0.04$       & $0.18$       & $0.61$       & $0.56^{*}$    & $0.41$        \\
-                                            & $(0.34)$     & $(0.13)$     & $(0.32)$     & $(0.22)$      & $(0.54)$      \\
-\quad Percent Hispanic                      & $0.10$       & $-0.07$      & $0.00$       & $-0.16$       & $0.15$        \\
-                                            & $(0.22)$     & $(0.07)$     & $(0.18)$     & $(0.12)$      & $(0.32)$      \\
-Interactions                                &              &              &              &               &               \\
-\quad Black * percent Black                 & $-0.30^{**}$ & $-0.00$      & $-0.28^{**}$ & $-0.08$       & $-0.20$       \\
-                                            & $(0.10)$     & $(0.04)$     & $(0.09)$     & $(0.05)$      & $(0.13)$      \\
-\quad Hispanic * percent Black              & $-0.13^{*}$  & $-0.13^{**}$ & $-0.19^{**}$ & $-0.17^{*}$   & $0.02$        \\
-                                            & $(0.06)$     & $(0.04)$     & $(0.06)$     & $(0.07)$      & $(0.36)$      \\
-\quad Black * percent Hispanic              & $0.23$       & $0.05$       & $0.28$       & $0.15$        & $-0.95$       \\
-                                            & $(0.32)$     & $(0.14)$     & $(0.29)$     & $(0.18)$      & $(0.54)$      \\
-\quad Hispanic * percent Hispanic           & $0.04$       & $0.08$       & $-0.06$      & $0.00$        & $-1.48$       \\
-                                            & $(0.27)$     & $(0.24)$     & $(0.27)$     & $(0.30)$      & $(1.19)$      \\
+First year base salary (log)                & $-0.08$      & $-0.11^{**}$ & $-0.12^{***}$ & $-0.02$      & $-0.31^{***}$ \\
+                                            & $(0.05)$     & $(0.04)$     & $(0.03)$      & $(0.02)$     & $(0.10)$      \\
+First year base salary (log) * female       & $-0.07$      & $0.05$       & $0.06$        & $-0.02$      & $0.12$        \\
+                                            & $(0.04)$     & $(0.04)$     & $(0.03)$      & $(0.02)$     & $(0.08)$      \\
+Campus average student characteristics      &              &              &               &              &               \\
+\quad Percent proficient                    & $-0.17$      & $0.00$       & $-0.05$       & $-0.02$      & $0.08$        \\
+                                            & $(0.09)$     & $(0.07)$     & $(0.04)$      & $(0.02)$     & $(0.11)$      \\
+\quad Percent eligible for subsidized lunch & $-0.05$      & $-0.04$      & $-0.05$       & $-0.02$      & $-0.12$       \\
+                                            & $(0.09)$     & $(0.07)$     & $(0.04)$      & $(0.03)$     & $(0.12)$      \\
+\quad Percent Black                         & $0.04$       & $0.61$       & $0.56^{*}$    & $0.18$       & $0.41$        \\
+                                            & $(0.34)$     & $(0.32)$     & $(0.22)$      & $(0.13)$     & $(0.54)$      \\
+\quad Percent Hispanic                      & $0.10$       & $0.00$       & $-0.16$       & $-0.07$      & $0.15$        \\
+                                            & $(0.22)$     & $(0.18)$     & $(0.12)$      & $(0.07)$     & $(0.32)$      \\
+Interactions                                &              &              &               &              &               \\
+\quad Black * percent Black                 & $-0.30^{**}$ & $-0.28^{**}$ & $-0.08$       & $-0.00$      & $-0.20$       \\
+                                            & $(0.10)$     & $(0.09)$     & $(0.05)$      & $(0.04)$     & $(0.13)$      \\
+\quad Hispanic * percent Black              & $-0.13^{*}$  & $-0.19^{**}$ & $-0.17^{*}$   & $-0.13^{**}$ & $0.02$        \\
+                                            & $(0.06)$     & $(0.06)$     & $(0.07)$      & $(0.04)$     & $(0.36)$      \\
+\quad Black * percent Hispanic              & $0.23$       & $0.28$       & $0.15$        & $0.05$       & $-0.95$       \\
+                                            & $(0.32)$     & $(0.29)$     & $(0.18)$      & $(0.14)$     & $(0.54)$      \\
+\quad Hispanic * percent Hispanic           & $0.04$       & $-0.06$      & $0.00$        & $0.08$       & $-1.48$       \\
+                                            & $(0.27)$     & $(0.27)$     & $(0.30)$      & $(0.24)$     & $(1.19)$      \\
 \hline
-Observations                                & 29,815        & 85,850        & 27,093        & 37,838         & 15,412         \\
+Observations                                & 29,815        & 27,093        & 37,838         & 85,850        & 15,412         \\
 \hline
 \multicolumn{6}{l}{\scriptsize{$^{***}p<0.001$, $^{**}p<0.01$, $^*p<0.05$}}
 \end{tabular}

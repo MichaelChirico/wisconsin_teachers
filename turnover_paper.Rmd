@@ -143,6 +143,7 @@ As mentioned in the discussion of Table \ref{tbl:move_by_exp}, the major differe
 # - count # of new teachers each year in suburbs to support lack of
 #     of constraint on demand side for new teachers (re: no urban switching)
 # - fix urbanicity for each district to overcome re-coding issue
+# - fix all table notes
 share_change = 
   #use 2006, not incl_rng, because of the artificial change in 
   #  shares induced by the change in how urbanicity is calculated
@@ -541,7 +542,9 @@ cat(tbl, sep = '\n')
 
 Having identified some key patterns in moments of the data, we now move on to try and separate the confounding effects of each of these and other factors in affecting teacher turnover with the aim of identifying more fundamentally the association between salient district and school characteristics on teacher turnover. Table \ref{tbl:reg_lpm} provides the main coefficients of interest from a simple linear probability regression model predicting leaving a district (i.e., either switching districts or exiting teaching); this corresponds to HKR Table 7. 
 
-By contrast to the strength of such results implied in earlier results, the importance of student achievement has dwindled in the regression specification. Only for probationary teachers does district-level average proficiency independently predict turnover (to the tune of a 6 percent drop). The same goes for base salary differentials -- in contrast to HKR, we find little evidence of an independent influence of salary on turnover rates, for males nor for female teachers. This does not appear to be due to imprecision -- the magnitude of HKR's standard errors follows closely those found for the Wisconsin data, despite our smaller sample sizes.
+By contrast to the strength of such results implied in earlier results, the importance of student achievement has dwindled in the regression specification. Only for probationary teachers does district-level average proficiency independently predict turnover (to the tune of a 6 percent drop). The same goes for base salary differentials -- in contrast to HKR, we find little evidence of an independent influence of salary on turnover rates, for males nor for female teachers[^class_size]. This does not appear to be due to imprecision -- the magnitude of HKR's standard errors follows closely those found for the Wisconsin data, despite our smaller sample sizes.
+
+[^class_size]: HKR also mention results not printed in their paper suggesting a paucity of evidence suggesting class size is an important factor in teacher turnover decisions; we give tepid support to this statement, as class size does indeed appear to be related to turnover, but somewhat weakly and only for younger teachers.
 
 HKR also found little independent evidence in favor of student economic status factoring in to teachers' mobility decisions, but in fact this is the source of our strongest effects. As mentioned above, it is possible that the crude nature of the proficiency measure is only weakly identified, and that some of the unaccounted for part of student performance is being captured in other coefficients, especially subsidized lunch eligibility. Even more compelling would be to associate student performance (and other school/district-level characteristics) more finely with the set of students actually faced by a given teacher.
 
@@ -557,6 +560,18 @@ The results in HKR about the differential effects of student body makeup are lar
 #   picked up through reduced-price lunch?
 # - check units of coefficients
 # - missingness biasing results substantially?
+# - HKR claim there's insufficient variation in
+#   their data to separately identify gradients
+#   in growth rate from base levels of growth;
+#   explore whether that's possible here
+# - HKR also claim to have checked robustness
+#   to using 6th-year instead of 1st-year
+#   as the base salary
+# - HKR fit separate quadratic curves in 
+#   experience for each experience class 
+#   (almost surely leading to hard discontinuities
+#    in the E[exit | tenure] curve) -- explore
+#   this and explore fixing it.
 reg_l = 
   lapply(split(teachers, f = teachers$exp_split),
          function(DT) 
@@ -612,7 +627,15 @@ tbl[idx] = gsub('Num. obs.   ', 'Observations', tbl[idx], fixed = TRUE)
 cat(tbl[grep('[^ &\\]', tbl)], sep = '\n')
 ```
 
+To account in a rudimentary way for district-specific hiring policies, HKR move on to their Table 8 which repeats Table 7 with district fixed effects. HKR note that the patterns in responsiveness to wages are the same, though attenuated; that coefficients involving student ethnicity are qualitatively unaffected; and that schools with high achievement continue to exhibit lower propensities for turnover. Our results, presented in Table \ref{tbl:reg_lpm_fe}, are similar in that they closely resemble the results without fixed effects, but with noted attenuation and weaker precision.
+
+The most notable difference relative to table \ref{tbl:reg_lpm} is the weakening of results regarding the importance of student characteristics for white teachers. While partially attributable to a decline in precision, this adjustment suggests much of the discovered correlation between student characteristics and exit probability for white teachers can be chalked up to district-to-district heterogeneity in preferences or hiring policies.
+
 ```{r table_8_reg_lpm_fe, results = 'asis', cache = TRUE}
+#** TO DO **
+# - Do total future discounted pay totals lead to different
+#   results?
+# - What about using real wages?
 reg_l = 
   lapply(split(teachers, by = 'exp_split', sorted = TRUE),
          function(DT) DT[ , lm(leave_next ~
@@ -673,8 +696,8 @@ library(mlogit)
 teachersML = 
   melt(teachers, id.vars =
          c('teacher_id', 'year', 'schedule_lbase_ba_salary', 
-           'gender', 'pct_prof_s', 'pct_frl_s', 'urbanicity_s',
-           'ethnicity_main', 'pct_black_s', 'pct_hisp_s',
+           'gender', 'pct_prof_d', 'pct_frl_d', 'urbanicity_d',
+           'ethnicity_main', 'pct_black_d', 'pct_hisp_d',
            'total_exp_floor', 'n_students_d', 'class_size_d','exp_split'), 
        measure.vars = c('stay_next', 'move_district_next', 'quit_next'),
        variable.name = 'alternative', value.name = 'chosen')
@@ -688,10 +711,10 @@ mnl_l =
     setattr(DT, 'class', c('mlogit.data', class(DT)))
     setattr(DT, 'index', with(DT, data.table(alt = alternative, chid = ID)))
     mlogit(chosen ~ 0 | 
-             schedule_lbase_ba_salary*gender + pct_prof_s + pct_frl_s + 
-             ethnicity_main*pct_black_s + ethnicity_main*pct_hisp_s + 
+             schedule_lbase_ba_salary*gender + pct_prof_d + pct_frl_d + 
+             ethnicity_main*pct_black_d + ethnicity_main*pct_hisp_d + 
              #need to include dummy for year, but solution fails
-             urbanicity_s + total_exp_floor + 
+             urbanicity_d + total_exp_floor + 
              I(total_exp_floor^2) + n_students_d + class_size_d, data = DT)
   })
 texreg(mnl_l)

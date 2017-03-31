@@ -539,27 +539,42 @@ tbl[idx] = paste0(c('Residual salary', 'Percent proficient',
 cat(tbl, sep = '\n')
 ```
 
-Having identified some key patterns in moments of the data, we now move on to try and separate the confounding effects of each of these and other factors in affecting teacher turnover with the aim of identifying more fundamentally the association between salient district and school characteristics on teacher turnover. Table \ref{tbl:reg_lpm} provides a simple regression model
+Having identified some key patterns in moments of the data, we now move on to try and separate the confounding effects of each of these and other factors in affecting teacher turnover with the aim of identifying more fundamentally the association between salient district and school characteristics on teacher turnover. Table \ref{tbl:reg_lpm} provides the main coefficients of interest from a simple linear probability regression model predicting leaving a district (i.e., either switching districts or exiting teaching); this corresponds to HKR Table 7. 
+
+By contrast to the strength of such results implied in earlier results, the importance of student achievement has dwindled in the regression specification. Only for probationary teachers does district-level average proficiency independently predict turnover (to the tune of a 6 percent drop). The same goes for base salary differentials -- in contrast to HKR, we find little evidence of an independent influence of salary on turnover rates, for males nor for female teachers. This does not appear to be due to imprecision -- the magnitude of HKR's standard errors follows closely those found for the Wisconsin data, despite our smaller sample sizes.
+
+HKR also found little independent evidence in favor of student economic status factoring in to teachers' mobility decisions, but in fact this is the source of our strongest effects. As mentioned above, it is possible that the crude nature of the proficiency measure is only weakly identified, and that some of the unaccounted for part of student performance is being captured in other coefficients, especially subsidized lunch eligibility. Even more compelling would be to associate student performance (and other school/district-level characteristics) more finely with the set of students actually faced by a given teacher.
+
+The results in HKR about the differential effects of student body makeup are largely similar to those we find in Wisconsin. White and nonwhite teachers have opposite and significant correlations between the quantity of minority students in their origin district and their likelihood of leaving it. These results tend to modulate towards zero with experience, regardless of teacher or student race category, and suggest a degree of assortative matching on ethnicity among districts in Wisconsin (though the patterns for whites differ sharply from those of nonwhites, the patterns for black and Hispanic teachers are hard to distinguish).
 
 ```{r table_7_reg_lpm, results = 'asis'}
+#** TO DO **
+# - don't use first-year base salary (HKR didn't
+#   because they only estimated schedule for
+#   experience 1 - 10, but run these regressions
+#   for all experience classes)
+# - why achievement no longer significant? being
+#   picked up through reduced-price lunch?
+# - check units of coefficients
+# - missingness biasing results substantially?
 reg_l = 
   lapply(split(teachers, f = teachers$exp_split),
          function(DT) 
            DT[ , lm(leave_next ~
                       schedule_lbase_ba_salary*gender + 
-                      pct_prof_s + pct_frl_s + 
-                      ethnicity_main*pct_black_s + 
-                      ethnicity_main*pct_hisp_s + factor(year) + 
-                      urbanicity_s + total_exp_floor + 
+                      pct_prof_d + pct_frl_d + 
+                      ethnicity_main*pct_black_d + 
+                      ethnicity_main*pct_hisp_d + factor(year) + 
+                      urbanicity_d + total_exp_floor + 
                       I(total_exp_floor^2) + n_students_d + class_size_d)])
 
 coefn = setNames(nm = names(coef(reg_l[[1L]])))
 coefn[seq_len(length(coefn))] = 'x'
 idx = match(c('schedule_lbase_ba_salary', 'schedule_lbase_ba_salary:genderF',
-              'pct_prof_s', 'pct_frl_s', 'pct_black_s', 'pct_hisp_s',
+              'pct_prof_d', 'pct_frl_d', 'pct_black_d', 'pct_hisp_d',
               paste0('ethnicity_main', 
                      c('Black', 'Black', 'Hispanic', 'Hispanic'), ':pct_',
-                     c('black', 'hisp', 'black', 'hisp'), '_s')), names(coefn))
+                     c('black', 'hisp', 'black', 'hisp'), '_d')), names(coefn))
 coefn[idx] = 
   c('First year base salary (log)', 'First year base salary (log) * female',
     'Percent proficient', 'Percent eligible for subsidized lunch',
@@ -602,9 +617,9 @@ reg_l =
   lapply(split(teachers, by = 'exp_split', sorted = TRUE),
          function(DT) DT[ , lm(leave_next ~
                                  schedule_lbase_ba_salary*gender + 
-                                 pct_prof_s + pct_frl_s + 
-                                 ethnicity_main*pct_black_s + 
-                                 ethnicity_main*pct_hisp_s + factor(year) + 
+                                 pct_prof_d + pct_frl_d + 
+                                 ethnicity_main*pct_black_d + 
+                                 ethnicity_main*pct_hisp_d + factor(year) + 
                                  factor(district_fill) + total_exp_floor + 
                                  I(total_exp_floor^2) +
                                  n_students_d + class_size_d)])
@@ -614,10 +629,10 @@ reg_l =
 coefn = setNames(nm = Reduce(union, lapply(reg_l, function(x) names(coef(x)))))
 coefn[seq_len(length(coefn))] = 'x'
 idx = match(c('schedule_lbase_ba_salary', 'schedule_lbase_ba_salary:genderF',
-              'pct_prof_s', 'pct_frl_s', 'pct_black_s', 'pct_hisp_s',
+              'pct_prof_d', 'pct_frl_d', 'pct_black_d', 'pct_hisp_d',
               paste0('ethnicity_main', 
                      c('Black', 'Black', 'Hispanic', 'Hispanic'), ':pct_',
-                     c('black', 'hisp', 'black', 'hisp'), '_s')), names(coefn))
+                     c('black', 'hisp', 'black', 'hisp'), '_d')), names(coefn))
 coefn[idx] = 
   c('First year base salary (log)', 'First year base salary (log) * female',
     'Percent proficient', 'Percent eligible for subsidized lunch',

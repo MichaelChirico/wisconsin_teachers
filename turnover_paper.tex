@@ -439,6 +439,25 @@ Concepts Examination (WKCE), which is administered to 4th, 8th, and
 
 \section{Results}\label{results}
 
+\begin{table}[htbp]
+\centering
+\begin{tabular}{p{.103\linewidth}p{.14\linewidth}p{.15\linewidth}p{.09\linewidth}p{.16\linewidth}R{.16}}
+  \hline
+ & \multicolumn{4}{c}{Percent of Teachers Who} & \\ \cline{2-5}
+Teacher Experience & Remain in Same School & Change Schools Within District & Switch Districts & Exit Wisconsin \mbox{Public Schools} & Number of Teachers \\ 
+  \hline
+1-3 years & 85.2 & 9.4 & 5.4 & 7.3 & 37,044 \\ 
+  4-6 years & 88.9 & 8.0 & 3.1 & 4.6 & 33,972 \\ 
+  7-11 years & 91.1 & 7.2 & 1.7 & 2.8 & 48,047 \\ 
+  12-30 years & 94.2 & 5.3 & 0.5 & 3.0 & 113,334 \\ 
+  >30 years & 96.7 & 3.0 & 0.4 & 15.1 & 21,538 \\ 
+  All & 91.8 & 6.4 & 1.8 & 4.8 & 253,935 \\ 
+   \hline
+\end{tabular}
+\caption{Year-to-year Transitions of Teachers by Experience, 2000-08} 
+\label{tbl:move_by_exp}
+\end{table}
+
 Table \ref{tbl:move_by_exp} replicates Table 1 of Hanushek, Kain, and
 Rivkin (\protect\hyperlink{ref-hanushek}{2004}) (HKR), and as HKR found
 in Texas, most turnover in Wisconsin is happening within districts and
@@ -473,50 +492,6 @@ HKR don't provide any results disaggregated by city, precluding any
 attempts to compare these numbers more comparably to those that would
 obtain from eliminating the largest cities in Texas.
 
-\begin{table}[htbp]
-\centering
-\begin{tabular}{p{.103\linewidth}p{.14\linewidth}p{.15\linewidth}p{.09\linewidth}p{.16\linewidth}R{.16}}
-  \hline
- & \multicolumn{4}{c}{Percent of Teachers Who} & \\ \cline{2-5}
-Teacher Experience & Remain in Same School & Change Schools Within District & Switch Districts & Exit Wisconsin \mbox{Public Schools} & Number of Teachers \\ 
-  \hline
-1-3 years & 85.2 & 9.4 & 5.4 & 7.3 & 37,044 \\ 
-  4-6 years & 88.9 & 8.0 & 3.1 & 4.6 & 33,972 \\ 
-  7-11 years & 91.1 & 7.2 & 1.7 & 2.8 & 48,047 \\ 
-  12-30 years & 94.2 & 5.3 & 0.5 & 3.0 & 113,334 \\ 
-  >30 years & 96.7 & 3.0 & 0.4 & 15.1 & 21,538 \\ 
-  All & 91.8 & 6.4 & 1.8 & 4.8 & 253,935 \\ 
-   \hline
-\end{tabular}
-\caption{Year-to-year Transitions of Teachers by Experience, 2000-08} 
-\label{tbl:move_by_exp}
-\end{table}
-
-Table \ref{tbl:markov} replicates HKR Table 2, and supports its most
-important conclusions. HKR argue that there is little support for the
-idea that scores of young teachers are using large urban schools as a
-training ground before ``settling down'' with easier assignments in the
-suburb, based on the general low level of turnover from Large Urban
-districts. We affirm the scarcity of transitions from districts in
-Milwaukee, while also noting that such a path is certainly present, as
-evidenced by the majority of those who do leave Large Urban districts
-ending up in a Surburban district in both settings.
-
-As mentioned in the discussion of Table \ref{tbl:move_by_exp}, the major
-difference with respect to quantities observed in Texas appears to be
-driven in differences in the urban landscape between Texas and
-Wisconsin\footnote{We also note a difference in the relative shift in
-  population between the two states -- Texas observed dramatic changes
-  in its community type distribution over the period of study of only 4
-  years, while Wisconsin only saw some movement from Rural to Suburban
-  communities.}. This is supported by the overall similarity of
-magnitudes of transition rates to community types besides Large Urban in
-the two papers. Again, the ``stickiest'' community type is Rural -- over
-60\% of Rural teachers remain Rural in both papers, and even fewer Rural
-Wisconsin teachers end up in a big city than is the case for Texas. Also
-as in HKR, we find broad similarity in the community type transition
-patterns of younger teachers as compared to all teachers.
-
 \begin{sidewaystable}[htbp]
 \centering
 \begin{tabular}{lrrrrrrr}
@@ -540,6 +515,76 @@ I. All teachers & & & & & & & \\
 \end{tabular}
 \caption{Destination Community Type for Teachers Changing Districts, by Origin Community Type and Teacher Experience Level} 
 \label{tbl:markov}
+\end{sidewaystable}
+
+Table \ref{tbl:markov} replicates HKR Table 2, and supports its most
+important conclusions. HKR argue that there is little support for the
+idea that scores of young teachers are using large urban schools as a
+training ground before ``settling down'' with easier assignments in the
+suburb, based on the general low level of turnover from Large Urban
+districts. We affirm the scarcity of transitions from districts in
+Milwaukee, while also noting that such a path is certainly present, as
+evidenced by the majority of those who do leave Large Urban districts
+ending up in a Surburban district in both settings. We also note that
+while Table \ref{tbl:markov} only presents a cross-sectional picture,
+the career-long trend reaffirms this -- only 2.9\% of teachers starting
+their careers at a large urban district ever work at a suburban
+district.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics{turnover_paper_files/figure-latex/tx_wi_urb_dist-1.pdf}
+\caption{\label{fig:ti_wi_urb}Comparison of the Prevalence of Different
+Community Types}
+\end{figure}
+
+As mentioned in the discussion of Table \ref{tbl:move_by_exp}, the major
+difference with respect to quantities observed in Texas appears to be
+driven in differences in the urban landscape between Texas and
+Wisconsin\footnote{We also note a difference in the relative shift in
+  population between the two states -- Texas observed dramatic changes
+  in its community type distribution over the period of study of only 4
+  years, while Wisconsin only saw some movement from Rural to Suburban
+  communities.}. This is supported by the overall similarity of
+magnitudes of transition rates to community types besides Large Urban in
+the two papers. Figure \ref{fig:ti_wi_urb} depicts this difference in
+landscape by comparing the distribution of community types in Texas and
+Wisconsin (bar widths reflect the relative quantity of districts in
+Texas and Wisconsin). While both states are majority-rural, the
+non-rural part of Texas is comparatively urbanized, whereas more than
+NaN\% of Wisconsin districts are non-urban.
+
+Returning to Table \ref{tbl:move_by_exp}, we see that, as in HKR, the
+``stickiest'' community type is Rural -- over 60\% of Rural teachers
+remain Rural in both papers, and even fewer Rural Wisconsin teachers end
+up in a big city than is the case for Texas. This may reflect the
+similarity in prevalence of rural districts in the two states. Lastly,
+we also find broad similarity in the community type transition patterns
+of younger teachers as compared to all teachers.
+
+\begin{sidewaystable}[htbp]
+\centering
+\begin{tabular}{lccccccc}
+  \hline
+ & \multicolumn{3}{c}{Men by Experience Class} & \multicolumn{3}{c}{Women by Experience Class} & \multirow{2}{*}{\parbox{0.09\linewidth}{All Teachers 0-9 Years}}\\ \cline{2-4} \cline{5-7}
+ & 1-3 years & 4-6 years & 7-11 years & 1-3 years & 4-6 years & 7-11 years &  \\ 
+  \hline
+Base year salary (log) & 0.004 & 0.022 & -0.021 & 0.010 & 0.002 & -0.016 & 0.004 \\ 
+   & (0.010) & (0.015) & (0.022) & (0.005) & (0.009) & (0.012) & (0.004) \\ 
+  Adjusted salary (log) & -0.012 & 0.007 & 0.031 & 0.001 & 0.018 & 0.023 & 0.007 \\ 
+   & (0.007) & (0.011) & (0.016) & (0.004) & (0.007) & (0.009) & (0.003) \\ 
+  Percent proficient & 2.9\% & 1.9\% & 1.6\% & 4.8\% & 3.9\% & 4.1\% & 3.9\% \\ 
+   & (0.7\%) & (0.8\%) & (1.1\%) & (0.4\%) & (0.5\%) & (0.6\%) & (0.2\%) \\ 
+  Percent Hispanic & -1.6\% & -0.3\% & -0.6\% & -1.7\% & -1.7\% & -1.1\% & -1.5\% \\ 
+   & (0.3\%) & (0.4\%) & (0.5\%) & (0.2\%) & (0.2\%) & (0.3\%) & (0.1\%) \\ 
+  Percent black & -3.4\% & -1.1\% & -3.2\% & -5.1\% & -3.3\% & -4.8\% & -4.1\% \\ 
+   & (0.9\%) & (1.0\%) & (1.1\%) & (0.5\%) & (0.7\%) & (0.8\%) & (0.3\%) \\ 
+  Percent subsidized lunch & -6.9\% & -3.8\% & -3.9\% & -8.8\% & -6.1\% & -5.9\% & -7.0\% \\ 
+   & (1.1\%) & (1.4\%) & (1.6\%) & (0.6\%) & (0.8\%) & (1.0\%) & (0.4\%) \\ 
+   \hline
+\end{tabular}
+\caption{Average Change in Salary and District Student Characteristics (and Standard Deviations) for Teachers Changing Districts, by Gender and Experience} 
+\label{tbl:change_by_ge}
 \end{sidewaystable}
 
 Table \ref{tbl:change_by_ge} replicates Table 3 of HKR, and confirms its
@@ -591,30 +636,31 @@ the latter is more efficacious (see Fulbeck
 \protect\hyperlink{ref-fulbeck}{2014} and Glazerman et al.
 (\protect\hyperlink{ref-glazerman}{2013})).
 
-\begin{sidewaystable}[htbp]
+\begin{table}[htbp]
 \centering
-\begin{tabular}{lccccccc}
+\begin{tabular}{lp{.12\textwidth}p{.12\textwidth}p{.12\textwidth}p{.12\textwidth}}
   \hline
- & \multicolumn{3}{c}{Men by Experience Class} & \multicolumn{3}{c}{Women by Experience Class} & \multirow{2}{*}{\parbox{0.09\linewidth}{All Teachers 0-9 Years}}\\ \cline{2-4} \cline{5-7}
- & 1-3 years & 4-6 years & 7-11 years & 1-3 years & 4-6 years & 7-11 years &  \\ 
+ & \multicolumn{2}{c}{District Average Characteristics} & \multicolumn{2}{c}{Campus Average Characteristics}\\ \cline{2-5}
+ & Large Urban to Suburban & Suburban to Suburban & Large Urban to Suburban & Suburban to Suburban \\
   \hline
-Base year salary (log) & 0.004 & 0.022 & -0.021 & 0.010 & 0.002 & -0.016 & 0.004 \\ 
-   & (0.010) & (0.015) & (0.022) & (0.005) & (0.009) & (0.012) & (0.004) \\ 
-  Adjusted salary (log) & -0.012 & 0.007 & 0.031 & 0.001 & 0.018 & 0.023 & 0.007 \\ 
-   & (0.007) & (0.011) & (0.016) & (0.004) & (0.007) & (0.009) & (0.003) \\ 
-  Percent proficient & 2.9\% & 1.9\% & 1.6\% & 4.8\% & 3.9\% & 4.1\% & 3.9\% \\ 
-   & (0.7\%) & (0.8\%) & (1.1\%) & (0.4\%) & (0.5\%) & (0.6\%) & (0.2\%) \\ 
-  Percent Hispanic & -1.6\% & -0.3\% & -0.6\% & -1.7\% & -1.7\% & -1.1\% & -1.5\% \\ 
-   & (0.3\%) & (0.4\%) & (0.5\%) & (0.2\%) & (0.2\%) & (0.3\%) & (0.1\%) \\ 
-  Percent black & -3.4\% & -1.1\% & -3.2\% & -5.1\% & -3.3\% & -4.8\% & -4.1\% \\ 
-   & (0.9\%) & (1.0\%) & (1.1\%) & (0.5\%) & (0.7\%) & (0.8\%) & (0.3\%) \\ 
-  Percent subsidized lunch & -6.9\% & -3.8\% & -3.9\% & -8.8\% & -6.1\% & -5.9\% & -7.0\% \\ 
-   & (1.1\%) & (1.4\%) & (1.6\%) & (0.6\%) & (0.8\%) & (1.0\%) & (0.4\%) \\ 
+Base year salary (log) & -0.014 & 0.019 & --- & --- \\ 
+   & (0.013) & (0.008) &  &  \\ 
+  Adjusted salary (log) & -0.037 & 0.015 & --- & --- \\ 
+   & (0.011) & (0.006) &  &  \\ 
+Average Student Characteristics & & & & \\
+  \quad Percent proficient & 37.1\% & 0.7\% & 33.4\% & 0.1\% \\ 
+   & (0.5\%) & (0.4\%) & (1.3\%) & (0.6\%) \\ 
+  \quad Percent Hispanic & -13.2\% & -0.6\% & -8.3\% & -0.8\% \\ 
+   & (0.3\%) & (0.2\%) & (1.3\%) & (0.3\%) \\ 
+  \quad Percent black & -52.8\% & -0.4\% & -56.6\% & -0.5\% \\ 
+   & (0.5\%) & (0.3\%) & (1.9\%) & (0.4\%) \\ 
+  \quad Percent subsidized lunch & -60.7\% & -1.5\% & -61.8\% & -2.0\% \\ 
+   & (0.7\%) & (0.5\%) & (1.2\%) & (0.6\%) \\ 
    \hline
 \end{tabular}
-\caption{Average Change in Salary and District Student Characteristics (and Standard Deviations) for Teachers Changing Districts, by Gender and Experience} 
-\label{tbl:change_by_ge}
-\end{sidewaystable}
+\caption{Average Change in Salary and in District and Campus Student Characteristics (and Standard Deviations) for Teachers with 1-10 Years of Experience Who Change Districts, by Community Type of Origin and Destination District} 
+\label{tbl:change_by_urb}
+\end{table}
 
 Table \ref{tbl:change_by_urb}, which parallels Table 4 of HKR, is the
 first analysis where the mechanisms of the teacher labor market appear
@@ -668,46 +714,6 @@ at which to teach a given grade level/subject.
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{lp{.12\textwidth}p{.12\textwidth}p{.12\textwidth}p{.12\textwidth}}
-  \hline
- & \multicolumn{2}{c}{District Average Characteristics} & \multicolumn{2}{c}{Campus Average Characteristics}\\ \cline{2-5}
- & Large Urban to Suburban & Suburban to Suburban & Large Urban to Suburban & Suburban to Suburban \\
-  \hline
-Base year salary (log) & -0.014 & 0.019 & --- & --- \\ 
-   & (0.013) & (0.008) &  &  \\ 
-  Adjusted salary (log) & -0.037 & 0.015 & --- & --- \\ 
-   & (0.011) & (0.006) &  &  \\ 
-Average Student Characteristics & & & & \\
-  \quad Percent proficient & 37.1\% & 0.7\% & 33.4\% & 0.1\% \\ 
-   & (0.5\%) & (0.4\%) & (1.3\%) & (0.6\%) \\ 
-  \quad Percent Hispanic & -13.2\% & -0.6\% & -8.3\% & -0.8\% \\ 
-   & (0.3\%) & (0.2\%) & (1.3\%) & (0.3\%) \\ 
-  \quad Percent black & -52.8\% & -0.4\% & -56.6\% & -0.5\% \\ 
-   & (0.5\%) & (0.3\%) & (1.9\%) & (0.4\%) \\ 
-  \quad Percent subsidized lunch & -60.7\% & -1.5\% & -61.8\% & -2.0\% \\ 
-   & (0.7\%) & (0.5\%) & (1.2\%) & (0.6\%) \\ 
-   \hline
-\end{tabular}
-\caption{Average Change in Salary and in District and Campus Student Characteristics (and Standard Deviations) for Teachers with 1-10 Years of Experience Who Change Districts, by Community Type of Origin and Destination District} 
-\label{tbl:change_by_urb}
-\end{table}
-
-HKR examine the state of Texas, which features substantially more ethnic
-heterogeneity than does Wisconsin. As a result, they are better-equipped
-to identify heterogeneity in preferences by teacher ethnicity.
-Wisconsin, however, only has 2,132 of its 48,077 teachers non-white, so
-our results are underpowered relative to HKR. Table
-\ref{tbl:change_by_eth} presents these results, which parallel HKR Table
-5. Given how few observations we have of black or Hispanic teachers
-switching districts, we eschew any temptation to interpret these
-results. Only black switchers within districts provide enough records to
-interpret meaningfully; in Wisconsin, we find (in contrast to white
-within-district switchers) black teachers tend to migrate to
-economically better-off and higher-performing schools (white teachers
-only tend to select on the latter characteristic).
-
-\begin{table}[htbp]
-\centering
 \begin{tabular}{lp{.1\textwidth}p{.1\textwidth}p{.1\textwidth}p{.1\textwidth}}
   \hline
  & \multicolumn{2}{c}{Between District Moves} & \multicolumn{2}{c}{Within District Moves}\\ \cline{2-5}
@@ -728,39 +734,19 @@ Percent proficient & 16.5\% & 5.1\% & 3.2\% & 1.7\% \\
 \label{tbl:change_by_eth}
 \end{table}
 
-To the end of examining heterogeneity in the impact of school and
-district characteristic differentials on teacher mobility, HKR present
-their Table 6, which breaks down the three exit rates for each
-(weighted) quartile of the covariate distribution. We replicate that
-analysis here in Table \ref{tbl:change_by_quartile}. Saliently, our
-results for the correlation of school characteristics for
-within-district movers are nearly identical to those found in Texas,
-which gives a stronger indication that we have identified some
-fundamental nonpecuniary mechanisms driving sorting among schools in a
-district.
-
-Differences with respect to the results in Texas begin to emerge for the
-other destinations of school leavers (other districts and other
-professions). As noted in Table \ref{tbl:move_by_exp}, overall rates of
-switching districts are quite low compared to Texas and national
-averages; conditional on this, the patterns of movement by quartile of
-residual salary exhibit a similar pattern to that in Texas, with
-teachers in the lowest quartile about 35\% more likely to change
-districts than teachers in the highest residual pay quartile. By
-contrast to HKR, however, who found the opposite association, we find
-the same trend (at attenuated magnitudes) with respect to leaving
-Wisconsin public schools, suggesting salary considerations are also
-important for teachers considering options outside of public school
-teaching (or in other states).
-
-We also find fairly strong patterns in quitting associated with
-subsidized lunch eligibility and with the ethnic makeup of schools, with
-teachers at the most economically advantaged schools 15\% less likely to
-exit teaching; similar numbers obtain for both the quantity of black and
-of Hispanic students. For teachers moving within districts, however, we
-observe the opposite pattern, which is difficult to explain \emph{prima
-facie}, and suggests the presence of confounding factors distorting the
-patterns away from what should be expected.
+HKR examine the state of Texas, which features substantially more ethnic
+heterogeneity than does Wisconsin. As a result, they are better-equipped
+to identify heterogeneity in preferences by teacher ethnicity.
+Wisconsin, however, only has 2,132 of its 48,077 teachers non-white, so
+our results are underpowered relative to HKR. Table
+\ref{tbl:change_by_eth} presents these results, which parallel HKR Table
+5. Given how few observations we have of black or Hispanic teachers
+switching districts, we eschew any temptation to interpret these
+results. Only black switchers within districts provide enough records to
+interpret meaningfully; in Wisconsin, we find (in contrast to white
+within-district switchers) black teachers tend to migrate to
+economically better-off and higher-performing schools (white teachers
+only tend to select on the latter characteristic).
 
 \begin{table}[htbp]
 \centering
@@ -797,6 +783,79 @@ Percent Hispanic & & & \\
 \end{tabular}
 \caption{School Average Transition Rates by Distribution of Residual Teacher Salary and Student Demographic Characteristics (data weighted by number of teachers in school)} 
 \label{tbl:change_by_quartile}
+\end{table}
+
+To the end of examining heterogeneity in the impact of school and
+district characteristic differentials on teacher mobility, HKR present
+their Table 6, which breaks down the three exit rates for each
+(weighted) quartile of the covariate distribution. We replicate that
+analysis here in Table \ref{tbl:change_by_quartile}. Saliently, our
+results for the correlation of school characteristics for
+within-district movers are nearly identical to those found in Texas,
+which gives a stronger indication that we have identified some
+fundamental nonpecuniary mechanisms driving sorting among schools in a
+district.
+
+Differences with respect to the results in Texas begin to emerge for the
+other destinations of school leavers (other districts and other
+professions). As noted in Table \ref{tbl:move_by_exp}, overall rates of
+switching districts are quite low compared to Texas and national
+averages; conditional on this, the patterns of movement by quartile of
+residual salary exhibit a similar pattern to that in Texas, with
+teachers in the lowest quartile about 35\% more likely to change
+districts than teachers in the highest residual pay quartile. By
+contrast to HKR, however, who found the opposite association, we find
+the same trend (at attenuated magnitudes) with respect to leaving
+Wisconsin public schools, suggesting salary considerations are also
+important for teachers considering options outside of public school
+teaching (or in other states).
+
+We also find fairly strong patterns in quitting associated with
+subsidized lunch eligibility and with the ethnic makeup of schools, with
+teachers at the most economically advantaged schools 15\% less likely to
+exit teaching; similar numbers obtain for both the quantity of black and
+of Hispanic students. For teachers moving within districts, however, we
+observe the opposite pattern, which is difficult to explain \emph{prima
+facie}, and suggests the presence of confounding factors distorting the
+patterns away from what should be expected.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{l c c c c c }
+\hline
+ & \multicolumn{4}{c}{Teacher Experience} \\ \cline{2-6}
+ & 1-3 years & 4-6 years & 7-11 years & 12-30 years & >30 years \\
+\hline
+First year base salary (log)                & $-0.03$      & $-0.06$      & $-0.08^{*}$   & $-0.00$      & $-0.15$     \\
+                                            & $(0.04)$     & $(0.04)$     & $(0.03)$      & $(0.02)$     & $(0.07)$    \\
+First year base salary (log) * female       & $-0.07$      & $0.05$       & $0.05$        & $-0.01$      & $0.10$      \\
+                                            & $(0.04)$     & $(0.04)$     & $(0.03)$      & $(0.02)$     & $(0.08)$    \\
+Campus average student characteristics      &              &              &               &              &             \\
+\quad Percent proficient                    & $-0.05$      & $0.05$       & $-0.01$       & $-0.01$      & $0.02$      \\
+                                            & $(0.05)$     & $(0.04)$     & $(0.03)$      & $(0.02)$     & $(0.07)$    \\
+\quad Percent eligible for subsidized lunch & $-0.08^{*}$  & $-0.09^{**}$ & $-0.09^{***}$ & $-0.03^{**}$ & $0.13^{**}$ \\
+                                            & $(0.03)$     & $(0.03)$     & $(0.02)$      & $(0.01)$     & $(0.05)$    \\
+\quad Percent Black                         & $0.07$       & $0.20^{***}$ & $0.14^{***}$  & $0.10^{***}$ & $0.11$      \\
+                                            & $(0.05)$     & $(0.04)$     & $(0.03)$      & $(0.02)$     & $(0.07)$    \\
+\quad Percent Hispanic                      & $0.14^{*}$   & $0.18^{***}$ & $0.08^{*}$    & $-0.03$      & $-0.21^{*}$ \\
+                                            & $(0.07)$     & $(0.05)$     & $(0.03)$      & $(0.02)$     & $(0.10)$    \\
+Interactions                                &              &              &               &              &             \\
+\quad Black * percent Black                 & $-0.28^{**}$ & $-0.22^{**}$ & $-0.04$       & $-0.00$      & $-0.17$     \\
+                                            & $(0.09)$     & $(0.09)$     & $(0.05)$      & $(0.04)$     & $(0.13)$    \\
+\quad Hispanic * percent Black              & $-0.14^{*}$  & $-0.18^{**}$ & $-0.17^{*}$   & $-0.14^{**}$ & $0.10$      \\
+                                            & $(0.06)$     & $(0.06)$     & $(0.07)$      & $(0.04)$     & $(0.35)$    \\
+\quad Black * percent Hispanic              & $0.17$       & $0.06$       & $-0.05$       & $0.04$       & $-1.07^{*}$ \\
+                                            & $(0.30)$     & $(0.27)$     & $(0.17)$      & $(0.14)$     & $(0.50)$    \\
+\quad Hispanic * percent Hispanic           & $-0.03$      & $-0.17$      & $-0.11$       & $0.11$       & $-0.90$     \\
+                                            & $(0.27)$     & $(0.28)$     & $(0.30)$      & $(0.24)$     & $(1.16)$    \\
+\hline
+Observations                                & 29,815        & 27,093        & 37,838         & 85,850        & 15,412       \\
+\hline
+\multicolumn{6}{l}{\scriptsize{$^{***}p<0.001$, $^{**}p<0.01$, $^*p<0.05$}}
+\end{tabular}
+\caption{Estimated Effects of Starting Teacher Salary and Student Demographic Characteristics on the Probability that Teachers Leave School Districts, by Experience (linear probability models; Huber-White standard  errors in parentheses)}
+\label{tbl:reg_lpm}
+\end{center}
 \end{table}
 
 Having identified some key patterns in moments of the data, we now move
@@ -850,63 +909,6 @@ patterns for black and Hispanic teachers are hard to distinguish).
  & \multicolumn{4}{c}{Teacher Experience} \\ \cline{2-6}
  & 1-3 years & 4-6 years & 7-11 years & 12-30 years & >30 years \\
 \hline
-First year base salary (log)                & $-0.03$      & $-0.06$      & $-0.08^{*}$   & $-0.00$      & $-0.15$     \\
-                                            & $(0.04)$     & $(0.04)$     & $(0.03)$      & $(0.02)$     & $(0.07)$    \\
-First year base salary (log) * female       & $-0.07$      & $0.05$       & $0.05$        & $-0.01$      & $0.10$      \\
-                                            & $(0.04)$     & $(0.04)$     & $(0.03)$      & $(0.02)$     & $(0.08)$    \\
-Campus average student characteristics      &              &              &               &              &             \\
-\quad Percent proficient                    & $-0.05$      & $0.05$       & $-0.01$       & $-0.01$      & $0.02$      \\
-                                            & $(0.05)$     & $(0.04)$     & $(0.03)$      & $(0.02)$     & $(0.07)$    \\
-\quad Percent eligible for subsidized lunch & $-0.08^{*}$  & $-0.09^{**}$ & $-0.09^{***}$ & $-0.03^{**}$ & $0.13^{**}$ \\
-                                            & $(0.03)$     & $(0.03)$     & $(0.02)$      & $(0.01)$     & $(0.05)$    \\
-\quad Percent Black                         & $0.07$       & $0.20^{***}$ & $0.14^{***}$  & $0.10^{***}$ & $0.11$      \\
-                                            & $(0.05)$     & $(0.04)$     & $(0.03)$      & $(0.02)$     & $(0.07)$    \\
-\quad Percent Hispanic                      & $0.14^{*}$   & $0.18^{***}$ & $0.08^{*}$    & $-0.03$      & $-0.21^{*}$ \\
-                                            & $(0.07)$     & $(0.05)$     & $(0.03)$      & $(0.02)$     & $(0.10)$    \\
-Interactions                                &              &              &               &              &             \\
-\quad Black * percent Black                 & $-0.28^{**}$ & $-0.22^{**}$ & $-0.04$       & $-0.00$      & $-0.17$     \\
-                                            & $(0.09)$     & $(0.09)$     & $(0.05)$      & $(0.04)$     & $(0.13)$    \\
-\quad Hispanic * percent Black              & $-0.14^{*}$  & $-0.18^{**}$ & $-0.17^{*}$   & $-0.14^{**}$ & $0.10$      \\
-                                            & $(0.06)$     & $(0.06)$     & $(0.07)$      & $(0.04)$     & $(0.35)$    \\
-\quad Black * percent Hispanic              & $0.17$       & $0.06$       & $-0.05$       & $0.04$       & $-1.07^{*}$ \\
-                                            & $(0.30)$     & $(0.27)$     & $(0.17)$      & $(0.14)$     & $(0.50)$    \\
-\quad Hispanic * percent Hispanic           & $-0.03$      & $-0.17$      & $-0.11$       & $0.11$       & $-0.90$     \\
-                                            & $(0.27)$     & $(0.28)$     & $(0.30)$      & $(0.24)$     & $(1.16)$    \\
-\hline
-Observations                                & 29,815        & 27,093        & 37,838         & 85,850        & 15,412       \\
-\hline
-\multicolumn{6}{l}{\scriptsize{$^{***}p<0.001$, $^{**}p<0.01$, $^*p<0.05$}}
-\end{tabular}
-\caption{Estimated Effects of Starting Teacher Salary and Student Demographic Characteristics on the Probability that Teachers Leave School Districts, by Experience (linear probability models; Huber-White standard  errors in parentheses)}
-\label{tbl:reg_lpm}
-\end{center}
-\end{table}
-
-To account in a rudimentary way for district-specific hiring policies,
-HKR move on to their Table 8 which repeats Table 7 with district fixed
-effects. HKR note that the patterns in responsiveness to wages are the
-same, though attenuated; that coefficients involving student ethnicity
-are qualitatively unaffected; and that schools with high achievement
-continue to exhibit lower propensities for turnover. Our results,
-presented in Table \ref{tbl:reg_lpm_fe}, are similar in that they
-closely resemble the results without fixed effects, but with noted
-attenuation and weaker precision.
-
-The most notable difference relative to table \ref{tbl:reg_lpm} is the
-weakening of results regarding the importance of student characteristics
-for white teachers. While partially attributable to a decline in
-precision, this adjustment suggests much of the discovered correlation
-between student characteristics and exit probability for white teachers
-can be chalked up to district-to-district heterogeneity in preferences
-or hiring policies.
-
-\begin{table}
-\begin{center}
-\begin{tabular}{l c c c c c }
-\hline
- & \multicolumn{4}{c}{Teacher Experience} \\ \cline{2-6}
- & 1-3 years & 4-6 years & 7-11 years & 12-30 years & >30 years \\
-\hline
 First year base salary (log)                & $-0.08$      & $-0.11^{**}$ & $-0.12^{***}$ & $-0.02$      & $-0.31^{***}$ \\
                                             & $(0.05)$     & $(0.04)$     & $(0.03)$      & $(0.02)$     & $(0.10)$      \\
 First year base salary (log) * female       & $-0.07$      & $0.05$       & $0.06$        & $-0.02$      & $0.12$        \\
@@ -939,39 +941,23 @@ Observations                                & 29,815        & 27,093        & 37
 \end{center}
 \end{table}
 
-Finally, the conflation of switching districts and exiting teaching may
-mask important heterogeneity between these two choices. To separate
-these competing exit risks, HKR construct Table 9, which gives
-coefficients from a multinomial logit model with three choices -- remain
-in district, switch districts, and exit teaching. We repeat that
-analysis here, with the caveat that, given the sparsity in racial
-variation present among Wisconsin teachers, we are unable to identify
-the full model specified by HKR and mirrored above in Tables
-\ref{tbl:reg_lpm} and \ref{tbl:reg_lpm_fe}. In light of this, and in
-light of the apparent similarity in Wisconsin in the behavior of black
-and Hispanic teachers described above, we specify the multinomial logit
-model in terms of a more parsimonious coefficient set. Namely, we
-distinguish between white and nonwhite teachers and white and nonwhite
-students (instead of among white, black, and Hispanic students and
-teachers).
+To account in a rudimentary way for district-specific hiring policies,
+HKR move on to their Table 8 which repeats Table 7 with district fixed
+effects. HKR note that the patterns in responsiveness to wages are the
+same, though attenuated; that coefficients involving student ethnicity
+are qualitatively unaffected; and that schools with high achievement
+continue to exhibit lower propensities for turnover. Our results,
+presented in Table \ref{tbl:reg_lpm_fe}, are similar in that they
+closely resemble the results without fixed effects, but with noted
+attenuation and weaker precision.
 
-We continue to see little evidence favoring the salience of wage
-considerations for Wisconsin teachers; the strongest suggestions found
-here point to the importance of wages for older male teachers in exiting
-teaching, a result which is generally opposed to that found by HKR in
-Texas, where salaries were generally important, but only for the
-propensity to change districts. Also as in the regression
-specifications, the prominence of student proficiency found by HKR fails
-to make a notable appearance in Wisconsin.
-
-With respect to the importance of student demographics, our results
-again point to the same effects found in Texas. White teachers seem to
-be spurred to change districts or exit teaching by highly black student
-populations; the reverse is true of nonwhite teachers, who can be drawn
-to remain in high-minority districts. Subsidized lunch eligibility's
-strong effect observed in the combined specification is found here to be
-concentrated more among those leaving teaching than those changing
-districts.
+The most notable difference relative to table \ref{tbl:reg_lpm} is the
+weakening of results regarding the importance of student characteristics
+for white teachers. While partially attributable to a decline in
+precision, this adjustment suggests much of the discovered correlation
+between student characteristics and exit probability for white teachers
+can be chalked up to district-to-district heterogeneity in preferences
+or hiring policies.
 
 \begin{table}
 \begin{center}
@@ -1013,6 +999,40 @@ II. Exit Teaching                               &               &              &
 \label{tbl:reg_mlogit}
 \end{center}
 \end{table}
+
+Finally, the conflation of switching districts and exiting teaching may
+mask important heterogeneity between these two choices. To separate
+these competing exit risks, HKR construct Table 9, which gives
+coefficients from a multinomial logit model with three choices -- remain
+in district, switch districts, and exit teaching. We repeat that
+analysis here, with the caveat that, given the sparsity in racial
+variation present among Wisconsin teachers, we are unable to identify
+the full model specified by HKR and mirrored above in Tables
+\ref{tbl:reg_lpm} and \ref{tbl:reg_lpm_fe}. In light of this, and in
+light of the apparent similarity in Wisconsin in the behavior of black
+and Hispanic teachers described above, we specify the multinomial logit
+model in terms of a more parsimonious coefficient set. Namely, we
+distinguish between white and nonwhite teachers and white and nonwhite
+students (instead of among white, black, and Hispanic students and
+teachers).
+
+We continue to see little evidence favoring the salience of wage
+considerations for Wisconsin teachers; the strongest suggestions found
+here point to the importance of wages for older male teachers in exiting
+teaching, a result which is generally opposed to that found by HKR in
+Texas, where salaries were generally important, but only for the
+propensity to change districts. Also as in the regression
+specifications, the prominence of student proficiency found by HKR fails
+to make a notable appearance in Wisconsin.
+
+With respect to the importance of student demographics, our results
+again point to the same effects found in Texas. White teachers seem to
+be spurred to change districts or exit teaching by highly black student
+populations; the reverse is true of nonwhite teachers, who can be drawn
+to remain in high-minority districts. Subsidized lunch eligibility's
+strong effect observed in the combined specification is found here to be
+concentrated more among those leaving teaching than those changing
+districts.
 
 \section{Conclusion}\label{conclusion}
 

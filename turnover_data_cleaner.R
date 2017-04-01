@@ -222,9 +222,9 @@ schools = fread(wds['data'] %+% 'school_demographics.csv',
                 colClasses = list(character = c('district', 'school')), 
                 na.strings = '')
 
+urb_lev = c('Large Urban', 'Small Urban', 'Suburban', 'Rural')
 schools[ , urbanicity := 
-           factor(urbanicity, levels = 
-                    c('Large Urban', 'Small Urban', 'Suburban', 'Rural'))]
+           factor(urbanicity, levels = urb_lev)]
 
 teachers[schools, 
          `:=`(pct_prof_s = i.pct_prof, pct_hisp_s = i.pct_hisp, 
@@ -238,6 +238,22 @@ teachers[schools,
               urbanicity_s_next = i.urbanicity), 
          on = c('year', district_next_main = 'district',
                 school_next_main = 'school')]
+
+###############################################################################
+#                             Assorted Quantities                             #
+###############################################################################
+
+# Urbanicity distribution of Texas vs. Wisconsin, 2010
+wi_ti = fread('/media/data_drive/common_core/district/universe_2009_10_2a.txt',
+              select = c('FIPST', 'ULOCAL09'), col.name = c('fipst', 'urb'))
+wi_ti = wi_ti[fipst %in% c('48', '55')]
+urban_map = data.table(
+  urb = paste0(c(11:13, 21:23, 31:33, 41:43)),
+  size = factor(rep(urb_lev, c(1L, 2L, 3L, 6L)), levels = urb_lev)
+)
+wi_ti[urban_map, 'Community Type' := i.size, on = 'urb']
+wi_ti[fipst == '48', State := 'Texas']
+wi_ti[fipst == '55', State := 'Wisconsin']
 
 ## @knitr stop_read
 

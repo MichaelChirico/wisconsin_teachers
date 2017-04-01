@@ -136,15 +136,12 @@ As examined further below, the low rate of switches between districts appears to
 
 ```{r table_2_markov, results = 'asis'}
 #** TO DO **
-# - evidence for total cumulative pipeline from inner city to suburbs?
-# - calculate steady-state distribution of markov chain
 # - calculate distribution of distance moved between districts (esp. rural)
-# - include overall breakdown of community type (and compare to Texas -- CCD)
 # - probationary urban & suburban equally likely to remain in the same school
 # - probationary urban & suburban slightly more likely to quit
 # - count # of new teachers each year in suburbs to support lack of
 #     of constraint on demand side for new teachers (re: no urban switching)
-# - fix urbanicity for each district to overcome re-coding issue
+# - check fixing urbanicity for each district to overcome re-coding issue
 # - fix all table notes
 share_change = 
   #use 2006, not incl_rng, because of the artificial change in 
@@ -200,13 +197,34 @@ tbl = c(tbl[1L:(idx - 1L)],
           '(1-3 years experience)}' %+%
           ' & & & & & \\\\', tbl[(idx+6L):length(tbl)])
 cat(tbl, sep = '\n')
+
+#What percent of teachers starting in Large Urban districts
+#  ever work at a Suburban district?
+pct_ever_go_suburban = 
+  #similar if check Large Urban on first 3 schools
+  teachers[order(year), if (urbanicity_d[1L] == 'Large Urban')
+    urbanicity_d[-1L], by = teacher_id
+    ][ , any(V1 == 'Suburban', na.rm = TRUE),
+       by = teacher_id][ , mean(V1)]
 ```
 
-Table \ref{tbl:markov} replicates HKR Table 2, and supports its most important conclusions. HKR argue that there is little support for the idea that scores of young teachers are using large urban schools as a training ground before "settling down" with easier assignments in the suburb, based on the general low level of turnover from Large Urban districts. We affirm the scarcity of transitions from districts in Milwaukee, while also noting that such a path is certainly present, as evidenced by the majority of those who do leave Large Urban districts ending up in a Surburban district in both settings. We also note that while Table \ref{tbl:markov} only presents a cross-sectional picture, the career-long trend
+Table \ref{tbl:markov} replicates HKR Table 2, and supports its most important conclusions. HKR argue that there is little support for the idea that scores of young teachers are using large urban schools as a training ground before "settling down" with easier assignments in the suburb, based on the general low level of turnover from Large Urban districts. We affirm the scarcity of transitions from districts in Milwaukee, while also noting that such a path is certainly present, as evidenced by the majority of those who do leave Large Urban districts ending up in a Surburban district in both settings. We also note that while Table \ref{tbl:markov} only presents a cross-sectional picture, the career-long trend reaffirms this -- only `r to.pct(pct_ever_go_suburban, 1L)`% of teachers starting their careers at a large urban district ever work at a suburban district.
 
-As mentioned in the discussion of Table \ref{tbl:move_by_exp}, the major difference with respect to quantities observed in Texas appears to be driven in differences in the urban landscape between Texas and Wisconsin[^share]. This is supported by the overall similarity of magnitudes of transition rates to community types besides Large Urban in the two papers. Again, the "stickiest" community type is Rural -- over 60% of Rural teachers remain Rural in both papers, and even fewer Rural Wisconsin teachers end up in a big city than is the case for Texas. Also as in HKR, we find broad similarity in the community type transition patterns of younger teachers as compared to all teachers.
+```{r tx_wi_urb_dist, fig.cap = '\\label{fig:ti_wi_urb}Comparison of the Prevalence of Different Community Types'}
+wi_ti[ , plot(table(State, `Community Type`), las = 1L,
+              color = c('red', 'blue', 'darkgreen', 'lavender'),
+              main = 'Urbanicity in Texas and Wisconsin, 2010')]
+wi_pct_districts_nonurb = 
+  wi_ti[State == 'WI', mean(`Community Type` %in% 
+                              c('Rural', 'Suburban'), na.rm = TRUE)]
+```
 
-[^share]: We also note a difference in the relative shift in population between the two states -- Texas observed dramatic changes in its community type distribution over the period of study of only 4 years, while Wisconsin only saw some movement from Rural to Suburban communities.
+
+As mentioned in the discussion of Table \ref{tbl:move_by_exp}, the major difference with respect to quantities observed in Texas appears to be driven in differences in the urban landscape between Texas and Wisconsin[^share_shift]. This is supported by the overall similarity of magnitudes of transition rates to community types besides Large Urban in the two papers. Figure \ref{fig:ti_wi_urb} depicts this difference in landscape by comparing the distribution of community types in Texas and Wisconsin (bar widths reflect the relative quantity of districts in Texas and Wisconsin). While both states are majority-rural, the non-rural part of Texas is comparatively urbanized, whereas more than `r to.pct(wi_pct_districts_nonurb, -1)`% of Wisconsin districts are non-urban.
+
+Returning to Table \ref{tbl:move_by_exp}, we see that, as in HKR, the "stickiest" community type is Rural -- over 60% of Rural teachers remain Rural in both papers, and even fewer Rural Wisconsin teachers end up in a big city than is the case for Texas. This may reflect the similarity in prevalence of rural districts in the two states. Lastly, we also find broad similarity in the community type transition patterns of younger teachers as compared to all teachers.
+
+[^share_shift]: We also note a difference in the relative shift in population between the two states -- Texas observed dramatic changes in its community type distribution over the period of study of only 4 years, while Wisconsin only saw some movement from Rural to Suburban communities.
 
 ```{r table_3_change_by_ge, results = 'asis'}
 #** TO DO **

@@ -81,6 +81,8 @@ schools[ , (pct_col) := lapply(.SD, `/`, n_students), .SDcols = pct_col]
 setnames(districts, pct_col, gsub('^n', 'pct', pct_col))
 setnames(schools, pct_col, gsub('^n', 'pct', pct_col))
 
+districts[ , pct_nonwhite := pct_black + pct_hisp]
+
 #no longer need in school-level data
 schools[ , n_students := NULL]
 

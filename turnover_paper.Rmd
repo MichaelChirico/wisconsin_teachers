@@ -23,6 +23,7 @@ library(data.table)
 library(texreg)
 library(sandwich)
 library(lmtest)
+library(mlogit)
 ```
 
 ```{r start_read, cache = TRUE, include = FALSE}
@@ -573,7 +574,7 @@ The results in HKR about the differential effects of student body makeup are lar
 #    in the E[exit | tenure] curve) -- explore
 #   this and explore fixing it.
 reg_l = 
-  lapply(split(teachers, f = teachers$exp_split),
+  lapply(split(teachers, f = teachers$exp_split, sorted = TRUE),
          function(DT) 
            DT[ , lm(leave_next ~
                       schedule_lbase_ba_salary*gender + 
@@ -607,7 +608,8 @@ tbl = capture.output(texreg(
   caption = paste('Estimated Effects of Starting Teacher Salary and Student',
                   'Demographic Characteristics on the Probability that',
                   'Teachers Leave School Districts, by Experience (linear',
-                  'probability models; standard errors in parentheses)'),
+                  'probability models; Huber-White standard ',
+                  'errors in parentheses)'),
   groups = list('Campus average student characteristics' = 3:6,
                 'Interactions' = 7:10), override.pvalues = pvals,
   reorder.coef = c(1, 6, 2:5, 7:10), override.se = lapply(SEs, se_vcov),
@@ -637,7 +639,7 @@ The most notable difference relative to table \ref{tbl:reg_lpm} is the weakening
 #   results?
 # - What about using real wages?
 reg_l = 
-  lapply(split(teachers, by = 'exp_split', sorted = TRUE),
+  lapply(split(teachers, f = teachers$exp_split, sorted = TRUE),
          function(DT) DT[ , lm(leave_next ~
                                  schedule_lbase_ba_salary*gender + 
                                  pct_prof_d + pct_frl_d + 
@@ -673,7 +675,7 @@ tbl = capture.output(texreg(
                   'Demographic Characteristics on the Probability that',
                   'Teachers Leave School Districts with District Fixed',
                   'Effects, by Experience (linear probability models;',
-                  'standard errors in parentheses)'),
+                  'Huber-White standard errors in parentheses)'),
   groups = list('Campus average student characteristics' = 3:6,
                 'Interactions' = 7:10), override.pvalues = pvals,
   reorder.coef = c(1, 6, 2:5, 7:10), override.se = lapply(SEs, se_vcov),
@@ -691,13 +693,22 @@ tbl[idx] = gsub('Num. obs.   ', 'Observations', tbl[idx], fixed = TRUE)
 cat(tbl[grep('[^ &\\]', tbl)], sep = '\n')
 ```
 
-```{r table_9, eval = FALSE}
-library(mlogit)
+Finally, the conflation of switching districts and exiting teaching may mask important heterogeneity between these two choices. To separate these competing exit risks, HKR construct Table 9, which gives coefficients from a multinomial logit model with three choices -- remain in district, switch districts, and exit teaching. We repeat that analysis here, with the caveat that, given the sparsity in racial variation present among Wisconsin teachers, we are unable to identify the full model specified by HKR and mirrored above in Tables \ref{tbl:reg_lpm} and \ref{tbl:reg_lpm_fe}. In light of this, and in light of the apparent similarity in Wisconsin in the behavior of black and Hispanic teachers described above, we specify the multinomial logit model in terms of a more parsimonious coefficient set. Namely, we distinguish between white and nonwhite teachers and white and nonwhite students (instead of among white, black, and Hispanic students and teachers).
+
+We continue to see little evidence favoring the salience of wage considerations for Wisconsin teachers; the strongest suggestions found here point to the importance of wages for older male teachers in exiting teaching, a result which is generally opposed to that found by HKR in Texas, where salaries were generally important, but only for the propensity to change districts. Also as in the regression specifications, the prominence of student proficiency found by HKR fails to make a notable appearance in Wisconsin.
+
+With respect to the importance of student demographics, our results again point to the same effects found in Texas. White teachers seem to be spurred to change districts or exit teaching by highly black student populations; the reverse is true of nonwhite teachers, who can be drawn to remain in high-minority districts. Subsidized lunch eligibility's strong effect observed in the combined specification is found here to be concentrated more among those leaving teaching than those changing districts.
+
+```{r table_9, results = 'asis', cache = TRUE}
+##** TO DO**
+# - Estimate marginal effects for men/women
+#   of a 10% salary increase (also with
+#   confidence intervals?) & compare to HKR
 teachersML = 
   melt(teachers, id.vars =
          c('teacher_id', 'year', 'schedule_lbase_ba_salary', 
            'gender', 'pct_prof_d', 'pct_frl_d', 'urbanicity_d',
-           'ethnicity_main', 'pct_black_d', 'pct_hisp_d',
+           'nonwhite', 'pct_nonwhite_d',
            'total_exp_floor', 'n_students_d', 'class_size_d','exp_split'), 
        measure.vars = c('stay_next', 'move_district_next', 'quit_next'),
        variable.name = 'alternative', value.name = 'chosen')
@@ -707,17 +718,50 @@ teachersML[ , ID := .GRP, by = .(teacher_id, year)]
 
 mnl_l = 
   lapply(split(teachersML, by = 'exp_split', sorted = TRUE), function(DT) {
-    print(head(DT))
     setattr(DT, 'class', c('mlogit.data', class(DT)))
     setattr(DT, 'index', with(DT, data.table(alt = alternative, chid = ID)))
     mlogit(chosen ~ 0 | 
              schedule_lbase_ba_salary*gender + pct_prof_d + pct_frl_d + 
-             ethnicity_main*pct_black_d + ethnicity_main*pct_hisp_d + 
-             #need to include dummy for year, but solution fails
-             urbanicity_d + total_exp_floor + 
-             I(total_exp_floor^2) + n_students_d + class_size_d, data = DT)
+             nonwhite*pct_nonwhite_d +  factor(year) + 
+             urbanicity_d + total_exp_floor + I(total_exp_floor^2) + 
+             n_students_d + class_size_d, data = DT)
   })
-texreg(mnl_l)
+
+coefn = setNames(nm = names(coef(mnl_l[[1L]])))
+coefn[seq_len(length(coefn))] = 'x'
+idx = match(
+  paste0(rep(c('move_district_next:', 'quit_next:'), each = 6L),
+         rep(c('schedule_lbase_ba_salary', 'schedule_lbase_ba_salary:genderF',
+               'pct_prof_d', 'pct_frl_d', 'pct_nonwhite_d',
+               'nonwhiteTRUE:pct_nonwhite_d'), 2L)), 
+  names(coefn)
+)
+coefn[idx] = 
+  rep(c('First year base salary (log)', 
+        'First year base salary (log) * female', 'Percent proficient', 
+        'Percent eligible for subsidized lunch', 'Percent Nonwhite',
+        'Nonwhite * percent Nonwhite'), 2L)
+mnl_l = lapply(mnl_l, function(x) {
+  names(x$coefficients) = coefn[names(coef(x))]; x})
+
+tbl = capture.output(texreg(
+  mnl_l, label = 'tbl:reg_mlogit', omit.coef = '^x',
+  caption = paste('Multinomial Logit Estimated Effects of Teacher',
+                  'Salary and Student Demographic Characteristics',
+                  'on the Probabilities That Teachers Switch',
+                  'School Districts or Exit Teaching Relative to',
+                  'Remaining in Same District'),
+  reorder.coef = c(1, 9, 3, 5, 7, 11, 2, 10, 4, 6, 8, 12),
+  groups = list('Switch Districts' = 1:6, 'Exit Teaching' = 7:12),
+  include.aic = FALSE, include.loglik = FALSE, include.nobs = FALSE))
+
+idx = grep('years', tbl)
+tbl = c(tbl[1L:(idx - 1L)],
+        ' & \\multicolumn{4}{c}{Teacher Experience} \\\\ \\cline{2-6}',
+        tbl[idx:length(tbl)])
+tbl = gsub('\\([12]\\)', '', tbl)
+#exclude the extra blank rows introduced by texreg's group option
+cat(tbl[grep('[^ &\\]', tbl)], sep = '\n')
 ```
 
 # Conclusion

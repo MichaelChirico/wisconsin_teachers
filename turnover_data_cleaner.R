@@ -106,6 +106,7 @@ pct_white = teachers[ , round(100*mean(ethnicity_main == 'White'))]
 
 teachers[ , ethnicity_main :=
             factor(ethnicity_main, levels = c('White', 'Black', 'Hispanic'))]
+teachers[ , nonwhite := ethnicity_main != 'White']
 
 #move_school/district_next if and only if quit_next
 teachers[is.na(move_school_next), move_school_next := FALSE]

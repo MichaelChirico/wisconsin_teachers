@@ -825,7 +825,7 @@ Observations                                & 29,815        & 27,093        & 37
 \hline
 \multicolumn{6}{l}{\scriptsize{$^{***}p<0.001$, $^{**}p<0.01$, $^*p<0.05$}}
 \end{tabular}
-\caption{Estimated Effects of Starting Teacher Salary and Student Demographic Characteristics on the Probability that Teachers Leave School Districts, by Experience (linear probability models; standard errors in parentheses)}
+\caption{Estimated Effects of Starting Teacher Salary and Student Demographic Characteristics on the Probability that Teachers Leave School Districts, by Experience (linear probability models; Huber-White standard  errors in parentheses)}
 \label{tbl:reg_lpm}
 \end{center}
 \end{table}
@@ -844,7 +844,7 @@ The most notable difference relative to table \ref{tbl:reg_lpm} is the
 weakening of results regarding the importance of student characteristics
 for white teachers. While partially attributable to a decline in
 precision, this adjustment suggests much of the discovered correlation
-between student characteristics and exit probability for which teachers
+between student characteristics and exit probability for white teachers
 can be chalked up to district-to-district heterogeneity in preferences
 or hiring policies.
 
@@ -882,8 +882,83 @@ Observations                                & 29,815        & 27,093        & 37
 \hline
 \multicolumn{6}{l}{\scriptsize{$^{***}p<0.001$, $^{**}p<0.01$, $^*p<0.05$}}
 \end{tabular}
-\caption{Estimated Effects of Starting Teacher Salary and Student Demographic Characteristics on the Probability that Teachers Leave School Districts with District Fixed Effects, by Experience (linear probability models; standard errors in parentheses)}
+\caption{Estimated Effects of Starting Teacher Salary and Student Demographic Characteristics on the Probability that Teachers Leave School Districts with District Fixed Effects, by Experience (linear probability models; Huber-White standard errors in parentheses)}
 \label{tbl:reg_lpm_fe}
+\end{center}
+\end{table}
+
+Finally, the conflation of switching districts and exiting teaching may
+mask important heterogeneity between these two choices. To separate
+these competing exit risks, HKR construct Table 9, which gives
+coefficients from a multinomial logit model with three choices -- remain
+in district, switch districts, and exit teaching. We repeat that
+analysis here, with the caveat that, given the sparsity in racial
+variation present among Wisconsin teachers, we are unable to identify
+the full model specified by HKR and mirrored above in Tables
+\ref{tbl:reg_lpm} and \ref{tbl:reg_lpm_fe}. In light of this, and in
+light of the apparent similarity in Wisconsin in the behavior of black
+and Hispanic teachers described above, we specify the multinomial logit
+model in terms of a more parsimonious coefficient set. Namely, we
+distinguish between white and nonwhite teachers and white and nonwhite
+students (instead of among white, black, and Hispanic students and
+teachers).
+
+We continue to see little evidence favoring the salience of wage
+considerations for Wisconsin teachers; the strongest suggestions found
+here point to the importance of wages for older male teachers in exiting
+teaching, a result which is generally opposed to that found by HKR in
+Texas, where salaries were generally important, but only for the
+propensity to change districts. Also as in the regression
+specifications, the prominence of student proficiency found by HKR fails
+to make a notable appearance in Wisconsin.
+
+With respect to the importance of student demographics, our results
+again point to the same effects found in Texas. White teachers seem to
+be spurred to change districts or exit teaching by highly black student
+populations; the reverse is true of nonwhite teachers, who can be drawn
+to remain in high-minority districts. Subsidized lunch eligibility's
+strong effect observed in the combined specification is found here to be
+concentrated more among those leaving teaching than those changing
+districts.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{l c c c c c }
+\hline
+ & \multicolumn{4}{c}{Teacher Experience} \\ \cline{2-6}
+ & 1-3 years & 12-30 years & 4-6 years & 7-11 years & >30 years \\
+\hline
+Switch Districts                                &               &              &               &               &              \\
+\quad First year base salary (log)           & $-0.23$       & $0.92$       & $0.05$        & $-1.17$       & $-2.16$      \\
+                                                & $(0.64)$      & $(1.16)$     & $(0.86)$      & $(0.95)$      & $(2.78)$     \\
+\quad First year base salary (log) * female  & $-0.93$       & $-1.86$      & $-1.32$       & $-0.26$       & $-0.45$      \\
+                                                & $(0.64)$      & $(1.19)$     & $(0.86)$      & $(0.97)$      & $(3.18)$     \\
+\quad Percent proficient                     & $-0.78$       & $0.72$       & $0.87$        & $-1.24$       & $5.72^{*}$   \\
+                                                & $(0.67)$      & $(1.18)$     & $(0.87)$      & $(0.97)$      & $(2.81)$     \\
+\quad Percent eligible for subsidized lunch  & $-0.46$       & $-1.78^{*}$  & $-1.08$       & $-2.90^{***}$ & $2.99$       \\
+                                                & $(0.44)$      & $(0.86)$     & $(0.63)$      & $(0.71)$      & $(2.15)$     \\
+\quad Percent Nonwhite                       & $0.24$        & $2.60^{**}$  & $2.45^{***}$  & $2.85^{***}$  & $4.93^{**}$  \\
+                                                & $(0.45)$      & $(0.83)$     & $(0.60)$      & $(0.66)$      & $(1.80)$     \\
+\quad Nonwhite * percent Nonwhite            & $-2.59^{***}$ & $-0.74$      & $-3.34^{***}$ & $-3.21^{**}$  & $-3.43$      \\
+                                                & $(0.60)$      & $(1.99)$     & $(0.96)$      & $(1.07)$      & $(3.99)$     \\
+Exit Teaching                                   &               &              &               &               &              \\
+\quad First year base salary (log)           & $-0.14$       & $-0.33$      & $-1.84^{*}$   & $-1.93^{*}$   & $-1.02$      \\
+                                                & $(0.60)$      & $(0.56)$     & $(0.83)$      & $(0.89)$      & $(0.52)$     \\
+\quad First year base salary (log) * female  & $-0.59$       & $-0.21$      & $2.28^{**}$   & $1.65$        & $0.60$       \\
+                                                & $(0.59)$      & $(0.56)$     & $(0.83)$      & $(0.89)$      & $(0.55)$     \\
+\quad Percent proficient                     & $-0.18$       & $-0.32$      & $0.53$        & $0.35$        & $0.14$       \\
+                                                & $(0.59)$      & $(0.48)$     & $(0.70)$      & $(0.73)$      & $(0.52)$     \\
+\quad Percent eligible for subsidized lunch  & $-0.81^{*}$   & $-0.94^{**}$ & $-1.63^{**}$  & $-2.11^{***}$ & $0.85^{*}$   \\
+                                                & $(0.40)$      & $(0.33)$     & $(0.50)$      & $(0.53)$      & $(0.36)$     \\
+\quad Percent Nonwhite                       & $1.35^{***}$  & $1.33^{***}$ & $2.93^{***}$  & $2.61^{***}$  & $-0.22$      \\
+                                                & $(0.37)$      & $(0.30)$     & $(0.45)$      & $(0.48)$      & $(0.34)$     \\
+\quad Nonwhite * percent Nonwhite            & $-1.08^{*}$   & $-0.77$      & $-1.93^{***}$ & $-1.20^{*}$   & $-1.95^{**}$ \\
+                                                & $(0.43)$      & $(0.42)$     & $(0.44)$      & $(0.50)$      & $(0.67)$     \\
+\hline
+\multicolumn{6}{l}{\scriptsize{$^{***}p<0.001$, $^{**}p<0.01$, $^*p<0.05$}}
+\end{tabular}
+\caption{Multinomial Logit Estimated Effects of Teacher Salary and Student Demographic Characteristics on the Probabilities That Teachers Switch School Districts or Exit Teaching Relative to Remaining in Same District}
+\label{tbl:reg_mlogit}
 \end{center}
 \end{table}
 

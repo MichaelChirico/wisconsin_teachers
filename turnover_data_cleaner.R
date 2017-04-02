@@ -70,7 +70,7 @@ teachers = teachers[nzchar(school_fill) & !grepl('^09', school_fill)]
 teachers = teachers[total_exp_floor <= 50L & total_exp_floor > 0]
              
 #district_work_type: 04 are regular public schools
-teachers = teachers[district_work_type == "04"]
+teachers = teachers[district_work_type %in% c('04', '49')]
 
 #months_employed / days_of_contract
 #  Through 2003-04, months used, days thereafter

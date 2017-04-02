@@ -82,8 +82,8 @@ teachers = teachers[(months_employed %between% c(875, 1050) | year > 2003) &
 #category: 1 are professional, regular education teachers
 teachers = teachers[category == "1"]
 
-#eliminate teachers with FTE <= 80
-teachers = teachers[full_time_equiv >= 80]
+# #eliminate teachers with FTE <= 80
+# teachers = teachers[full_time_equiv >= 80]
 
 N_subset_I = uniqueN(teachers$teacher_id)
 

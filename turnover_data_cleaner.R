@@ -22,6 +22,7 @@ wds = c(data = '/media/data_drive/wisconsin/')
 incl_cols = c('year', 'cesa', 'district_fill', 'school_fill', 
               'teacher_id', 'highest_degree', 'total_exp_floor',
               'full_time_equiv', 'gender', 'ethnicity_main',
+              'move_district_next', 'move_school_next', 'quit_next',
               #only needed for data cleaning
               'position_code', 'area', 'district_work_type', 
               'months_employed', 'days_of_contract', 'category')
@@ -38,15 +39,33 @@ teachers =
 #subset to focus timeframe, eliminate teachers outside 
 incl_yrs = 2000:2008
 incl_rng = range(incl_yrs)
-#pad right end by 1 since defining district switching
+#pad right end by 1 since defining subsequent district
 #  within this file (o/w force all final year obs. to quit)
 teachers = teachers[year %between% (incl_rng + c(0L, 1L))]
 
 N_full = uniqueN(teachers$teacher_id)
 
 #position_code: 53 = full-time teacher
-#  mostly eliminating support staff and substitutes
-teachers = teachers[position_code == '53']
+#  mostly eliminating support staff and substitutes;
+#  take care to eliminate any teacher who was not a
+#  full time teacher in every year they appear -- 
+#  definitions were getting hazy when we allowed
+#  for teachers to transition in and out of
+#  "soft retirement" by going into substitute teaching.
+#  Typically, when teachers do so, they switch to being
+#  hired by the district instead of a specific school.
+#  Whether this is considered "changing schools" is
+#  open to interpretation, so we just eliminate any such
+#  teachers. We also lose teachers who start their
+#  career as substitutes by doing so. Search for
+#  commits around this for some exploration of some
+#  alternative definitions that were unsatisfactory:
+#  13d76a1fdae028df18300f09d8b85ff5799dea1b
+teachers = 
+  teachers[teachers[ , sum(position_code == '53') >= 1L,
+                     by = .(teacher_id, year)
+                     ][ , all(V1), by = teacher_id][(V1)],
+           on = 'teacher_id']
   
 #area: 0050 (all-purpose elementary teachers)
 #      0300 (English, typically middle/high school)
@@ -109,6 +128,7 @@ teachers = teachers[ , if (uniqueN(district_fill) == 1L) .SD,
 #  one with the highest intensity (highest FTE)
 teachers = 
   unique(teachers[order(-full_time_equiv)], by = c('teacher_id', 'year'))
+setkey(teachers, teacher_id, year)
 
 pct_white = teachers[ , round(100*mean(ethnicity_main == 'White'))]
 
@@ -117,14 +137,14 @@ teachers[ , ethnicity_main :=
 teachers[ , nonwhite := ethnicity_main != 'White']
 
 #define movement indicators
-teachers[ , school_next := 
+teachers[ , school_next :=
             shift(school_fill, 1L, type = 'lead'), by = teacher_id]
-teachers[ , district_next := 
+teachers[ , district_next :=
             shift(district_fill, 1L, type = 'lead'), by = teacher_id]
 
-teachers[ , quit_next := is.na(school_next)]
-teachers[ , move_district_next := district_next != district_fill & !quit_next]
-teachers[ , move_school_next := school_next != school_fill & !quit_next]
+#move_school/district_next missing if and only if quit_next
+teachers[is.na(move_school_next), move_school_next := FALSE]
+teachers[is.na(move_district_next), move_district_next := FALSE]
 
 #now eliminate final-year teachers
 teachers = teachers[year <= incl_rng[2L]]

@@ -11,6 +11,8 @@ library(data.table)
 library(Hmisc) # for weighted quantiles
 library(funchir)
 library(texreg)
+library(sp)
+library(rgeos)
 
 wds = c(data = '/media/data_drive/wisconsin/')
 
@@ -268,6 +270,38 @@ urban_map = data.table(
 wi_ti[urban_map, 'Community Type' := i.size, on = 'urb']
 wi_ti[fipst == '48', State := 'Texas']
 wi_ti[fipst == '55', State := 'Wisconsin']
+
+#inter-school distance matrix
+school_xy = fread(paste0('/media/data_drive/common_core/school/',
+                         'CCD_universe_school-level_2007-08.txt'),
+                  select = c('FIPST', 'STID07', 'SEASCH07', 
+                             'LATCOD07', 'LONCOD07'),
+                  col.names = c('fipst', 'district', 'school',
+                                'latitude', 'longitude'))
+school_xy = school_xy[fipst == '55']
+
+school_sp = SpatialPoints(school_xy[ , cbind(longitude, latitude)],
+                          proj4string = CRS('+init=epsg:4326'))
+school_sp = spTransform(school_sp, CRS('+init=esri:102753'))
+
+dist_DT = melt(as.data.table(gDistance(school_sp, byid = TRUE),
+                             keep.rownames = 'from'),
+               id.vars = 'from', value.name = 'distance', 
+               variable.name = 'to')
+school_xy[ , ID := paste0(.I)]
+dist_DT[school_xy, c('district_from', 'school_from') :=
+          .(i.district, i.school), on = c(from = 'ID')]
+dist_DT[school_xy, c('district_to', 'school_to') :=
+          .(i.district, i.school), on = c(to = 'ID')]
+#convert to miles
+dist_DT[ , distance := distance/5280]
+
+#join to teacher data
+teachers[dist_DT, distance_moved := i.distance,
+         on = c(district_fill = 'district_from',
+                school_fill = 'school_from',
+                district_next = 'district_to',
+                school_next = 'school_to')]
 
 ## @knitr stop_read
 

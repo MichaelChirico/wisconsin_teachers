@@ -19,9 +19,7 @@ wds = c(data = '/media/data_drive/wisconsin/')
 ###############################################################################
 incl_cols = c('year', 'cesa', 'district_fill', 'school_fill', 
               'teacher_id', 'highest_degree', 'total_exp_floor',
-              'district_next_main', 'school_next_main',
               'full_time_equiv', 'gender', 'ethnicity_main',
-              'move_school_next', 'move_district_next', 'quit_next',
               #only needed for data cleaning
               'position_code', 'area', 'district_work_type', 
               'months_employed', 'days_of_contract', 'category')
@@ -32,12 +30,15 @@ colClasses = with(
 
 teachers = 
   fread(wds['data'] %+% "wisconsin_teacher_data_full.csv",
-        select = incl_cols, colClasses = colClasses)
+        select = incl_cols, colClasses = colClasses,
+        key = 'teacher_id,year,district_fill,school_fill')
 
 #subset to focus timeframe, eliminate teachers outside 
 incl_yrs = 2000:2008
 incl_rng = range(incl_yrs)
-teachers = teachers[year %between% incl_rng]
+#pad right end by 1 since defining district switching
+#  within this file (o/w force all final year obs. to quit)
+teachers = teachers[year %between% (incl_rng + c(0L, 1L))]
 
 N_full = uniqueN(teachers$teacher_id)
 
@@ -81,12 +82,10 @@ teachers = teachers[(months_employed %between% c(875, 1050) | year > 2003) &
 #category: 1 are professional, regular education teachers
 teachers = teachers[category == "1"]
 
-N_subset_I = uniqueN(teachers$teacher_id)
+#eliminate teachers with FTE <= 80
+teachers = teachers[full_time_equiv >= 80]
 
-#district_next_main & school_next_main should not be
-#  missing if not quitting
-teachers = teachers[quit_next | (nzchar(district_next_main) & 
-                                   nzchar(school_next_main))]
+N_subset_I = uniqueN(teachers$teacher_id)
 
 #ethnicity_main / gender: eliminate teachers for whom this is unstable,
 #  and eliminate the small number of non-white/hispanic/black teachers
@@ -96,6 +95,13 @@ teachers = teachers[ , if (uniqueN(ethnicity_main) == 1L &&
                            uniqueN(gender) == 1L) .SD, by = teacher_id]
 
 N_subset_II = uniqueN(teachers$teacher_id)
+
+#eliminate teachers for whom it's complicated to
+#  determine whether they actually switched districts
+#  because they're hired at more than one school or
+#  district in a given year (only district binds)
+teachers = teachers[ , if (uniqueN(district_fill) == 1L) .SD, 
+                     by = .(teacher_id, year)]
 
 #eliminate multiple positions for a teacher by choosing the
 #  one with the highest intensity (highest FTE)
@@ -108,9 +114,18 @@ teachers[ , ethnicity_main :=
             factor(ethnicity_main, levels = c('White', 'Black', 'Hispanic'))]
 teachers[ , nonwhite := ethnicity_main != 'White']
 
-#move_school/district_next if and only if quit_next
-teachers[is.na(move_school_next), move_school_next := FALSE]
-teachers[is.na(move_district_next), move_district_next := FALSE]
+#define movement indicators
+teachers[ , school_next := 
+            shift(school_fill, 1L, type = 'lead'), by = teacher_id]
+teachers[ , district_next := 
+            shift(district_fill, 1L, type = 'lead'), by = teacher_id]
+
+teachers[ , quit_next := is.na(school_next)]
+teachers[ , move_district_next := district_next != district_fill & !quit_next]
+teachers[ , move_school_next := school_next != school_fill & !quit_next]
+
+#now eliminate final-year teachers
+teachers = teachers[year <= incl_rng[2L]]
 
 teachers[ , gender := factor(gender, levels = c('M', 'F'))]
 teachers[ , move_within_next := move_school_next & !move_district_next]
@@ -193,7 +208,7 @@ teachers[payscales[ , .(year = year - 1L, district_fill,
 ###############################################################################
 teachers[ , paste0(dist_cols, '_next_d') :=
             districts[.SD, ..dist_cols, 
-                      on = c('year', district = 'district_next_main')]]
+                      on = c('year', district = 'district_next')]]
 districts[payscales[ , mean(lwage_resid, na.rm = TRUE), 
                      by = .(district_fill, year)], 
           lwage_resid_avg := i.V1, on = c(district = 'district_fill', 'year')]
@@ -236,8 +251,7 @@ teachers[schools,
          `:=`(pct_prof_next_s = i.pct_prof, pct_hisp_next_s = i.pct_hisp, 
               pct_black_next_s = i.pct_black, pct_frl_next_s = i.pct_frl,
               urbanicity_s_next = i.urbanicity), 
-         on = c('year', district_next_main = 'district',
-                school_next_main = 'school')]
+         on = c('year', district_next = 'district', school_next = 'school')]
 
 ###############################################################################
 #                             Assorted Quantities                             #

@@ -266,7 +266,8 @@ T3[ , all :=
                pct_black_next_d - pct_black_d, pct_frl_next_d - pct_frl_d),
           na.omit)
         c(rbind(sapply(dl, mean), sapply(dl, se)))}]]
-
+adj_wage_coef = T3[var == '2M', all]
+  
 T3[ , var := rep(c('Base year salary (log)', 'Adjusted salary (log)',
                    'Percent proficient', 'Percent Hispanic',
                    'Percent black', 'Percent subsidized lunch'), each = 2L)]
@@ -308,7 +309,7 @@ Table \ref{tbl:change_by_ge} replicates Table 3 of HKR, and confirms its most im
 
 Attempting to isolate the influence of district characteristics on wage effects, HKR suggest comparing the differential leverage of residual wages to get a more focused estimate of the association between wages and mobility. We run a similar regression using the payscales estimated in the companion paper, but evaluate separate regressions not just for each level of experience, but also for each certification track. This leads to a boost in the overall fraction of explained variance from 60% cited by HKR to `r teachers[ , round(100*var(schedule_lsalary_pred, na.rm = TRUE)/var(schedule_lsalary, na.rm = TRUE))]`% here; as in HKR, other included covariates are consistently significant, suggesting their strong independent correlation with salary levels.
 
-As in HKR, we find the demographic-independent wage differentials to be even more important than the uncontrolled raw wages, with the predicted wage improvement nearly doubling to 0.8%. In contrast to HKR, however, we find a positive relationship between experience and residual wage differentials, with mid-career district switchers experiencing 2-3% higher wages upon arrival to their new employer, by contrast to the null relationship for probationary teachers. This pattern is consistent across the dimension of certification which was ignored by HKR, suggesting the opposite result cannot be attributed to bias introduced by movement patterns of Bachelor's- vs. Master's-certified instructors.
+As in HKR, we find the demographic-independent wage differentials to be even more important than the uncontrolled raw wages, with the predicted wage improvement roughly doubling to `r to.pct(adj_wage_coef, 1L)`%. In contrast to HKR, however, we find a positive relationship between experience and residual wage differentials, with mid-career district switchers experiencing 2-3% higher wages upon arrival to their new employer, by contrast to the null relationship for probationary teachers. This pattern is consistent across the dimension of certification which was ignored by HKR, suggesting the opposite result cannot be attributed to bias introduced by movement patterns of Bachelor's- vs. Master's-certified instructors.
 
 Student demographic differentials are very important for predicting teacher turnover, a finding which held in Texas as it does in Wisconsin. Most important in all experience classes and for both genders are the measures of student performance and student poverty -- district switchers end up at schools with 4% more students at grade level overall, an effect which is stronger for female teachers and for young teachers. They also end up on average with about 7% fewer students (school-wide) eligible for subsidized lunch. While this finding would need to be bolstered with experimental or quasi-experimental evidence, it hints at the potentially limited scope of teacher labor market policies intended to ameliorate teacher supply problems in hard-to-serve districts -- schools can much more easily exert influence over their compensation policies than they can dictate their student bodies, but the latter is more efficacious [see @fulbeck and @glazerman]. 
 

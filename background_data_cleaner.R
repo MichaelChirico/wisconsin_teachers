@@ -16,11 +16,13 @@ library(data.table)
 ###############################################################################
 #                   School-level Urbanicity, Ethnography                      #
 ###############################################################################
-## Focus on included years: 1999-2000 AY through 2007-2008 AY
+## Focus on included years: 1999-2000 AY through 2010-2011 AY
+##   Act 10 took effect after the 2010-11 AY, so move_next info
+##   from 2009-10 is the last to exclude this
 sf = grep('.*-0[0-8].*W', 
           list.files(wds['cc.s'], full.names = TRUE), value = TRUE)
 names(sf) = paste0('20', gsub('.*[0-9]{4}-([0-9]{2})_.*', '\\1', sf))
-schools = rbindlist(lapply(sf, function(ff) {
+schools1 = rbindlist(lapply(sf, function(ff) {
   DT = fread(ff)
   #LOCALE through '05-'06, ULOCAL thereafter
   #  (differing approaches to calculating urbanicity; attempting here
@@ -33,23 +35,30 @@ schools = rbindlist(lapply(sf, function(ff) {
   setnames(DT, new_names)
 }), idcol = 'year')
 
-setnames(schools, c('STID', 'SEASCH', 'TOTFRL',
+setnames(schools1, c('STID', 'SEASCH', 'TOTFRL',
                     'MEMBER', 'HISP', 'BLACK'),
          c('district', 'school', 'n_frl',
            'n_students', 'n_hisp', 'n_black'))
 
 #2007-08 begins tab-separated files, so read separately
-ff = list.files(wds['cc.s'], pattern = '2007-08', full.names = TRUE)
-incl_cols = c('FIPST', c('STID', 'SEASCH', 'ULOCAL',
-                         'MEMBER', 'HISP', 'BLACK', 'TOTFRL') %+% '07')
-schools08 = fread(ff, select = incl_cols)[FIPST == '55']
-schools08[ , c('FIPST', 'year') := .(NULL, '2008')]
-setnames(schools08, 
-         c('STID', 'SEASCH', 'TOTFRL',
-           'MEMBER', 'HISP', 'BLACK', 'ULOCAL') %+% '07',
+sf2 = grep('.*level_20.*[0-9]\\.txt', 
+           list.files(wds['cc.s'], full.names = TRUE), value = TRUE)
+names(sf2) = paste0('20', gsub('.*[0-9]{4}-([0-9]{2}).*$', '\\1', sf2))
+schools2 = rbindlist(lapply(sf2, function(ff) {
+  DT = fread(ff, colClasses = 'character')
+  incl_patt = 'STID|SEASCH|ULOCAL|MEMBER|^HISP|^BLACK|TOTFRL'
+  incl_cols = grep(incl_patt, names(DT))
+  DT = DT[FIPST == '55', ..incl_cols]
+  new_names = gsub('(.*)[0-9]{2}$', '\\1', names(DT))
+  new_names = gsub('ULOCAL', 'urbanicity', new_names)
+  setnames(DT, new_names)
+}), idcol = 'year')
+
+setnames(schools2, c('STID', 'SEASCH', 'TOTFRL',
+                     'MEMBER', 'HISP', 'BLACK'),
          c('district', 'school', 'n_frl',
-           'n_students', 'n_hisp', 'n_black', 'urbanicity'))
-schools = rbind(schools, schools08, 
+           'n_students', 'n_hisp', 'n_black'))
+schools = rbind(schools1, schools2, 
                 #This Downtown Montessori school has employees
                 #  recorded from 2000 but shows up in CCD from 2001
                 data.table(year = '2000', district = '8101',
@@ -64,6 +73,13 @@ urban_map = data.table(
            rep('Rural', 3L), 'Large Urban', rep('Small Urban', 2L),
            rep('Suburban', 3L), rep('Rural', 6L))
 )
+
+numcol = paste0('n_', c('frl', 'students', 'hisp', 'black'))
+schools[ , (numcol) := lapply(.SD, function(x) {
+  o = as.numeric(x)
+  o[o < 0] = NA_real_
+  o}), .SDcols = numcol]
+
 
 schools[urban_map, urbanicity := i.size, on = 'urbanicity']
 schools[urbanicity %in% c('M', 'N'), urbanicity := NA]
@@ -146,8 +162,8 @@ districts[grades1[ , lapply(.SD, sum, na.rm = TRUE),
             .(i.n, i.n_prof, i.n_advn), on = c('year', 'district')]
 
 #now for the second type of file
-wsas2 =  list.files(wds['wsas'], pattern = 'certified.*-0[0-8]', 
-                    full.names = TRUE)
+wsas2 =  list.files(wds['wsas'],
+                    pattern = 'certified.*-(0[6-9]|1[0-1])', full.names = TRUE)
 names(wsas2) = paste0('20', gsub('.*-(.*)\\.csv', '\\1', wsas2))
 
 grades2 = rbindlist(lapply(wsas2, function(ff) {
@@ -187,7 +203,7 @@ districts[ , c('n_tested', 'n_prof', 'n_advn') := NULL]
 ###############################################################################
 #             District-Level Urbanicity, Student-Teacher Ratio                #
 ###############################################################################
-df = grep('.*_0[1-8]_', 
+df = grep('.*_(0[1-9]|1[0-1])_', 
           list.files(wds['cc.d'], full.names = TRUE), value = TRUE)
 names(df) = paste0('20', gsub('.*[0-9]{4}_([0-9]{2})_.*', '\\1', df))
 

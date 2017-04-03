@@ -138,10 +138,6 @@ As examined further below, the low rate of switches between districts appears to
 ```{r table_2_markov, results = 'asis'}
 #** TO DO **
 # - calculate distribution of distance moved between districts (esp. rural)
-# - probationary urban & suburban equally likely to remain in the same school
-# - probationary urban & suburban slightly more likely to quit
-# - count # of new teachers each year in suburbs to support lack of
-#     of constraint on demand side for new teachers (re: no urban switching)
 # - check fixing urbanicity for each district to overcome re-coding issue
 # - fix all table notes
 share_change = 
@@ -169,6 +165,9 @@ T2 = rbind(
            pct_origin = 100*N_move/.N))
   }, keyby = urbanicity_s],
   fill = TRUE)
+total_urban_moves =
+  teachers[urbanicity_s %in% c('Large Urban', 'Small Urban'), 
+           sum(move_district_next)]
 
 setnames(T2, grep('[^y]_', names(T2)), character(3L))
 T2[ , c('Origin Community', 'urbanicity_s') :=
@@ -207,9 +206,19 @@ pct_ever_go_suburban =
     urbanicity_d[-1L], by = teacher_id
     ][ , any(V1 == 'Suburban', na.rm = TRUE),
        by = teacher_id][ , mean(V1)]
+
+suburban_new_hires = teachers[urbanicity_s == 'Suburban',
+                              sum(total_exp_floor == 1L)]
+# Re: Hanushek comment "Urban teachers equally likely as suburban teachers
+#   to remain in the same school", consult:
+# teachers[grep('Urban', urbanicity_s), mean(stay_next & !move_within_next)]
+# teachers[grep('Suburban', urbanicity_s), mean(stay_next & !move_within_next)]
+# Re: Hanushek comment "Urban teachers ~ 10% more likely to quit", consult:
+# teachers[grep('Urban', urbanicity_s), mean(quit_next)]
+# teachers[grep('Suburban', urbanicity_s), mean(quit_next)]
 ```
 
-Table \ref{tbl:markov} replicates HKR Table 2, and supports its most important conclusions. HKR argue that there is little support for the idea that scores of young teachers are using large urban schools as a training ground before "settling down" with easier assignments in the suburb, based on the general low level of turnover from Large Urban districts. We affirm the scarcity of transitions from districts in Milwaukee, while also noting that such a path is certainly present, as evidenced by the majority of those who do leave Large Urban districts ending up in a Surburban district in both settings. We also note that while Table \ref{tbl:markov} only presents a cross-sectional picture, the career-long trend reaffirms this -- only `r to.pct(pct_ever_go_suburban, 1L)`% of teachers starting their careers at a large urban district ever work at a suburban district.
+Table \ref{tbl:markov} replicates HKR Table 2, and supports its most important conclusions. HKR argue that there is little support for the idea that scores of young teachers are using large urban schools as a training ground before "settling down" with easier assignments in the suburb, based on the general low level of turnover from Large Urban districts. We affirm the scarcity of transitions from districts in Milwaukee, while also noting that such a path is certainly present, as evidenced by the majority of those who do leave Large Urban districts ending up in a Surburban district in both settings. HKR also observe that the likelihoods of remaining in the same school and of quitting are roughly the same for urban and suburban teachers, an observation which we can confirm in Wisconsin. We further note that while Table \ref{tbl:markov} only presents a cross-sectional picture, the career-long trend reaffirms this -- only `r to.pct(pct_ever_go_suburban, 1L)`% of teachers starting their careers at a large urban district ever work at a suburban district. Lastly, we echo the suggestion of HKR that this phenomenon cannot be driven _per se_ by demand-side constraints -- in our time period of observation, we observe only `r prettyNum(total_urban_moves, big.mark = ',')` urban teachers change districts, whereas `r prettyNum(suburban_new_hires, big.mark = ',')` teachers were hired in suburban districts, though of course this does not rule out arguments based for example on stricter screening of applicants transferring from urban districts. 
 
 ```{r tx_wi_urb_dist, fig.cap = '\\label{fig:ti_wi_urb}Comparison of the Prevalence of Different Community Types'}
 wi_ti[ , plot(table(State, `Community Type`), las = 1L,

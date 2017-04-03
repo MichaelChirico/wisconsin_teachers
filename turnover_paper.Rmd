@@ -247,6 +247,8 @@ Returning to Table \ref{tbl:move_by_exp}, we see that, as in HKR, the "stickiest
 #      principal be related to the residual wages themselves picking up
 #      unexpected patterns by ignoring certification.
 #    : plot distribution of change in wage vs. tenure
+#      very weak evidence for influence of skew; nevertheless ever-so-slight
+#      positive trend emerges w.r.t. experience
 # - proficiency rates over time fluctuate dramatically
 #   (huge dropoff 2005-06) -- express as position in distribution?
 # - % black/hispanic/FRL also on steady upward trend
@@ -344,6 +346,12 @@ cat(tbl, sep = '\n')
 # 4:  4-6 years      F 0.003923421
 # 5: 7-11 years      M 0.007791188
 # 6: 7-11 years      F 0.006181071
+
+# code for distribution of Delta residual wage by experience
+# teachers[move_district_next & total_exp_floor <= 10, {
+#   boxplot(schedule_lsalary_resid_next - 
+#             schedule_lsalary_resid_next_cf ~ total_exp_floor)
+#   abline(h = 0, lty = 2)}]
 ```
 
 Table \ref{tbl:change_by_ge} replicates Table 3 of HKR, and confirms its most important insights. Raw salary differentials predict teacher mobility, but the pay differential is not on average very large -- only about \$200, or 0.4% higher than the counterfactually expected wage that would have obtained had the district-switching teacher remained in their current district. This premium declines with age for both male and female teachers, eventually dipping negative (though this estimate is imprecise/underpowered due to the limited quantity of teachers changing districts after 6 years).

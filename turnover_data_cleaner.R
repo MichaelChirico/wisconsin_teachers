@@ -190,7 +190,7 @@ payscales[ , paste0('lwage', pr) := {
   reg = lm(log(wage) ~ cesa + urbanicity + pct_prof + 
              pct_black + pct_hisp + pct_frl) 
   .(predict(reg, .SD), resid(reg))
-}, by = .(highest_degree, tenure)]
+}, by = .(year, highest_degree, tenure)]
 
 teachers[payscales[, log(wage[highest_degree == 4L & tenure == 1L]),
                    by = .(district_fill, year)], 

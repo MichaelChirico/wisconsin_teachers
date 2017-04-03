@@ -138,7 +138,6 @@ As examined further below, the low rate of switches between districts appears to
 ```{r table_2_markov, results = 'asis'}
 #** TO DO **
 # - calculate distribution of distance moved between districts (esp. rural)
-# - check fixing urbanicity for each district to overcome re-coding issue
 # - fix all table notes
 share_change = 
   #use 2006, not incl_rng, because of the artificial change in 

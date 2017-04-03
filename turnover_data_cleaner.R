@@ -179,6 +179,8 @@ payscales[unique(teachers[ , .(district_fill, cesa)]),
 #now add controls to generate residual/unexplained wages
 districts = fread(wds['data'] %+% 'district_demographics.csv',
                   colClasses = list(character = 'district'), na.strings = '')
+#don't allow urbanicity to vary by year
+districts[order(year), urbanicity := urbanicity[1L], by = district]
 dist_cols = setdiff(names(districts), c('district', 'year'))
 
 payscales[ , (dist_cols) :=
@@ -257,6 +259,8 @@ teachers[ , paste0(q_var, '_q') :=
 schools = fread(wds['data'] %+% 'school_demographics.csv',
                 colClasses = list(character = c('district', 'school')), 
                 na.strings = '')
+#don't allow urbanicity to vary by year
+schools[order(year), urbanicity := urbanicity[1L], by = .(district, school)]
 
 urb_lev = c('Large Urban', 'Small Urban', 'Suburban', 'Rural')
 schools[ , urbanicity := 

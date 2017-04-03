@@ -211,7 +211,7 @@ teachers[payscales, paste0('schedule_lsalary', pr) :=
          on = c('year', 'district_fill', 
                 total_exp_floor = 'tenure', 'highest_degree')]
 teachers[order(year), paste0('schedule_lsalary', pr, '_next') := 
-           .(shift(schedule_lsalary_resid, n = 1L, type = 'lead'),
+           .(shift(schedule_lsalary_pred, n = 1L, type = 'lead'),
              shift(schedule_lsalary_resid, n = 1L, type = 'lead')), 
          by = teacher_id]
 

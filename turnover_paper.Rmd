@@ -240,16 +240,13 @@ Returning to Table \ref{tbl:move_by_exp}, we see that, as in HKR, the "stickiest
 # - subset to years with scale scores available, use this instead
 #   Use aggregated distribution? Possible to construct
 #     population moments from school-level data?
-# - WKCE data for 2001-02 and earlier are NOT comparable to
-#   performance level data for 2002-03 and later years...
 # - real wages?
-# - bootstrap adjusted wage procedure to incorporate
-#   first-stage variability into standard errors
 # - explore _why_ differential wages become more important with experience;
 #    : ignoring certification? breaking down results by
 #      certification shows the patterns consistent, but _could_ in
 #      principal be related to the residual wages themselves picking up
 #      unexpected patterns by ignoring certification.
+#    : plot distribution of change in wage vs. tenure
 # - proficiency rates over time fluctuate dramatically
 #   (huge dropoff 2005-06) -- express as position in distribution?
 # - % black/hispanic/FRL also on steady upward trend
@@ -313,11 +310,47 @@ tbl = c(tbl[1L:(idx - 1L)],
         tbl[idx:length(tbl)])
 
 cat(tbl, sep = '\n')
+# code to bootstrap adjusted salary SEs
+# tids = teachers[ , unique(teacher_id)]
+# boot_dist = rbindlist(lapply(integer(5000), function(...) {
+#   DT = teachers[.(sample(tids, replace = TRUE))]
+#   DS = payscales[district_fill %in% DT[ , unique(district_fill)]])
+#   DS[ , lwage_resid := {
+#     resid(lm(log(wage) ~ cesa + urbanicity + pct_prof + 
+#                pct_black + pct_hisp + pct_frl))
+#   }, by = .(highest_degree, tenure)]
+#   DT[DS, schedule_lsalary_resid := i.lwage_resid,
+#      on = c('year', 'district_fill', 
+#             total_exp_floor = 'tenure', 'highest_degree')]
+#   DT[order(year), schedule_lsalary_resid_next := 
+#        shift(schedule_lsalary_resid, n = 1L, type = 'lead'), 
+#      by = teacher_id]
+#   DT[DS[ , .(year = year - 1L, district_fill, 
+#              tenure = tenure - 1L, highest_degree, 
+#              lwage, lwage_pred, lwage_resid)], 
+#      schedule_lsalary_resid_next_cf := i.lwage_resid,
+#      on = c('year', 'district_fill', 
+#             total_exp_floor = 'tenure', 'highest_degree')]
+#   DT[move_district_next & total_exp_floor <= 10,
+#      mean(schedule_lsalary_resid_next - schedule_lsalary_resid_next_cf,
+#           na.rm = TRUE), keyby = .(exp_split, gender)]
+# }), idcol = 'bb')
+#with output:
+# boot_dist[ , sd(V1), by = .(exp_split, gender)]
+#     exp_split gender          V1
+# 1:  1-3 years      M 0.005152039
+# 2:  1-3 years      F 0.002977234
+# 3:  4-6 years      M 0.006794788
+# 4:  4-6 years      F 0.003923421
+# 5: 7-11 years      M 0.007791188
+# 6: 7-11 years      F 0.006181071
 ```
 
 Table \ref{tbl:change_by_ge} replicates Table 3 of HKR, and confirms its most important insights. Raw salary differentials predict teacher mobility, but the pay differential is not on average very large -- only about \$200, or 0.4% higher than the counterfactually expected wage that would have obtained had the district-switching teacher remained in their current district. This premium declines with age for both male and female teachers, eventually dipping negative (though this estimate is imprecise/underpowered due to the limited quantity of teachers changing districts after 6 years).
 
-Attempting to isolate the influence of district characteristics on wage effects, HKR suggest comparing the differential leverage of residual wages to get a more focused estimate of the association between wages and mobility. We run a similar regression using the payscales estimated in the companion paper, but evaluate separate regressions not just for each level of experience, but also for each certification track. This leads to a boost in the overall fraction of explained variance from 60% cited by HKR to `r teachers[ , round(100*var(schedule_lsalary_pred, na.rm = TRUE)/var(schedule_lsalary, na.rm = TRUE))]`% here; as in HKR, other included covariates are consistently significant, suggesting their strong independent correlation with salary levels.
+Attempting to isolate the influence of district characteristics on wage effects, HKR suggest comparing the differential leverage of residual wages to get a more focused estimate of the association between wages and mobility[^residual_ses]. We run a similar regression using the payscales estimated in the companion paper, but evaluate separate regressions not just for each level of experience, but also for each certification track. This leads to a boost in the overall fraction of explained variance from 60% cited by HKR to `r teachers[ , round(100*var(schedule_lsalary_pred, na.rm = TRUE)/var(schedule_lsalary, na.rm = TRUE))]`% here; as in HKR, other included covariates are consistently significant, suggesting their strong independent correlation with salary levels.
+
+[^residual_ses]: HKR mention they failed to adjust the standard errors associated with the adjusted wage differentials to account for the fact that they involve residuals from a regression. We explored accounting for this by bootstrapping the regression through resampling teachers and recalculating residuals, but confirm that little changes as a result.
 
 As in HKR, we find the demographic-independent wage differentials to be even more important than the uncontrolled raw wages, with the predicted wage improvement roughly doubling to `r to.pct(adj_wage_coef, 1L)`%. In contrast to HKR, however, we find a positive relationship between experience and residual wage differentials, with mid-career district switchers experiencing 2-3% higher wages upon arrival to their new employer, by contrast to the null relationship for probationary teachers. This pattern is consistent across the dimension of certification which was ignored by HKR, suggesting the opposite result cannot be attributed to bias introduced by movement patterns of Bachelor's- vs. Master's-certified instructors.
 

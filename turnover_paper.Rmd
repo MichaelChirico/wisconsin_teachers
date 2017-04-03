@@ -238,6 +238,8 @@ Returning to Table \ref{tbl:move_by_exp}, we see that, as in HKR, the "stickiest
 ```{r table_3_change_by_ge, results = 'asis'}
 #** TO DO **
 # - subset to years with scale scores available, use this instead
+#   Use aggregated distribution? Possible to construct
+#     population moments from school-level data?
 # - WKCE data for 2001-02 and earlier are NOT comparable to
 #   performance level data for 2002-03 and later years...
 # - real wages?

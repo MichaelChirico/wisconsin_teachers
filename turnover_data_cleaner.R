@@ -36,7 +36,7 @@ teachers =
         key = 'teacher_id,year,district_fill,school_fill')
 
 #subset to focus timeframe, eliminate teachers outside 
-incl_yrs = 2000:2010
+incl_yrs = 2003:2010
 incl_rng = range(incl_yrs)
 #pad right end by 1 since defining subsequent district
 #  within this file (o/w force all final year obs. to quit)

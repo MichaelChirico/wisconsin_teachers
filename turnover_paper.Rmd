@@ -249,18 +249,14 @@ Returning to Table \ref{tbl:move_by_exp}, we see that, as in HKR, the "stickiest
 #    : plot distribution of change in wage vs. tenure
 #      very weak evidence for influence of skew; nevertheless ever-so-slight
 #      positive trend emerges w.r.t. experience
-# - proficiency rates over time fluctuate dramatically
-#   (huge dropoff 2005-06) -- express as position in distribution?
-# - % black/hispanic/FRL also on steady upward trend
-#   throughout measurement period
 se = function(x) sd(x)/sqrt(length(x))
 T3 = 
   teachers[move_district_next & total_exp_floor <= 10, {
     dl = lapply(
       list(schedule_lsalary_next - schedule_lsalary_next_cf,
            schedule_lsalary_resid_next - schedule_lsalary_resid_next_cf,
-           pct_prof_next_d - pct_prof_d, pct_hisp_next_d - pct_hisp_d,
-           pct_black_next_d - pct_black_d, pct_frl_next_d - pct_frl_d),
+           pctile_prof_next_d - pctile_prof_d, pctile_hisp_next_d - pctile_hisp_d,
+           pctile_black_next_d - pctile_black_d, pctile_frl_next_d - pctile_frl_d),
       na.omit)
     .(var = paste0(rep(seq_len(6L), each = 2L), rep(c('M', 'S'), 6L)),
       val = c(rbind(sapply(dl, mean), sapply(dl, se))))
@@ -271,8 +267,8 @@ T3[ , all :=
         dl = lapply(
           list(schedule_lsalary_next - schedule_lsalary_next_cf,
                schedule_lsalary_resid_next - schedule_lsalary_resid_next_cf,
-               pct_prof_next_d - pct_prof_d, pct_hisp_next_d - pct_hisp_d,
-               pct_black_next_d - pct_black_d, pct_frl_next_d - pct_frl_d),
+               pctile_prof_next_d - pctile_prof_d, pctile_hisp_next_d - pctile_hisp_d,
+               pctile_black_next_d - pctile_black_d, pctile_frl_next_d - pctile_frl_d),
           na.omit)
         c(rbind(sapply(dl, mean), sapply(dl, se)))}]]
 adj_wage_coef = T3[var == '2M', all]
@@ -395,10 +391,10 @@ T4D =
                  list(schedule_lsalary_next - schedule_lsalary_next_cf,
                       schedule_lsalary_resid_next -
                         schedule_lsalary_resid_next_cf,
-                      pct_prof_next_d - pct_prof_d, 
-                      pct_hisp_next_d - pct_hisp_d,
-                      pct_black_next_d - pct_black_d, 
-                      pct_frl_next_d - pct_frl_d),
+                      pctile_prof_next_d - pctile_prof_d, 
+                      pctile_hisp_next_d - pctile_hisp_d,
+                      pctile_black_next_d - pctile_black_d, 
+                      pctile_frl_next_d - pctile_frl_d),
                  na.omit)
                .(var = paste0(rep(seq_len(6L), each = 2L),
                               rep(c('M', 'S'), 6L)),
@@ -411,10 +407,10 @@ T4S =
              urbanicity_d %in% c('Large Urban', 'Suburban') & 
              total_exp_floor <= 10, {
                dl = lapply(
-                 list(pct_prof_next_s - pct_prof_s,
-                      pct_hisp_next_s - pct_hisp_s,
-                      pct_black_next_s - pct_black_s,
-                      pct_frl_next_s - pct_frl_s),
+                 list(pctile_prof_next_s - pctile_prof_s,
+                      pctile_hisp_next_s - pctile_hisp_s,
+                      pctile_black_next_s - pctile_black_s,
+                      pctile_frl_next_s - pctile_frl_s),
                  na.omit)
                .(var = paste0(rep(3L:6L, each = 2L), rep(c('M', 'S'), 4L)),
                  val = c(rbind(sapply(dl, mean), sapply(dl, se))))
@@ -486,10 +482,10 @@ T5D =
   teachers[move_district_next & total_exp_floor <= 10 & 
              ethnicity_main %in% c('Black', 'Hispanic'), {
                dl = lapply(
-                 list(pct_prof_next_s - pct_prof_s, 
-                      pct_hisp_next_s - pct_hisp_s,
-                      pct_black_next_s - pct_black_s, 
-                      pct_frl_next_s - pct_frl_s),
+                 list(pctile_prof_next_s - pctile_prof_s, 
+                      pctile_hisp_next_s - pctile_hisp_s,
+                      pctile_black_next_s - pctile_black_s, 
+                      pctile_frl_next_s - pctile_frl_s),
                  na.omit)
                .(var = c(paste0(rep(1L:4L, each = 2L),
                                 rep(c('M', 'S'), 4L)), 'N'),
@@ -501,10 +497,10 @@ T5S =
   teachers[move_within_next & total_exp_floor <= 10 & 
              ethnicity_main %in% c('Black', 'Hispanic'), {
                dl = lapply(
-                 list(pct_prof_next_s - pct_prof_s, 
-                      pct_hisp_next_s - pct_hisp_s,
-                      pct_black_next_s - pct_black_s, 
-                      pct_frl_next_s - pct_frl_s),
+                 list(pctile_prof_next_s - pctile_prof_s, 
+                      pctile_hisp_next_s - pctile_hisp_s,
+                      pctile_black_next_s - pctile_black_s, 
+                      pctile_frl_next_s - pctile_frl_s),
                  na.omit)
                .(var = c(paste0(rep(1L:4L, each = 2L), 
                                 rep(c('M', 'S'), 4L)), 'N'),
@@ -646,18 +642,18 @@ reg_l =
          function(DT) 
            DT[ , lm(leave_next ~
                       schedule_lbase_ba_salary*gender + 
-                      pct_prof_d + pct_frl_d + 
-                      ethnicity_main*pct_black_d + 
-                      ethnicity_main*pct_hisp_d + factor(year) + 
+                      pctile_prof_d + pctile_frl_d + 
+                      ethnicity_main*pctile_black_d + 
+                      ethnicity_main*pctile_hisp_d + factor(year) + 
                       urbanicity_d + total_exp_floor + 
                       I(total_exp_floor^2) + n_students_d + class_size_d)])
 
 coefn = setNames(nm = names(coef(reg_l[[1L]])))
 coefn[seq_len(length(coefn))] = 'x'
 idx = match(c('schedule_lbase_ba_salary', 'schedule_lbase_ba_salary:genderF',
-              'pct_prof_d', 'pct_frl_d', 'pct_black_d', 'pct_hisp_d',
+              'pctile_prof_d', 'pctile_frl_d', 'pctile_black_d', 'pctile_hisp_d',
               paste0('ethnicity_main', 
-                     c('Black', 'Black', 'Hispanic', 'Hispanic'), ':pct_',
+                     c('Black', 'Black', 'Hispanic', 'Hispanic'), ':pctile_',
                      c('black', 'hisp', 'black', 'hisp'), '_d')), names(coefn))
 coefn[idx] = 
   c('First year base salary (log)', 'First year base salary (log) * female',
@@ -716,9 +712,9 @@ reg_l =
   lapply(split(teachers, f = teachers$exp_split, sorted = TRUE),
          function(DT) DT[ , lm(leave_next ~
                                  schedule_lbase_ba_salary*gender + 
-                                 pct_prof_d + pct_frl_d + 
-                                 ethnicity_main*pct_black_d + 
-                                 ethnicity_main*pct_hisp_d + factor(year) + 
+                                 pctile_prof_d + pctile_frl_d + 
+                                 ethnicity_main*pctile_black_d + 
+                                 ethnicity_main*pctile_hisp_d + factor(year) + 
                                  factor(district_fill) + total_exp_floor + 
                                  I(total_exp_floor^2) +
                                  n_students_d + class_size_d)])
@@ -728,9 +724,9 @@ reg_l =
 coefn = setNames(nm = Reduce(union, lapply(reg_l, function(x) names(coef(x)))))
 coefn[seq_len(length(coefn))] = 'x'
 idx = match(c('schedule_lbase_ba_salary', 'schedule_lbase_ba_salary:genderF',
-              'pct_prof_d', 'pct_frl_d', 'pct_black_d', 'pct_hisp_d',
+              'pctile_prof_d', 'pctile_frl_d', 'pctile_black_d', 'pctile_hisp_d',
               paste0('ethnicity_main', 
-                     c('Black', 'Black', 'Hispanic', 'Hispanic'), ':pct_',
+                     c('Black', 'Black', 'Hispanic', 'Hispanic'), ':pctile_',
                      c('black', 'hisp', 'black', 'hisp'), '_d')), names(coefn))
 coefn[idx] = 
   c('First year base salary (log)', 'First year base salary (log) * female',
@@ -779,8 +775,8 @@ The most notable difference relative to table \ref{tbl:reg_lpm} is the weakening
 teachersML = 
   melt(teachers, id.vars =
          c('teacher_id', 'year', 'schedule_lbase_ba_salary', 
-           'gender', 'pct_prof_d', 'pct_frl_d', 'urbanicity_d',
-           'nonwhite', 'pct_nonwhite_d',
+           'gender', 'pctile_prof_d', 'pctile_frl_d', 'urbanicity_d',
+           'nonwhite', 'pctile_nonwhite_d',
            'total_exp_floor', 'n_students_d', 'class_size_d','exp_split'), 
        measure.vars = c('stay_next', 'move_district_next', 'quit_next'),
        variable.name = 'alternative', value.name = 'chosen')
@@ -793,8 +789,8 @@ mnl_l =
     setattr(DT, 'class', c('mlogit.data', class(DT)))
     setattr(DT, 'index', with(DT, data.table(alt = alternative, chid = ID)))
     mlogit(chosen ~ 0 | 
-             schedule_lbase_ba_salary*gender + pct_prof_d + pct_frl_d + 
-             nonwhite*pct_nonwhite_d +  factor(year) + 
+             schedule_lbase_ba_salary*gender + pctile_prof_d + pctile_frl_d + 
+             nonwhite*pctile_nonwhite_d +  factor(year) + 
              urbanicity_d + total_exp_floor + I(total_exp_floor^2) + 
              n_students_d + class_size_d, data = DT)
   })
@@ -804,8 +800,8 @@ coefn[seq_len(length(coefn))] = 'x'
 idx = match(
   paste0(rep(c('move_district_next:', 'quit_next:'), each = 6L),
          rep(c('schedule_lbase_ba_salary', 'schedule_lbase_ba_salary:genderF',
-               'pct_prof_d', 'pct_frl_d', 'pct_nonwhite_d',
-               'nonwhiteTRUE:pct_nonwhite_d'), 2L)), 
+               'pctile_prof_d', 'pctile_frl_d', 'pctile_nonwhite_d',
+               'nonwhiteTRUE:pctile_nonwhite_d'), 2L)), 
   names(coefn)
 )
 coefn[idx] = 

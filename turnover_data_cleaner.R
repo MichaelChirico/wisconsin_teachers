@@ -179,6 +179,10 @@ payscales[unique(teachers[ , .(district_fill, cesa)]),
 #now add controls to generate residual/unexplained wages
 districts = fread(wds['data'] %+% 'district_demographics.csv',
                   colClasses = list(character = 'district'), na.strings = '')
+pctile_col = paste0('pct_', c('frl', 'hisp', 'black', 'nonwhite', 'prof'))
+districts[ , gsub('pct', 'pctile', pctile_col, fixed = TRUE) := 
+             lapply(.SD, function(x) ecdf(x)(x)),
+           by = year, .SDcols = pctile_col]
 dist_cols = setdiff(names(districts), c('district', 'year'))
 
 payscales[ , (dist_cols) :=
@@ -187,8 +191,8 @@ payscales[ , (dist_cols) :=
 
 pr = c('_pred', '_resid')
 payscales[ , paste0('lwage', pr) := {
-  reg = lm(log(wage) ~ cesa + urbanicity + pct_prof + 
-             pct_black + pct_hisp + pct_frl) 
+  reg = lm(log(wage) ~ cesa + urbanicity + pctile_prof + 
+             pctile_black + pctile_hisp + pctile_frl) 
   .(predict(reg, .SD), resid(reg))
 }, by = .(year, highest_degree, tenure)]
 
@@ -236,7 +240,8 @@ districts[payscales[ , mean(lwage_resid, na.rm = TRUE),
 districts[teachers[ , .N, by = .(district_fill, year)],
           n_teachers := i.N, on = c(district = 'district_fill', 'year')]
 
-q_var = c('lwage_resid_avg', 'pct_prof', 'pct_frl', 'pct_black', 'pct_hisp')
+q_var = c('lwage_resid_avg', 'pctile_prof', 'pctile_frl', 
+          'pctile_black', 'pctile_hisp')
 districts[ , paste0(q_var, '_q') := lapply(.SD, function(x) {
   brk = wtd.quantile(x, 0:4/4, weights = n_teachers, 
                      normwt = TRUE, na.rm = TRUE)
@@ -257,20 +262,24 @@ teachers[ , paste0(q_var, '_q') :=
 schools = fread(wds['data'] %+% 'school_demographics.csv',
                 colClasses = list(character = c('district', 'school')), 
                 na.strings = '')
+pctile_col = pctile_col[pctile_col != 'pct_nonwhite']
+schools[ , gsub('pct', 'pctile', pctile_col, fixed = TRUE) := 
+           lapply(.SD, function(x) ecdf(x)(x)),
+         by = year, .SDcols = pctile_col]
 
 urb_lev = c('Large Urban', 'Small Urban', 'Suburban', 'Rural')
 schools[ , urbanicity := 
            factor(urbanicity, levels = urb_lev)]
 
 teachers[schools, 
-         `:=`(pct_prof_s = i.pct_prof, pct_hisp_s = i.pct_hisp, 
-              pct_black_s = i.pct_black, pct_frl_s = i.pct_frl,
+         `:=`(pctile_prof_s = i.pctile_prof, pctile_hisp_s = i.pctile_hisp, 
+              pctile_black_s = i.pctile_black, pctile_frl_s = i.pctile_frl,
               urbanicity_s = i.urbanicity), 
          on = c('year', district_fill = 'district', school_fill = 'school')]
 
 teachers[schools, 
-         `:=`(pct_prof_next_s = i.pct_prof, pct_hisp_next_s = i.pct_hisp, 
-              pct_black_next_s = i.pct_black, pct_frl_next_s = i.pct_frl,
+         `:=`(pctile_prof_next_s = i.pctile_prof, pctile_hisp_next_s = i.pctile_hisp, 
+              pctile_black_next_s = i.pctile_black, pctile_frl_next_s = i.pctile_frl,
               urbanicity_s_next = i.urbanicity), 
          on = c('year', district_next = 'district', school_next = 'school')]
 

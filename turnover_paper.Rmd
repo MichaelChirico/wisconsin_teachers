@@ -362,7 +362,6 @@ Student demographic differentials are very important for predicting teacher turn
 
 ```{r table_4_change_by_urb, results = 'asis'}
 #** TO DO **
-# - Why do I have such huge SEs?
 # - Why are teachers even worse off
 #   in terms of adjusted than unadjusted pay?
 # - How to express drop in %Black/Hispanic/FRL

@@ -16,6 +16,7 @@ wds = c(data = paste0(external_path, 'teacher_raw_data/data_files'),
 library(funchir)
 library(data.table)
 library(stringr)
+library(readxl)
 library(zoo)
 library(RPushbullet)
 
@@ -38,7 +39,11 @@ full_data = #simultaneously read, concatenate all 20 years' data files
           drop = which(scan(file = fl, what = "", sep = "\t",
                             nlines = 1L, quiet = TRUE) == "filler"),
           #fill is necessary because fields are not constant across time
-          colClasses = keys[.(gsub('[^0-9]', '', fl)), type])), fill = TRUE)
+          colClasses = keys[.(gsub('[^0-9]', '', fl)), type],
+          #one guy in 2014 has ?????? as his file number, which
+          #  will prevent it from being read as integer unless
+          #  we declare that as NA here
+          na.strings = c('NA', '??????'))), fill = TRUE)
 close(pb)
 
 #Perpetual reminder: YYstaff.txt is the data for the (YY-1)-YY academic year;
@@ -88,6 +93,180 @@ invisible(lapply(nnames, function(x)
   full_data[!nzchar(get(paste0(x, "_clean"))),
             paste0(x, "_clean") := get(x)]))
 rm(nnames)
+
+###############################################################################
+#                             Data Errata                                     #
+###############################################################################
+#Incorporate errata cited here:
+#  https://dpi.wi.gov/cst/data-collections/data-errata
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/pdf/Staff_CESA8_2015-2016_letter.pdf
+##   Courtney Franz: Area _is_ 0810, should be 0825
+full_data[year == 2016 & cesa == '08' & id == '000654132', area := '0825']
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/pdf/Staff_Elk_Mound_2015-2016_letter.pdf
+##   Eric Wright (salary,fringe) _is_ (151189, 55637) should be (105664,52767)
+full_data[year == 2016 & grepl('Elk Mound', district_name, fixed = TRUE) & 
+            grepl('wright', last_name),
+          c('salary', 'fringe') := .(105664, 52767)]
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_Horicon_2015-2016.pdf
+##   Insufficient information to identify the referenced teacher, or even
+##     to know what should be fixed
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/pdf/Staff_Jefferson_2015_2016.pdf
+##   School District of Jefferson (2702)
+##   "...data reported, incorrectly included salary amounts from extra duties
+##    and co-curriculars that some certified staff members received"
+##   (unclear how to incorporate)
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/pdf/Staff_Marinett_2015_2016_letter.pdf
+##  School District of Marinette (3311)
+##  "...Michelle Ferm, was found to not be licensed for her current assignment.
+##   This situation was unable to be rectified [and she] was terminated..."
+##  Could just drop her, but presumably her data is otherwise useful/informative
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/pdf/
+##   Staff_MPS_2015-2016%20Adminstrator%20Education%20Level%20Error.pdf
+## Darienne Driver and Orlando Ramos both listed as Master's, but have doctorate
+full_data[year == 2016 & id %in% c('000684557', '000697114'),
+          highest_degree := '7']
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/pdf/
+##   Staff_2015-2016%20MPS%20Correction%20Letter%20Re-Teaching%20Years%20of%20Experience.pdf
+##  Milwaukee Public Schools (3619) completely botched recording of experience.
+## Spreadsheet link:
+##   https://dpi.wi.gov/sites/default/files/imce/cst/xls/
+##     Corrected%202015-2016%20Total%20Years%20of%20Experience%20%28for%20Errata%20Ltr%29.xlsx
+##    * Corrections spreadsheet appears to be linked by file_number field 
+##      (called DPI Entity Number in spreadsheet)
+##    * Pending correspondence from Milwaukee's Donna Edwards, assuming
+##      Local Exp 2015 (resp. Total) is "latent" and Local Exp 2015 Reported
+##      is the "observed" version of this found in DPI files
+##      (it appears to be just a rounded version of the "latent" measure)
+mwk_ff = list.files(wds['keys'], pattern = '^Corrected.*xlsx', full.names = TRUE)
+mwk_corr = read_excel(mwk_ff, sheet = 1L, skip = 2L,
+                      col_names = c('mwk_id', 'last_name', 'first_name', 'salary',
+                                    'file_number', 'wise_id', 'eff_date',
+                                    rep('x', 4L), 'local_exp', 'total_exp'),
+                      col_types = abbr_to_colClass('tntdsn', '312142'))
+setDT(mwk_corr)
+#IDs are zero-padded in the corrections file
+mwk_corr[ , file_number := as.integer(file_number)]
+
+#don't want to match NAs or any other year
+full_data[year == 2016 & !is.na(file_number) & district == '3619',
+          c('local_exp', 'total_exp') := 
+            mwk_corr[.SD, .(x.local_exp, x.total_exp), on = 'file_number']]
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_StevenPoint_SD_2015-16.pdf
+##   Jerome Gargulak (position, area) _is_ (64, 5000), should be (55, 0000)
+full_data[year == 2016 & id == '000641542',
+          c('position_code', 'area') := .('55', '0000')]
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_Lodi_2014-2015.pdf
+## Lodi Public Schools (3150)
+## "...list of contractors used by Lodi Schools in the 2014-15 school year
+##  who declined to provide... demographic information [and thus]
+##  are not listed in our WiseStaff submission"
+##  (unclear how to incorporate)
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_Goodman-Armstrong_2014_2015.pdf
+## Tracy Cassidy: unclear how to incorporate info about grade levels
+##   as these errata are not distinguishable in the data
+## Joleen Pahl: unclear which assignment is incorrect -- errata refer
+##   to area 317, but this is not a valid code and not used with Joleen
+##   (pending correspondence with Superintendent Hinkel)
+## Dennis Christian position_code _is_ 52, but should be 
+##   whatever's associated with "Administrative Assistant" (guessing 69)
+## Patricia Christian: unsure what the error is?
+## Richelle Jochem: unclear how to incorporate
+full_data[year == 2015 & file_number == 91661, position_code := '69']
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/Manawa%20data%20errata%20letter.pdf
+## Jill Seka: unclear if anything's wrong
+## Julie VanderGrinten: unclear if anything's wrong
+##   (she _does_ have one assignment as 86-0000)
+## Mindi Wagner: erratum says she's 0405 and should be 0265, but she's 0250
+## Judith Connelly: low_grade should be 1, not KG
+## Jacob Abrahamson: unclear how to incorporate
+## Jessica Hedtke & Holly Thontlin: 43-0000 should be 96-9883
+full_data[year == 2015 & file_number == 728866, area := '0265']
+full_data[year == 2015 & file_number == 693678,
+          c('low_grade', 'low_grade_code') := .('01', '20')]
+full_data[year == 2015 & file_number %in% c(809487, 209625),
+          c('position_code', 'area') := .('96', '9883')]
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_Menomonie_2014-2015.pdf
+## Nathan McMahon: only licensed to teach grade 9
+## Ryan Sterry: unclear the error, as there _is_ one assignment of 53-0291
+## Harold Vlcek: only licensed to teach grade 9
+## Philip Winegar: unclear the error, as there _is_ one assignment of 53-0220
+## Willow Anderson: unclear which assignment is erroneous
+## Jamie Richartz: unclear which assignment is erroneous
+## Mary Snyder: unclear the error, as there _is_ one assignment of 53-0810
+## Mary Henry: interpreting as 53 should be 64
+full_data[year == 2015 & file_number %in% c(610056, 161164),
+          c('high_grade', 'high_grade_code') := .('09', '52')]
+full_data[year == 2015 & file_number == 132126 & position_code == '53',
+          position_code := '64']
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_Oconto%20Falls_2014-2015.pdf
+##  Complete record creation for Cynthia R Cho (also found in several years prior)
+full_data = 
+  rbind(full_data,
+        data.table(first_name = 'cynthia', last_name = 'cho',
+                   file_number = 192807L, highest_degree = '5',
+                   gender = 'F', race = 'W', local_exp = 35,
+                   total_exp = 35, salary = 63104, full_time_equiv = 100,
+                   final_contract = 'Y', birth_year = '1958',
+                   fringe = 16763, district = '4074', bilingual = 'N',
+                   district_hire = '4074', district_hire_type = '03',
+                   days_of_contract = 187, category = '1',
+                   year_session = '2015R', cesa = '08', county = '42',
+                   county_name = 'Oconto County', ship_zip = '54154-1468',
+                   district_name = 'Oconto Falls Public Sch Dist',
+                   district_work_type = '04', mail_zip = '54154-1468',
+                   school_mail_1 = '102 S Washington St',
+                   school_mail_2 = 'Oconto Falls WI  54154-1468',
+                   school_shipping_1 = '102 S Washington St',
+                   school_shipping_2 = 'Oconto Falls WI  54154-1468',
+                   mail_city = 'Oconto Falls', mail_state = 'WI',
+                   ship_city = 'Oconto Falls', ship_state = 'WI',
+                   school_name = 'Washington Middle', grade_level = '5',
+                   low_grade = '07', low_grade_code = '44', year = 2015L,
+                   telephone = '920-848-4463', admin_name = 'Louis Hobyan',
+                   high_grade = '07', high_grade_code = '07',
+                   first_name_clean = 'cynthia', last_name_clean = 'cho',
+                   school = '0260', position_code = '53', subcontracted = 'N',
+                   area = '0316', subcontracted = 'N', long_term_sub = 'N'),
+        fill = TRUE)
+        
+## https://dpi.wi.gov/sites/default/files/imce/cst/pdf/Prairie%20Farm%20201508061437.pdf
+##  Ariel Humpal: eliminate 53-0620 row, adjust FTE on 53-0605/53-0625 rows
+##                to reflect erratum report
+full_data[year == 2015 & file_number == 726878 & area == '0605',
+          full_time_equiv := 60]
+full_data[year == 2015 & file_number == 726878 & area == '0625',
+          full_time_equiv := 40]
+drop_idx = full_data[year == 2015 & file_number == 726878 & area == '0620', which = TRUE]
+full_data = full_data[-drop_idx]
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_Suring%20School%202014-2015.pdf
+## Laura Lojpersberger: error doesn't actually appear to be in the data
+
+## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_Wauwatosa_2014-2015.pdf
+## Cara Anderson: area 0515 -> 0506
+## Marget Boyd: position 99 should be changed, but not clear what to
+## Mary Butkus: typo in low grade/high grade
+## Bernard Carreon: incorrect low grade
+full_data[year == 2015 & file_number == 734594 & area == '0515',
+          area := '0506']
+full_data[year == 2015 & file_number == 34598,
+          c('low_grade', 'high_grade') := '04']
+full_data[year == 2015 & file_number == 626400,
+          c('low_grade', 'low_grade_code') := .('06', '40')]
+
 #Delete anyone who cannot possibly be identified below:
 #  Namely, those who match another exactly on (cleaned) first/last name,
 #  birth year and year of data

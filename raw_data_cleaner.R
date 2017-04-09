@@ -32,9 +32,8 @@ data_urls = read_html(URL) %>%
   paste0('https://dpi.wi.gov', .)
 
 #Download and extract raw files to data folder
-#  Raw files from here: http://lbstat.dpi.wi.gov/lbstat_newasr
-#  **TO DO: MAKE SURE NEW URL IS WORKING AS EXPECTED            **
-#  **http://dpi.wi.gov/cst/data-collections/staff/published-data**
+#  Raw files from here:
+#  http://dpi.wi.gov/cst/data-collections/staff/published-data
 sapply(data_urls, 
        function(uu){
          tmp <- tempfile()

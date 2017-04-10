@@ -97,47 +97,46 @@ rm(nnames)
 ###############################################################################
 #                             Data Errata                                     #
 ###############################################################################
+setkey(full_data, year, file_number)
 #Incorporate errata cited here:
 #  https://dpi.wi.gov/cst/data-collections/data-errata
+#All URLs in this section start with stub:
+#  https://dpi.wi.gov/sites/default/files/cst/
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/pdf/Staff_CESA8_2015-2016_letter.pdf
+## pdf/Staff_CESA8_2015-2016_letter.pdf
 ##   Courtney Franz: Area _is_ 0810, should be 0825
-full_data[year == 2016 & cesa == '08' & id == '000654132', area := '0825']
+full_data[year == 2016 & file_number == 744758, area := '0825']
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/pdf/Staff_Elk_Mound_2015-2016_letter.pdf
+## pdf/Staff_Elk_Mound_2015-2016_letter.pdf
 ##   Eric Wright (salary,fringe) _is_ (151189, 55637) should be (105664,52767)
-full_data[year == 2016 & grepl('Elk Mound', district_name, fixed = TRUE) & 
-            grepl('wright', last_name),
+full_data[year == 2016 & file_number == 501992,
           c('salary', 'fringe') := .(105664, 52767)]
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_Horicon_2015-2016.pdf
+## Staff_Horicon_2015-2016.pdf
 ##   Insufficient information to identify the referenced teacher, or even
 ##     to know what should be fixed
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/pdf/Staff_Jefferson_2015_2016.pdf
+## pdf/Staff_Jefferson_2015_2016.pdf
 ##   School District of Jefferson (2702)
 ##   "...data reported, incorrectly included salary amounts from extra duties
 ##    and co-curriculars that some certified staff members received"
 ##   (unclear how to incorporate)
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/pdf/Staff_Marinett_2015_2016_letter.pdf
+## pdf/Staff_Marinett_2015_2016_letter.pdf
 ##  School District of Marinette (3311)
 ##  "...Michelle Ferm, was found to not be licensed for her current assignment.
 ##   This situation was unable to be rectified [and she] was terminated..."
 ##  Could just drop her, but presumably her data is otherwise useful/informative
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/pdf/
-##   Staff_MPS_2015-2016%20Adminstrator%20Education%20Level%20Error.pdf
+## pdf/Staff_MPS_2015-2016%20Adminstrator%20Education%20Level%20Error.pdf
 ## Darienne Driver and Orlando Ramos both listed as Master's, but have doctorate
-full_data[year == 2016 & id %in% c('000684557', '000697114'),
+full_data[year == 2016 & file_number %in% c(749153, 812664),
           highest_degree := '7']
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/pdf/
-##   Staff_2015-2016%20MPS%20Correction%20Letter%20Re-Teaching%20Years%20of%20Experience.pdf
+## pdf/Staff_2015-2016%20MPS%20Correction%20Letter%20Re-Teaching%20Years%20of%20Experience.pdf
 ##  Milwaukee Public Schools (3619) completely botched recording of experience.
 ## Spreadsheet link:
-##   https://dpi.wi.gov/sites/default/files/imce/cst/xls/
-##     Corrected%202015-2016%20Total%20Years%20of%20Experience%20%28for%20Errata%20Ltr%29.xlsx
+##   xls/Corrected%202015-2016%20Total%20Years%20of%20Experience%20%28for%20Errata%20Ltr%29.xlsx
 ##    * Corrections spreadsheet appears to be linked by file_number field 
 ##      (called DPI Entity Number in spreadsheet)
 ##    * Pending correspondence from Milwaukee's Donna Edwards, assuming
@@ -159,19 +158,19 @@ full_data[year == 2016 & !is.na(file_number) & district == '3619',
           c('local_exp', 'total_exp') := 
             mwk_corr[.SD, .(x.local_exp, x.total_exp), on = 'file_number']]
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_StevenPoint_SD_2015-16.pdf
+## Staff_StevenPoint_SD_2015-16.pdf
 ##   Jerome Gargulak (position, area) _is_ (64, 5000), should be (55, 0000)
-full_data[year == 2016 & id == '000641542',
+full_data[year == 2016 & file_number == 98724,
           c('position_code', 'area') := .('55', '0000')]
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_Lodi_2014-2015.pdf
+## Staff_Lodi_2014-2015.pdf
 ## Lodi Public Schools (3150)
 ## "...list of contractors used by Lodi Schools in the 2014-15 school year
 ##  who declined to provide... demographic information [and thus]
 ##  are not listed in our WiseStaff submission"
 ##  (unclear how to incorporate)
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_Goodman-Armstrong_2014_2015.pdf
+## Staff_Goodman-Armstrong_2014_2015.pdf
 ## Tracy Cassidy: unclear how to incorporate info about grade levels
 ##   as these errata are not distinguishable in the data
 ## Joleen Pahl: unclear which assignment is incorrect -- errata refer
@@ -183,7 +182,7 @@ full_data[year == 2016 & id == '000641542',
 ## Richelle Jochem: unclear how to incorporate
 full_data[year == 2015 & file_number == 91661, position_code := '69']
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/Manawa%20data%20errata%20letter.pdf
+## Manawa%20data%20errata%20letter.pdf
 ## Jill Seka: unclear if anything's wrong
 ## Julie VanderGrinten: unclear if anything's wrong
 ##   (she _does_ have one assignment as 86-0000)
@@ -197,7 +196,7 @@ full_data[year == 2015 & file_number == 693678,
 full_data[year == 2015 & file_number %in% c(809487, 209625),
           c('position_code', 'area') := .('96', '9883')]
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_Menomonie_2014-2015.pdf
+## Staff_Menomonie_2014-2015.pdf
 ## Nathan McMahon: only licensed to teach grade 9
 ## Ryan Sterry: unclear the error, as there _is_ one assignment of 53-0291
 ## Harold Vlcek: only licensed to teach grade 9
@@ -211,7 +210,7 @@ full_data[year == 2015 & file_number %in% c(610056, 161164),
 full_data[year == 2015 & file_number == 132126 & position_code == '53',
           position_code := '64']
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_Oconto%20Falls_2014-2015.pdf
+## Staff_Oconto%20Falls_2014-2015.pdf
 ##  Complete record creation for Cynthia R Cho (also found in several years prior)
 full_data = 
   rbind(full_data,
@@ -241,41 +240,171 @@ full_data =
                    school = '0260', position_code = '53', subcontracted = 'N',
                    area = '0316', subcontracted = 'N', long_term_sub = 'N'),
         fill = TRUE)
-        
-## https://dpi.wi.gov/sites/default/files/imce/cst/pdf/Prairie%20Farm%20201508061437.pdf
+setkey(full_data, year, file_number)        
+
+## pdf/Prairie%20Farm%20201508061437.pdf
 ##  Ariel Humpal: eliminate 53-0620 row, adjust FTE on 53-0605/53-0625 rows
 ##                to reflect erratum report
 full_data[year == 2015 & file_number == 726878 & area == '0605',
           full_time_equiv := 60]
 full_data[year == 2015 & file_number == 726878 & area == '0625',
           full_time_equiv := 40]
-drop_idx = full_data[year == 2015 & file_number == 726878 & area == '0620', which = TRUE]
+drop_idx = full_data[year == 2015 & file_number == 726878 &
+                       area == '0620', which = TRUE]
 full_data = full_data[-drop_idx]
+setkey(full_data, year, file_number)
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_Suring%20School%202014-2015.pdf
+## Staff_Suring%20School%202014-2015.pdf
 ## Laura Lojpersberger: error doesn't actually appear to be in the data
 
-## https://dpi.wi.gov/sites/default/files/imce/cst/Staff_Wauwatosa_2014-2015.pdf
+## Staff_Wauwatosa_2014-2015.pdf
 ## Cara Anderson: area 0515 -> 0506
-## Marget Boyd: position 99 should be changed, but not clear what to
+## Marget Boyd, Wendy Domena, Edward Price,
+## Jennifer Schultz, Brian Smith, Jason Thurow:
+##   should all be 53-0002
 ## Mary Butkus: typo in low grade/high grade
 ## Bernard Carreon: incorrect low grade
-full_data[year == 2015 & file_number == 734594 & area == '0515',
-          area := '0506']
+## Quentin Cartier: higher-intensity position should be 53-0605
+## Bradley Daniels: higher-intensity position shouldn't be 0220;
+##                  assuming "Science. Project Lead the Way" should be 0620
+## Sabine Desmore: not KG, but 3rd grade
+## Jeanne Hanson: not 6-12 but 6-8 grades
+## Kathryn Hartung: not 99-0000 but 53-0365
+## Shannon Kobinsky: should change low/high grade, but not sure to what (K5?)
+## Ann Lindquist: not 53-0800 but 53-0811; not 6-12 grade, but 6-9
+## Sarah Marks: not clear what "entity id" is -- it's not file_number
+## James Martin: area should be "Alternative Education", but the code
+##               should be 0952, which stopped appearing in '07-'08
+## Killeen Nass: unclear if need to adjust anything
+## Carrie Streiff-Stuessy: not 17-0000 but 53-0316
+## Cheryl Wegner: not KG - 1 but 4-5
+## Randolph Wehr: not 53-0811 but 53-0800
+## Robb Widuch: not 53-0620 but 53-0605
+full_data[year == 2015 & file_number == 734594 & 
+            area == '0515', area := '0506']
 full_data[year == 2015 & file_number == 34598,
-          c('low_grade', 'high_grade') := '04']
+          c('low_grade', 'low_grade_code',
+            'high_grade', 'high_grade_code') :=
+            .('04', '32', '04', '32')]
 full_data[year == 2015 & file_number == 626400,
           c('low_grade', 'low_grade_code') := .('06', '40')]
+full_data[year == 2015 & file_number == 121701 & 
+            full_time_equiv == 80, area := '0605']
+full_data[year == 2015 & file_number == 679041 & 
+            full_time_equiv == 73, area := '0620']
+full_data[year == 2015 & file_number == 152640 & 
+            full_time_equiv == 73, area := '0620']
+full_data[year == 2015 & file_number == 152640,
+          c('low_grade', 'low_grade_code',
+            'high_grade', 'high_grade_code') :=
+            .('03', '28', '03', '28')]
+full_data[year == 2015 & file_number == 101806,
+          c('high_grade', 'high_grade_code') := .('08', '48')]
+full_data[year == 2015 & file_number == 693805,
+          c('position_code', 'area') := .('53', '0365')]
+full_data[year == 2015 & file_number == 81076,
+          c('area', 'high_grade', 'high_grade_code') := 
+            .('0811', '09', '52')]
+full_data[year == 2015 & file_number == 602531,
+          c('position_code', 'area') := .('53', '0316')]
+full_data[year == 2015 & file_number == 115309,
+          c('low_grade', 'low_grade_code',
+            'high_grade', 'high_grade_code') :=
+            .('03', '28', '03', '28')]
+full_data[year == 2015 & file_number == 683390, area := '0800']
+full_data[year == 2015 & file_number == 806575, area := '0605']
+full_data[year == 2015 & 
+            file_number %in% c(803668, 4246, 408763, 671844, 707047, 663370),
+          c('position_code', 'area') := .('53', '0002')]
+
+## Staff_Pecatonica_2015-2016_letter.pdf
+## Jessica Wortman @ Pecatonica should have different file number
+full_data[year == 2015 & file_number == 682650 & district == '0490', 
+          c('file_number', 'school') := .(703052L, '0000')]
+
+## Staff_Woodlands%20School%202014-2015.pdf
+## A trove of extra teachers at a very small district, but
+##   in current form un-usable. Pending correspondence with Tommie Myles
+
+## pdf/Staff_Cambridge_2012-2013_letter.pdf
+## Michael Klingbeil: salary should be 47968
+full_data[year == 2013 & file_number == 671130, salary := 47968]
+
+## pdf/errata_staff_CESA1_2012_2013.pdf
+## James Rickabaugh: (salary, fringe) should be (173930, 37607)
+## Barbara Van Haren: fringe should be 27274
+full_data[year == 2013 & file_number == 135939,
+          c('salary', 'fringe') := .(173930, 37607)]
+full_data[year == 2013 & file_number == 52999, fringe := 27274]
+
+## pdf/errata_staff_cesa2_jedi_2012-2013_letter.pdf
+## All teachers assigned to JEDI Virtual K-12 were erroneously listed
+##   as working for CESA 02, but should be listed as working
+##   for Cambridge School District (though JEDI later changed districts?)
+##   pending correspondence with Leslie Steinhaus
+full_data[year == 2013 & 
+            file_number %in% c(176962, 171560, 616125, 408927,  216133, 
+                               103012, 99457, 72691, 723714, 620277, 
+                               744048, 146381, 630809, 698516, 122863, 
+                               660292, 663838, 617356, 66687, 616905),
+          c('district', 'school', 'district_name', 'school_name',
+            'grade_level', 'county', 'county_name', 'district_work_type') :=
+            .('0896', 'Cambridge Sch Dist', 'JEDI Virtual K-12',
+              '7', '13', 'Dane County', '04')]
+
+## pdf/Staff_Darlington%20Community%20Schools_2012-2013_letter.pdf
+## Denise Wellnitz: salary should be 110283.36
+full_data[year == 2013 & file_number == 98953, salary := 110283.36]
+
+## pdf/staff_luxemburg-casco_2012_2013.pdf
+## Michael Lover: (salary, fringe) should be (18442.96, 1410.88)
+full_data[year == 2013 & file_number == 40074,
+          c('salary', 'fringe') := .(18442.96, 1410.88)]
+
+## pdf/Staff_Manitowoc_2012_2013.pdf
+## Margarette Allen, Angela Gray, Allison Herzog, Jennifer Wetenkamp,
+##   Lisa Wilke have wrong salaries (67949, 46741, 41942, 47159, 52103)
+full_data[year == 2013 & file_number == 615872, salary := 67949]
+full_data[year == 2013 & file_number == 629074, salary := 46741]
+full_data[year == 2013 & file_number == 744560, salary := 41942]
+full_data[year == 2013 & file_number == 690760, salary := 47159]
+full_data[year == 2013 & file_number == 664271, salary := 52103]
+
+## pdf/errata_staff_stone_bank_2012_2013.pdf
+## Phillip Meissen position as Special Education Director is spurious;
+##   that time should be reassigned to Principal position
+full_data[year == 2013 & file_number == 13415 & 
+            position_code == '51', full_time_equiv := 30]
+drop_idx = full_data[year == 2013 & file_number == 13415 & 
+                       position_code == '80', which = TRUE]
+full_data = full_data[-drop_idx]
+setkey(full_data, year, file_number)
+
+## pdf/staff_waukesha_2012_2013.pdf
+## Carla Bauer-Gonzalez: area 0317 not 0316
+full_data[year == 2013 & file_number == 38502, area := '0317']
+
+## pdf/Staff_CESA_2013-2014_letter.pdf
+## Ann Krace should have area changed, but unclear to what
+
+## pdf/Staff_Kaukauna_2013-2014_letter.pdf
+## many, many teachers with incorrect fringe -- tabled
+##   pending correspondence with Scott Mikesh
+
+## Staff_Portage_2013-2014_letter.pdf
+## unclear how to incorporate info about erroneous FTE calculation
+
+## pdf/Staff_LaCrosse_2013-2014_letter.pdf
+## many, many teachers with incorrect fringe -- tabled
+##   pending correspondence with Steve Salerno
 
 #Delete anyone who cannot possibly be identified below:
 #  Namely, those who match another exactly on (cleaned) first/last name,
 #  birth year and year of data
-#  Also reset NA fringe values to 0, and remove anyone with a missing
-#  year of birth
 full_data = 
   full_data[ , if (uniqueN(id) == 1L) .SD,
-             keyby = .(first_name_clean, last_name_clean,
-                       birth_year, year)]
+             keyby = .(first_name_clean, last_name_clean, birth_year, year)]
+#Reset NA fringe values to 0
 full_data[is.na(fringe), fringe := 0]
 
 #Will also use a different cleaned version of the first name--

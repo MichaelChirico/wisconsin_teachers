@@ -54,7 +54,7 @@ t0 = proc.time()["elapsed"]
 cl <- makeCluster(detectCores())
 clusterExport(cl, c('full_data', 'end_cons', 'fpr', 'zs', 'yrs'),
              envir = environment())
-clusterEvalQ(cl, {library("data.table"); library("cobs")})
+clusterEvalQ(cl, {library(data.table); library(cobs)})
 imputed_scales = rbindlist(mclapply(yrs, function(yr) {
   full_data[.(yr), {
     ba = highest_degree == 4

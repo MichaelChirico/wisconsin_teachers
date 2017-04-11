@@ -494,6 +494,35 @@ full_data[year == 2008 & id == '000027463', fringe := 44224]
 ## Mark Gilbertson salary should be 51239.86
 full_data[year == 2009 & id == '000119270', salary := 51239.86]
 
+## Staff_Spooner_2009-2010.pdf
+## Tammy Ackerson salary should be 39475
+## Bruce Buchmann salary should be 59996
+## Jody Gibson salary should be 48163
+## Sherry Perrin salary should be 55125
+## James Sundeen salary should be 60904
+## Hope Walker salary should be 60633
+full_data[year == 2010 & id == '000078322', salary := 39475]
+full_data[year == 2010 & id == '000091305', salary := 59996]
+full_data[year == 2010 & id == '000088537', salary := 48163]
+full_data[year == 2010 & id == '000058475', salary := 55125]
+full_data[year == 2010 & id == '000051277', salary := 60904]
+full_data[year == 2010 & id == '000109233', salary := 60633]
+
+## pdf/staff_three_lakes_09.pdf
+## received .doc version of .pdf file from Sue Frank
+##   on April 11, 2017 & copy-pasted to plain tab-separated file
+## 7 still unmatched as of Apr. 11:
+##   Scott Brewster, Kenneth Koxlien, Carol Lorbetske,
+##   Emeline Nitzel, Stephen Schacht, Stephanie Smith, Cheryl Tubbs
+tlsd_err = fread(wds['keys'] %+% 'three_lakes_errata_extract.tsv',
+                 sep = '\t', col.names = c('name', 'fringe'))
+tlsd_err[ , last_name := gsub(',.*', '', tolower(name))]
+tlsd_err[ , first_name := 
+            gsub('.*,\\s([a-z]+)[ a-z]*$', '\\1', tolower(name))]
+
+full_data[year == 2010 & district == '5733',  fringe := 
+            tlsd_err[.SD, x.fringe, on = c('last_name', 'first_name')]]
+
 ###############################################################################
 #                         Further Pre-Processing                              #
 ###############################################################################

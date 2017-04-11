@@ -9,7 +9,6 @@ raw_data_f = "/media/data_drive/wisconsin/teacher_raw_data/"
 wds = c(data = paste0(raw_data_f, 'data_files'),
         key = paste0(raw_data_f, "fwf_keys/"))
 
-#access at github.com/MichaelChirico/funchir
 library(funchir)
 #for scraping URLs
 library(rvest)

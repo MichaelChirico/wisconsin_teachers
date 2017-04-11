@@ -58,42 +58,6 @@ full_data[ , (nnames) := lapply(.SD, function(x)
   gsub("^\\s+|\\s+$", "", gsub("\\b\\s{2,}\\b"," ", tolower(x)))),
   .SDcols = nnames]
 
-#Try to impute maiden name when it seems to have been stored in the last name
-#  Specifically, when nee is empty, look for names with "(" or "-";
-#  maiden names appear to be stored between parentheses and before hyphens 
-#  (not a perfect system); note that
-#  full_data[gsub("\\s", "", nee) == "", names(table(nee))] 
-#  shows that when missing nee is stored as a string, there is only one
-#  possible length of that string. Also note that there is only one person 
-#  in the data with both - and () in their name:
-#    terese l demark-russo (uebe) (1998:000237414/1999:000315944)
-#  and she has her maiden name stored as demark
-#  As an alternative, define nee as the name coming after the hyphen:
-full_data[(!nzchar(nee, keepNA = TRUE) & grepl("-", last_name)),
-           c("nee", "nee2") := .(gsub("-.*", "", last_name),
-                                 gsub(".*-", "", last_name))]
-full_data[grepl('[()]', last_name),
-          nee := gsub(".*\\(|\\).*", "", last_name)]
-nnames = c(nnames, "nee2")
-
-#Try to get a "clean" version of first, last, and maiden names by
-#  deleting *all* white space, initials
-##First, in first_name, add a space after the comma when it's missing
-##  (causing problems & frequent--e.g., "lisa,a"->"lisa a")
-full_data[grepl(",[^ ]", first_name), 
-          first_name := gsub(",", " ", first_name, fixed = TRUE)]
-full_data[ , paste0(nnames, "_clean") :=
-            lapply(.SD, function(x) {
-              gsub(paste0("\\s|", "(\\s|^)[a-z](\\s|$)|", 
-                          "\\([^)]*(\\)|$)"), "",
-                   gsub("[-.,'-]", "", x))}),
-          .SDcols = nnames]
-##Names like W C Fields were deleted; restore them
-invisible(lapply(nnames, function(x)
-  full_data[!nzchar(get(paste0(x, "_clean"))),
-            paste0(x, "_clean") := get(x)]))
-rm(nnames)
-
 ###############################################################################
 #                             Data Errata                                     #
 ###############################################################################
@@ -349,7 +313,7 @@ full_data[year == 2013 &
                                660292, 663838, 617356, 66687, 616905),
           c('district', 'school', 'district_name', 'school_name',
             'grade_level', 'county', 'county_name', 'district_work_type') :=
-            .('0896', 'Cambridge Sch Dist', 'JEDI Virtual K-12',
+            .('0896', '9803', 'Cambridge Sch Dist', 'JEDI Virtual K-12',
               '7', '13', 'Dane County', '04')]
 
 ## pdf/Staff_Darlington%20Community%20Schools_2012-2013_letter.pdf
@@ -530,6 +494,45 @@ full_data[year == 2008 & id == '000027463', fringe := 44224]
 ## Mark Gilbertson salary should be 51239.86
 full_data[year == 2009 & id == '000119270', salary := 51239.86]
 
+###############################################################################
+#                         Further Pre-Processing                              #
+###############################################################################
+#Try to impute maiden name when it seems to have been stored in the last name
+#  Specifically, when nee is empty, look for names with "(" or "-";
+#  maiden names appear to be stored between parentheses and before hyphens 
+#  (not a perfect system); note that
+#  full_data[gsub("\\s", "", nee) == "", names(table(nee))] 
+#  shows that when missing nee is stored as a string, there is only one
+#  possible length of that string. Also note that there is only one person 
+#  in the data with both - and () in their name:
+#    terese l demark-russo (uebe) (1998:000237414/1999:000315944)
+#  and she has her maiden name stored as demark
+#  As an alternative, define nee as the name coming after the hyphen:
+full_data[(!nzchar(nee, keepNA = TRUE) & grepl("-", last_name)),
+           c("nee", "nee2") := .(gsub("-.*", "", last_name),
+                                 gsub(".*-", "", last_name))]
+full_data[grepl('[()]', last_name),
+          nee := gsub(".*\\(|\\).*", "", last_name)]
+nnames = c(nnames, "nee2")
+
+#Try to get a "clean" version of first, last, and maiden names by
+#  deleting *all* white space, initials
+##First, in first_name, add a space after the comma when it's missing
+##  (causing problems & frequent--e.g., "lisa,a"->"lisa a")
+full_data[grepl(",[^ ]", first_name), 
+          first_name := gsub(",", " ", first_name, fixed = TRUE)]
+full_data[ , paste0(nnames, "_clean") :=
+            lapply(.SD, function(x) {
+              gsub(paste0("\\s|", "(\\s|^)[a-z](\\s|$)|", 
+                          "\\([^)]*(\\)|$)"), "",
+                   gsub("[-.,'-]", "", x))}),
+          .SDcols = nnames]
+##Names like W C Fields were deleted; restore them
+invisible(lapply(nnames, function(x)
+  full_data[!nzchar(get(paste0(x, "_clean"))),
+            paste0(x, "_clean") := get(x)]))
+rm(nnames)
+
 #Delete anyone who cannot possibly be identified below:
 #  Namely, those who match another exactly on (cleaned) first/last name,
 #  birth year and year of data
@@ -563,7 +566,6 @@ full_data[ , (ethnames) := lapply(ethcodes, function(x) ethnicity == x)]
 full_data[ , ethnicity_main := 
              factor(ethnicity, levels = c('B', 'H', 'W'),
                     labels = c('Black', 'Hispanic', 'White'))]
-
 
 ###############################################################################
 #                          Matching Algorithm                                 #

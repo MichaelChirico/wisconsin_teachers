@@ -382,7 +382,7 @@ setkey(full_data, year, file_number)
 
 ## pdf/staff_waukesha_2012_2013.pdf
 ## Carla Bauer-Gonzalez: area 0317 not 0316
-full_data[year == 2013 & file_number == 38502, area := '0317']
+full_data[year %in% 2012:2013 & file_number == 38502, area := '0317']
 
 ## pdf/Staff_CESA_2013-2014_letter.pdf
 ## Ann Krace should have area changed, but unclear to what
@@ -397,6 +397,138 @@ full_data[year == 2013 & file_number == 38502, area := '0317']
 ## pdf/Staff_LaCrosse_2013-2014_letter.pdf
 ## many, many teachers with incorrect fringe -- tabled
 ##   pending correspondence with Steve Salerno
+
+## pdf/staff_easttroy_2011_2012.pdf
+## Tim Peerenboom position_code should be 80
+## Michael Weygand should be 54-0000 with
+##   (salary, fringe) (65229, 23622), FTE 100
+## Brian Wegener fringe should be 29766
+full_data[year == 2012 & file_number == 670604, position_code := '80']
+full_data[year == 2012 & file_number == 96180,
+          c('position_code', 'area', 'salary', 'fringe', 'full_time_equiv') :=
+            .('54', '0000', 65229, 23622, 100)]
+full_data[year == 2012 & file_number == 214768, fringe := 29766]
+
+## pdf/errata_staff_Hartford_2011_2012.pdf
+## unclear how to address first point
+## Andrew Sarnow excluded from 2013; using other years' info to fill out
+##   what is not explicated in erratum report
+extra_obs = copy(full_data[year == 2014 & file_number == 613845])
+extra_obs[ , c('id', 'year_session', 'local_exp', 
+               'total_exp', 'salary', 'fringe') := 
+             .('', '2013R', 10, 140, 103000, 17246)]
+full_data = rbind(full_data, extra_obs)
+setkey(full_data, year, file_number)
+
+## pdf/staff_hortonville_2011_2012.pdf
+## Janet Rowe salary should be 66722
+full_data[year == 2012 & file_number == 51033, salary := 66722]
+
+## pdf/staff_lancaster_community_2011_2012.pdf
+## Eric Rolland 6-8th grade assignment should be 53-0265
+full_data[year == 2012 & file_number == 190492 &
+            low_grade == '06', area := '0265']
+
+## pdf/Staff_Lancaster_Community_2011-2012_letter2.pdf
+## Roxanne Boardman total experience too high in 2012/13
+full_data[year == 2012 & file_number == 735398, total_exp := 10]
+full_data[year == 2013 & file_number == 735398, total_exp := 20]
+
+## pdf/staff_pewaukee-public_2011-2012.pdf
+## Michele Riehle salary should be 62946
+## Paul Hassman salary should be 47409
+## Megan (Meyer) Quick salary should be 43193
+full_data[year == 2012 & file_number == 418815, salary := 62946]
+full_data[year == 2012 & file_number == 694658, salary := 47409]
+full_data[year == 2012 & file_number == 700064, salary := 43193]
+
+## pdf/staff_mps_sy2011-12_fringe_benefits_error_11-28-2012.pdf
+## unclear if this is the proper approach, but it is
+##   certainly suggested by the letter
+full_data[year == 2012 & district == '3619' & position_code == '43',
+          c('salary', 'fringe') := NA_real_]
+
+## pdf/staff_montello_2011-2012.pdf
+## Patricia Dwyer (salary, fringe) should be (50400, 25035.52);
+##   ignoring admonition about FTE given consistency with later years
+full_data[year == 2012 & file_number == 43821,
+          c('salary', 'fringe') := .(50400, 25035.52)]
+
+## pdf/staff_west_de_pere_2011_2012.pdf
+## Kathleen Held total_exp should be 250
+##   (inferred from erratum combined with 2013 data)
+full_data[year == 2012 & file_number == 178739, total_exp := 250]
+
+## pdf/staff_adams_friendship_2010_2011.pdf
+## James Kuchta experience has been incorrect since 1999
+full_data[year %in% 2000:2011 & first_name == 'james' & 
+            last_name == 'kuchta' & position_code %in% c('51', '52'),
+          c('local_exp', 'total_exp') := .(local_exp + 5, total_exp + 5)]
+
+## pdf/staff_franklin_public_schools_2010_2011.pdf
+## no instructions for how to fix errata
+
+## pdf/staff_port_edwards_2010_2011.pdf
+## data appears correct
+
+## pdf/staff_west_de_pere_2010_2011.pdf
+## Kevin Hanson salary should be 120382
+full_data[year == 2011 & id == '000124841', salary := 120382]
+
+## pdf/staff_appleton_2009_2010_staff_worksheet.pdf
+## pdf/staff_appleton_2008_2009_staff_worksheet.pdf
+## many corrections, pending correspondence with Donald Hietpas
+
+## pdf/staff_birchwood%20_2009_10.pdf
+## Kimberly Will should be 53-0050
+## unclear if Judy Knickerbocker's adjustment is needed or not
+full_data[year == 2010 & id == '000023088', area := '0050']
+
+## pdf/staff_dceverest_2009_2010_2.pdf
+## many corrections, pending correspondence with Jack Stoskopf
+
+## pdf/staff_dceverest_2009_2010.pdf
+## Suzanne Franck salary should be 74906
+full_data[year == 2010 & id == '000061160', salary := 74906]
+
+## pdf/staff_east_troy_10.pdf
+## Janet Hammelman, Teri Dallas and Jean Barry should be 53-0810
+full_data[year == 2010 & 
+            id %in% c('000116123', '000028912', '000128671'), area := '0810']
+
+## pdf/staff_kaukauna_2009_2010.pdf
+## unclear what to correct about teachers earning more than 77778
+
+## pdf/staff_milwaukee_carmen_2009-2010.pdf
+## erratum reports 15 missing teachers, but gives no info
+
+## pdf/staff_milwaukee_2009-2011.pdf
+## erratum only covers school-wide FTE total errors,
+##   no disaggregated details
+
+## pdf/staff_oconto_falls_2009_2010.pdf
+## Marsha Mellen salary should be 53905
+full_data[year == 2010 & id == '000056428', salary := 53905]
+
+## pdf/staff_sturgeon_bay_10.pdf
+## Krista Schley salary should be 34016
+full_data[year == 2010 & id == '000012944', salary := 34016]
+
+## pdf/psd_08_09.pdf
+## pdf/psd_07_08.pdf
+## Joann Sternke fringe should be 60571 (2009) / 53007 (2008)
+## John Gahan III fringe should be 47983 (2009) / 44224 (2008)
+full_data[year == 2009 & id == '000099606', fringe := 60571]
+full_data[year == 2008 & id == '000080637', fringe := 53007]
+full_data[year == 2009 & id == '000033997', fringe := 47983]
+full_data[year == 2008 & id == '000027463', fringe := 44224]
+
+## pdf/staff_three_lakes_09.pdf
+## many corrections, pending correspondence with Sue Frank
+
+## pdf/staff_wausau_09.pdf
+## Mark Gilbertson salary should be 51239.86
+full_data[year == 2009 & id == '000119270', salary := 51239.86]
 
 #Delete anyone who cannot possibly be identified below:
 #  Namely, those who match another exactly on (cleaned) first/last name,

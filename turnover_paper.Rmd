@@ -1,12 +1,14 @@
 ---
 title: "Teacher Turnover in Wisconsin"
 author: "Michael Chirico"
-date: "March 17, 2017"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   pdf_document:
     keep_tex: yes
     includes:
       in_header: turnover_paper_header.tex
+fontsize: 12pt
+linestretch: 1.5
 abstract: 'Given the consistently-affirmed importance of teacher quality to student success, understanding teacher churn is crucial to formulating and evaluating teacher labor market policy. This paper replicates the analysis of @hanushek over a longer and more recent time period in Wisconsin and confirms all of its major findings, namely that while inter-district pay differentials are a significant determinant of turnover, school quality measures are much better predictors of all three types of churn -- within and between school districts and out of local public schools.'
 bibliography: references.bib
 link-citations: true

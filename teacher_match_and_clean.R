@@ -190,7 +190,7 @@ full_data =
                    county_name = 'Oconto County', ship_zip = '54154-1468',
                    district_name = 'Oconto Falls Public Sch Dist',
                    district_work_type = '04', mail_zip = '54154-1468',
-                   school_mail_1 = '102 S Washington St',
+                   school_mail_1 = '102 S Washington St', area = '0316', 
                    school_mail_2 = 'Oconto Falls WI  54154-1468',
                    school_shipping_1 = '102 S Washington St',
                    school_shipping_2 = 'Oconto Falls WI  54154-1468',
@@ -200,9 +200,8 @@ full_data =
                    low_grade = '07', low_grade_code = '44', year = 2015L,
                    telephone = '920-848-4463', admin_name = 'Louis Hobyan',
                    high_grade = '07', high_grade_code = '07',
-                   first_name_clean = 'cynthia', last_name_clean = 'cho',
-                   school = '0260', position_code = '53', subcontracted = 'N',
-                   area = '0316', subcontracted = 'N', long_term_sub = 'N'),
+                   school = '0260', position_code = '53',
+                   subcontracted = 'N', long_term_sub = 'N'),
         fill = TRUE)
 setkey(full_data, year, file_number)        
 
@@ -304,8 +303,7 @@ full_data[year == 2013 & file_number == 52999, fringe := 27274]
 ## pdf/errata_staff_cesa2_jedi_2012-2013_letter.pdf
 ## All teachers assigned to JEDI Virtual K-12 were erroneously listed
 ##   as working for CESA 02, but should be listed as working
-##   for Cambridge School District (though JEDI later changed districts?)
-##   pending correspondence with Leslie Steinhaus
+##   for Cambridge School District (though JEDI changes districts regularly)
 full_data[year == 2013 & 
             file_number %in% c(176962, 171560, 616125, 408927,  216133, 
                                103012, 99457, 72691, 723714, 620277, 

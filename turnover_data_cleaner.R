@@ -216,13 +216,14 @@ teachers[order(year), paste0('schedule_lsalary', pr, '_next') :=
          by = teacher_id]
 
 #if the teacher moved, what would their wage have been had they stayed?
-teachers[payscales[ , .(year = year - 1L, district_fill, 
-                        tenure = tenure - 1L, highest_degree, 
-                        lwage, lwage_pred, lwage_resid)], 
+teachers[ , year_next := shift(year, type = 'lead'), by = teacher_id]
+teachers[ , total_exp_floor_next := 
+            shift(total_exp_floor, type = 'lead'), by = teacher_id]
+teachers[payscales, 
          paste0('schedule_lsalary', c('', pr), '_next_cf') := 
            .(i.lwage, i.lwage_pred, i.lwage_resid),
-         on = c('year', 'district_fill', 
-                total_exp_floor = 'tenure', 'highest_degree')]
+         on = c(year_next = 'year', 'district_fill', 
+                total_exp_floor_next = 'tenure', 'highest_degree')]
 
 ###############################################################################
 #                           District-Level Covariates                         #

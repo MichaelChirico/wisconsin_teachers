@@ -96,14 +96,14 @@ teachers = teachers[district_work_type %in% c('04', '49')]
 #  Through 2003-04, months used, days thereafter
 #    *Eliminate those who never worked >=8.75 months
 #    *Eliminate those who never worked >=175 days
-teachers = teachers[(months_employed %between% c(875, 1050) | year > 2003) &
-                      (days_of_contract %between% c(175, 195) | year <= 2003)]
+teachers = teachers[(months_employed >= 875 | year > 2003) &
+                      (days_of_contract >= 175 | year <= 2003)]
 
 #category: 1 are professional, regular education teachers
 teachers = teachers[category == "1"]
 
-# #eliminate teachers with FTE <= 80
-# teachers = teachers[full_time_equiv >= 80]
+#eliminate teachers with FTE <= 80
+teachers = teachers[full_time_equiv >= 80]
 
 N_subset_I = uniqueN(teachers$teacher_id)
 

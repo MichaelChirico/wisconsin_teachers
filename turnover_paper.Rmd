@@ -807,7 +807,7 @@ The most notable difference relative to table \ref{tbl:reg_lpm} is the weakening
 #   of a 10% salary increase (also with
 #   confidence intervals?) & compare to HKR
 teachersML = 
-  melt(teachers, id.vars =
+  melt(teachers[total_exp_floor <= 30], id.vars =
          c('teacher_id', 'year', 'schedule_lbase_ba_salary', 
            'gender', 'pct_prof_d', 'pct_frl_d', 'urbanicity_d',
            'nonwhite', 'pct_nonwhite_d',
@@ -815,11 +815,12 @@ teachersML =
        measure.vars = c('stay_next', 'move_district_next', 'quit_next'),
        variable.name = 'alternative', value.name = 'chosen')
 setorder(teachersML, teacher_id, year, alternative)
+teachersML[ , exp_split := droplevels(exp_split)]
 
 teachersML[ , ID := .GRP, by = .(teacher_id, year)]
 
 mnl_l = 
-  lapply(split(teachersML, by = 'exp_split', sorted = TRUE), function(DT) {
+  lapply(split(teachersML, f = teachersML$exp_split, sorted = TRUE), function(DT) {
     setattr(DT, 'class', c('mlogit.data', class(DT)))
     setattr(DT, 'index', with(DT, data.table(alt = alternative, chid = ID)))
     mlogit(chosen ~ 0 | 
@@ -859,7 +860,7 @@ tbl = capture.output(texreg(
 
 idx = grep('years', tbl)
 tbl = c(tbl[1L:(idx - 1L)],
-        ' & \\multicolumn{4}{c}{Teacher Experience} \\\\ \\cline{2-6}',
+        ' & \\multicolumn{4}{c}{Teacher Experience} \\\\ \\cline{2-5}',
         tbl[idx:length(tbl)])
 tbl = gsub('\\([12]\\)', '', tbl)
 #exclude the extra blank rows introduced by texreg's group option

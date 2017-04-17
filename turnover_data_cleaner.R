@@ -86,12 +86,14 @@ teachers =
 #     district appear to "switch" to the same district,
 teachers[ , school_next :=
             shift(school_fill, 1L, type = 'lead'), by = teacher_id]
+teachers[ , move_school_next := 
+            #if school_next is missing, it's the last observation
+            #  (i.e., quit_next is TRUE)
+            !(school_fill == school_next | is.na(school_next))]
 teachers[ , district_next :=
             shift(district_fill, 1L, type = 'lead'), by = teacher_id]
-
-#move_school/district_next missing if and only if quit_next
-teachers[is.na(move_school_next), move_school_next := FALSE]
-teachers[is.na(move_district_next), move_district_next := FALSE]
+teachers[ , move_district_next := 
+            !(district_fill == district_next | is.na(district_next))]
 
 #now eliminate final-year teachers
 teachers = teachers[year <= incl_rng[2L]]

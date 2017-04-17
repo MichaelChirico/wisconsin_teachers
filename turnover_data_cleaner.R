@@ -70,7 +70,20 @@ teachers =
   teachers[.(teachers[ , all(position_code == '53'),
                        by = teacher_id]$teacher_id)]
   
-#define movement indicators
+#define movement indicators in this file.
+#  Two older approaches that were unsatisfactory:
+#  1) Using district_next_main and move_district_next as
+#     defined in teacher_match_and_clean --
+#     was causing issues with late-career
+#     teachers who switch frequently among
+#     positions. Here, we first eliminate
+#     any teachers who showed up as substitutes
+#     at some point, which seems to solve that problem
+#  2) Same as here, but define these indicators later in
+#     the file -- this was leading to some teachers
+#     who took a break from full-time teaching but
+#     ultimately coming back full-time at the same
+#     district appear to "switch" to the same district,
 teachers[ , school_next :=
             shift(school_fill, 1L, type = 'lead'), by = teacher_id]
 teachers[ , district_next :=

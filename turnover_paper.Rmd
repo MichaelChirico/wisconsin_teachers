@@ -90,7 +90,8 @@ T1 = rbind(
                 `Change Schools Within District` = 
                   100*sum(move_within_next)/.N,
                 `Switch Districts` = 100*sum(move_district_next)/.N,
-                `Exit Wisconsin \\mbox{Public Schools}` = 100*sum(quit_next)/.N,
+                `Exit Wisconsin \\mbox{Public Schools}` = 
+                  100*sum(quit_next)/.N,
                 `Number of Teachers` = prettyNum(.N, big.mark = ',')),
             keyby = .(`Teacher Experience` = exp_split)],
   teachers[ , .(`Teacher Experience` = 'All',
@@ -98,8 +99,13 @@ T1 = rbind(
                 `Change Schools Within District` = 
                   100*sum(move_within_next)/.N,
                 `Switch Districts` = 100*sum(move_district_next)/.N,
-                `Exit Wisconsin \\mbox{Public Schools}` = 100*sum(quit_next)/.N,
+                `Exit Wisconsin \\mbox{Public Schools}` = 
+                  100*sum(quit_next)/.N,
                 `Number of Teachers` = prettyNum(.N, big.mark = ','))])
+
+n_retd = 
+  5*round(T1[`Teacher Experience` == '>30 years'][[grep('Exit', names(T1))]]/5)
+
 suppressWarnings(
   tbl <- capture.output(print(xtable(
     T1, caption =
@@ -116,6 +122,9 @@ tbl = c(tbl[1L:idx],
         tbl[(idx+1L):length(tbl)])
 cat(tbl, sep = '\n')
 
+quit_rates = teachers[, mean(quit_next), keyby = total_exp_floor]
+new_quits = quit_rates[total_exp_floor == 1, V1]
+mid_quits = quit_rates[total_exp_floor %between% c(10, 20), mean(V1)]
 # code to produce plot of quits by experience level, with
 #   bootstrapped confidence intervals:
 # x = teachers[total_exp_floor <= 40]
@@ -135,7 +144,7 @@ cat(tbl, sep = '\n')
 
 Table \ref{tbl:move_by_exp} replicates Table 1 of @hanushek (HKR), and as HKR found in Texas, most turnover in Wisconsin is happening within districts and out of the profession. In Wisconsin, the fraction of teachers transitioning among districts is vanishingly small after a "burn-in" period of roughly 6 years -- only `r round(100*teachers[total_exp_floor >= 7, mean(move_district_next)], 1)`% of such teachers do so (compared with `r round((4.5*75284 + 2.5*165873 + 0.7*6978)/(75284+165873+6978), 1)`% for the comparable group in HKR), but is still relatively higher among the youngest teachers -- roughly twice as high for the "probationary" teachers (1-3 years' experience) as for teachers with 7-11 years' experience in both states.
 
-By contrast, movement patterns within districts in the two states are very similar, lending weight to teachers "earning their stripes" within a district to be able to choose the best schools as a privilege of seniority. As expected, we also observe a U-shaped pattern in teachers exiting Wisconsin public schools, which jives with two types of quits. Early-career quitters who change to private schools, change state of residence, or change professions, and late-career quitters who retire -- this is epecially evident among teachers with more than 30 years' experience, a group which sees a mass exodus of fully 20 percent of its teachers annually. Results not included here break down the exit rates by experience level, where this dichotomy is even more dramatic -- first-year exit rates are about 9 percent and quickly level off at around 2 percent before spiking again past around 25 years.
+By contrast, movement patterns within districts in the two states are very similar, lending weight to teachers "earning their stripes" within a district to be able to choose the best schools as a privilege of seniority. As expected, we also observe a U-shaped pattern in teachers exiting Wisconsin public schools, which jives with two types of quits. Early-career quitters who change to private schools, change state of residence, or change professions, and late-career quitters who retire -- this is epecially evident among teachers with more than 30 years' experience, a group which sees a mass exodus of fully `r n_retd` percent of its teachers annually. Results not included here break down the exit rates by experience level, where this dichotomy is even more dramatic -- first-year exit rates are about `r to.pct(new_quits, 0)` percent and quickly level off at around `r to.pct(mid_quits, 0)` percent before spiking again past around 25 years.
 
 As examined further below, the low rate of switches between districts appears to be owing to the generally more rural nature of Wisconsin vis-à-vis. Texas. To wit, Milwaukee is the only major urban area in the state, and its population (2010 Census) of 594,833 would rank 7th in Texas. This means that two major types of movers in the HKR data -- Large Urban - Large Urban and Suburban - Large Urban -- are limited within the state to ending up in a relatively minor metropolitan area. HKR don't provide any results disaggregated by city, precluding any attempts to compare these numbers more comparably to those that would obtain from eliminating the largest cities in Texas.
 
@@ -171,6 +180,8 @@ T2 = rbind(
 total_urban_moves =
   teachers[urbanicity_s %in% c('Large Urban', 'Small Urban'), 
            sum(move_district_next)]
+rural_rural = T2[urbanicity_s == 'Rural', Rural[1L]]
+r_r_msg = if(rural_rural>60) '60%' else 'MAJOR DATA CHANGE FLAG'
 
 setnames(T2, grep('[^y]_', names(T2)), character(3L))
 T2[ , c('Origin Community', 'urbanicity_s') :=
@@ -235,7 +246,7 @@ wi_pct_districts_nonurb =
 
 As mentioned in the discussion of Table \ref{tbl:move_by_exp}, the major difference with respect to quantities observed in Texas appears to be driven in differences in the urban landscape between Texas and Wisconsin[^share_shift]. This is supported by the overall similarity of magnitudes of transition rates to community types besides Large Urban in the two papers. Figure \ref{fig:ti_wi_urb} depicts this difference in landscape by comparing the distribution of community types in Texas and Wisconsin (bar widths reflect the relative quantity of districts in Texas and Wisconsin). While both states are majority-rural, the non-rural part of Texas is comparatively urbanized, whereas more than `r to.pct(wi_pct_districts_nonurb, -1)`% of Wisconsin districts are non-urban.
 
-Returning to Table \ref{tbl:move_by_exp}, we see that, as in HKR, the "stickiest" community type is Rural -- over 60% of Rural teachers remain Rural in both papers, and even fewer Rural Wisconsin teachers end up in a big city than is the case for Texas. This may reflect the similarity in prevalence of rural districts in the two states. Lastly, we also find broad similarity in the community type transition patterns of younger teachers as compared to all teachers.
+Returning to Table \ref{tbl:move_by_exp}, we see that, as in HKR, the "stickiest" community type is Rural -- over `r r_r_msg` of Rural teachers remain Rural in both papers, and even fewer Rural Wisconsin teachers end up in a big city than is the case for Texas. This may reflect the similarity in prevalence of rural districts in the two states. Lastly, we also find broad similarity in the community type transition patterns of younger teachers as compared to all teachers.
 
 [^share_shift]: We also note a difference in the relative shift in population between the two states -- Texas observed dramatic changes in its community type distribution over the period of study of only 4 years, while Wisconsin only saw some movement from Rural to Suburban communities.
 
@@ -275,8 +286,28 @@ T3[ , all :=
                pct_black_next_d - pct_black_d, pct_frl_next_d - pct_frl_d),
           na.omit)
         c(rbind(sapply(dl, mean), sapply(dl, se)))}]]
+
+avg_premium = 
+  teachers[(move_district_next), 
+           mean(exp(schedule_lsalary_next) - 
+                  exp(schedule_lsalary_next_cf), na.rm = TRUE)]
+
+avg_premium_rel = 
+  teachers[(move_district_next), 
+           mean(exp(schedule_lsalary_next)/
+                  exp(schedule_lsalary_next_cf), na.rm = TRUE)]
+
+m_del_prem = diff(unlist(
+  T3[var == '1M', grep('M.*(3|11)', names(T3)), with = FALSE]
+))
+f_del_prem = diff(unlist(
+  T3[var == '1M', grep('F.*(3|11)', names(T3)), with = FALSE]
+))
+prem_trend_msg = if (m_del_prem < 0 || f_del_prem < 0) 
+  'MAJOR DATA CHANGE FLAG' else ''
+
 adj_wage_coef = T3[var == '2M', all]
-  
+
 T3[ , var := rep(c('Base year salary (log)', 'Adjusted salary (log)',
                    'Percent proficient', 'Percent Hispanic',
                    'Percent black', 'Percent subsidized lunch'), each = 2L)]
@@ -354,13 +385,13 @@ cat(tbl, sep = '\n')
 #   abline(h = 0, lty = 2)}]
 ```
 
-Table \ref{tbl:change_by_ge} replicates Table 3 of HKR, and confirms its most important insights. Raw salary differentials predict teacher mobility, but the pay differential is not on average very large -- only about \$200, or 0.4% higher than the counterfactually expected wage that would have obtained had the district-switching teacher remained in their current district. This premium declines with age for both male and female teachers, eventually dipping negative (though this estimate is imprecise/underpowered due to the limited quantity of teachers changing districts after 6 years).
+Table \ref{tbl:change_by_ge} replicates Table 3 of HKR, and confirms its most important insights. Raw salary differentials predict teacher mobility, but the average pay differential is not on average very large -- only about `r dol.form(25*round(avg_premium/25), tex = TRUE)`, or `r to.pct(avg_premium_rel - 1, 1)`% higher than the counterfactually expected wage that would have obtained had the district-switching teacher remained in their current district. This premium `r prem_trend_msg`increases with age for both male and female teachers.
 
 Attempting to isolate the influence of district characteristics on wage effects, HKR suggest comparing the differential leverage of residual wages to get a more focused estimate of the association between wages and mobility[^residual_ses]. We run a similar regression using the payscales estimated in the companion paper, but evaluate separate regressions not just for each level of experience, but also for each certification track. This leads to a boost in the overall fraction of explained variance from 60% cited by HKR to `r teachers[ , round(100*var(schedule_lsalary_pred, na.rm = TRUE)/var(schedule_lsalary, na.rm = TRUE))]`% here; as in HKR, other included covariates are consistently significant, suggesting their strong independent correlation with salary levels.
 
 [^residual_ses]: HKR mention they failed to adjust the standard errors associated with the adjusted wage differentials to account for the fact that they involve residuals from a regression. We explored accounting for this by bootstrapping the regression through resampling teachers and recalculating residuals, but confirm that little changes as a result.
 
-As in HKR, we find the demographic-independent wage differentials to be even more important than the uncontrolled raw wages, with the predicted wage improvement roughly doubling to `r to.pct(adj_wage_coef, 1L)`%. In contrast to HKR, however, we find a positive relationship between experience and residual wage differentials, with mid-career district switchers experiencing 2-3% higher wages upon arrival to their new employer, by contrast to the null relationship for probationary teachers. This pattern is consistent across the dimension of certification which was ignored by HKR, suggesting the opposite result cannot be attributed to bias introduced by movement patterns of Bachelor's- vs. Master's-certified instructors.
+Unlike HKR, we find the demographic-independent wage differentials to be no more important than the uncontrolled raw wages, with the predicted wage improvement amounting to `r to.pct(adj_wage_coef, 1L)`%. In contrast to HKR, however, we find a positive relationship between experience and residual wage differentials, with mid-career district switchers experiencing 2-3% higher wages upon arrival to their new employer, by contrast to the null relationship for probationary teachers. This pattern is consistent across the dimension of certification which was ignored by HKR, suggesting the opposite result cannot be attributed to bias introduced by movement patterns of Bachelor's- vs. Master's-certified instructors.
 
 Student demographic differentials are very important for predicting teacher turnover, a finding which held in Texas as it does in Wisconsin. Most important in all experience classes and for both genders are the measures of student performance and student poverty -- district switchers end up at schools with 4% more students at grade level overall, an effect which is stronger for female teachers and for young teachers. They also end up on average with about 7% fewer students (school-wide) eligible for subsidized lunch. While this finding would need to be bolstered with experimental or quasi-experimental evidence, it hints at the potentially limited scope of teacher labor market policies intended to ameliorate teacher supply problems in hard-to-serve districts -- schools can much more easily exert influence over their compensation policies than they can dictate their student bodies, but the latter is more efficacious [see @fulbeck and @glazerman]. 
 

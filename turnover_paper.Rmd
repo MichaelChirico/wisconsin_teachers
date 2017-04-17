@@ -406,6 +406,7 @@ payscales[ , {
 }][ , {
   y = 100*.SD[ , !"tenure"]
   ba = grepl('_4$', names(y))
+  par(oma = c(0, 0, 0, 3))
   matplot(tenure, y, lty = 1, type = 'l', lwd = 3,
           col = ifelse(ba, 'red', 'blue'), las = 1,
           ylim = c(0, 1.1*max(y)), xlab = 'Tenure',
@@ -414,6 +415,10 @@ payscales[ , {
   ys = unlist(y[.SD$tenure == 15, !ba, with = FALSE])
   text(15, ys, c('90-10 Ratio', '75-25 Ratio', '60-40 Ratio'),
        pos = 3L)
+  usr = par('usr')[c(2L, 4L)]
+  legend(usr[1L], usr[2L]/2, c('MA', 'BA'), lty = 1L,
+         lwd = 3L, col = c('blue', 'red'), xpd = NA, 
+         bty = 'n', yjust = .5)
 }]
 ```
 

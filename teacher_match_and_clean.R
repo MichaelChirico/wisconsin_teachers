@@ -839,7 +839,7 @@ system.time({
     setkey(full_data, year)
   }
 }); rm(yy, current_max, new_ids)
-pbPost('note', 'Matching Algorithm Completed')
+pbPost('note', title = 'Matching Algorithm Completed', body = print(Sys.time()))
 
 ###############################################################################
 #                          Post-Match Cleanup                                 #
@@ -1122,7 +1122,7 @@ for (jj in na.to.f2)
   full_data[is.na(get(jj)) & (last_obs), (jj) := FALSE]
 rm(list = ls(pattern = "na.to")); rm(jj)
 
-pbPost('note', 'Ex Post Cleanup Completed')
+pbPost('note', title = 'Ex Post Cleanup Completed', body = print(Sys.time()))
 
 #Save cleaned data
 fwrite(full_data, wds['write'] %+% "wisconsin_teacher_data_full.csv")

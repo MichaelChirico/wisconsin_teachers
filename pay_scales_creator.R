@@ -135,8 +135,8 @@ stopCluster(cl)
 
 imputed_scales[ , year := as.integer(year)]
 
-pbPost('note', paste('Imputation Done;',
-                     proc.time()["elapsed"] - t0,
+pbPost('note', title = 'Imputation Done',
+       body = paste0(proc.time()["elapsed"] - t0,
                      'elapsed.'))
 
 ###############################################################################

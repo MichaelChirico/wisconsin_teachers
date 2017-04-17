@@ -387,6 +387,38 @@ cat(tbl, sep = '\n')
 
 Table \ref{tbl:change_by_ge} replicates Table 3 of HKR, and confirms its most important insights. Raw salary differentials predict teacher mobility, but the average pay differential is not on average very large -- only about `r dol.form(25*round(avg_premium/25), tex = TRUE)`, or `r to.pct(avg_premium_rel - 1, 1)`% higher than the counterfactually expected wage that would have obtained had the district-switching teacher remained in their current district. This premium `r prem_trend_msg`increases with age for both male and female teachers.
 
+```{r potential_premium, fig.cap = '\\label{fig:premia}How Much Do Teachers Stand to Gain from Changing Districts throughout Their Careers?'}
+payscales[ , {
+  qs = quantile(wage, c(.1, .25, .4, .6, .75, .9))
+  .(r9010 = qs['90%']/qs['10%'] - 1,
+    r7525 = qs['75%']/qs['25%'] - 1,
+    r6040 = qs['60%']/qs['40%'] - 1,
+    d7525 = qs['75%'] - qs['25%'])
+}, by = .(tenure, highest_degree)
+][ , {
+  avg_7525 <<- mean(r7525)
+  #multiplying factor for discounting
+  #  20 years at 10%
+  dfact = (1-1.06^(-21))/(1-1.06^(-1))
+  total_gain_ma <<- mean(d7525[highest_degree == 5]) * dfact
+  dcast(.SD, tenure ~ highest_degree,
+        value.var = c('r9010', 'r7525', 'r6040'))
+}][ , {
+  y = 100*.SD[ , !"tenure"]
+  ba = grepl('_4$', names(y))
+  matplot(tenure, y, lty = 1, type = 'l', lwd = 3,
+          col = ifelse(ba, 'red', 'blue'), las = 1,
+          ylim = c(0, 1.1*max(y)), xlab = 'Tenure',
+          ylab = 'Available Wage Ratio',
+          main = 'Potential Gains from Mobility')
+  ys = unlist(y[.SD$tenure == 15, !ba, with = FALSE])
+  text(15, ys, c('90-10 Ratio', '75-25 Ratio', '60-40 Ratio'),
+       pos = 3L)
+}]
+```
+
+One potential explanation of the weakness of the wage results is that there simply is not sufficient heterogeneity among available contracts to generate mobility incentives. Figure \ref{fig:premia} demonstrates that this is not a likely explanation. No matter their current experience or certification level, a teacher in a district paying the 25th percentile of wages for that experience-certification cell would gain on average `r to.pct(avg_7525)`% by changing to a district at the 75th percentile. Especially for younger teachers, this potential gain would accumulate annually to become a hefty sum over the course of the career -- discounting the average annual gain for Master's-certified teachers at 6% and adding over 20 years, this is roughly `r dol.form(total_gain_ma, dig = -4, tex = TRUE)` on the table; results are more dramatic for teachers further in the tails of the wage distribution.
+
 Attempting to isolate the influence of district characteristics on wage effects, HKR suggest comparing the differential leverage of residual wages to get a more focused estimate of the association between wages and mobility[^residual_ses]. We run a similar regression using the payscales estimated in the companion paper, but evaluate separate regressions not just for each level of experience, but also for each certification track. This leads to a boost in the overall fraction of explained variance from 60% cited by HKR to `r teachers[ , round(100*var(schedule_lsalary_pred, na.rm = TRUE)/var(schedule_lsalary, na.rm = TRUE))]`% here; as in HKR, other included covariates are consistently significant, suggesting their strong independent correlation with salary levels.
 
 [^residual_ses]: HKR mention they failed to adjust the standard errors associated with the adjusted wage differentials to account for the fact that they involve residuals from a regression. We explored accounting for this by bootstrapping the regression through resampling teachers and recalculating residuals, but confirm that little changes as a result.

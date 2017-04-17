@@ -806,6 +806,8 @@ The most notable difference relative to table \ref{tbl:reg_lpm} is the weakening
 # - Estimate marginal effects for men/women
 #   of a 10% salary increase (also with
 #   confidence intervals?) & compare to HKR
+# - Why did changing definition of move_district_next
+#   change the #s for nonwhites so we can't fit anymore?
 teachersML = 
   melt(teachers[total_exp_floor <= 30], id.vars =
          c('teacher_id', 'year', 'schedule_lbase_ba_salary', 

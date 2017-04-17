@@ -35,14 +35,9 @@ teachers =
         select = incl_cols, colClasses = colClasses,
         key = 'teacher_id,year,district_fill,school_fill')
 
-#subset to focus timeframe, eliminate teachers outside 
 incl_yrs = 2000:2010
 incl_rng = range(incl_yrs)
-#pad right end by 1 since defining subsequent district
-#  within this file (o/w force all final year obs. to quit)
-teachers = teachers[year %between% (incl_rng + c(0L, 1L))]
-
-N_full = uniqueN(teachers$teacher_id)
+N_full = teachers[year %between% incl_rng, uniqueN(teacher_id)]
 
 #eliminate multiple positions for a teacher by choosing the
 #  one with the highest intensity (highest FTE)
@@ -95,8 +90,10 @@ teachers[ , district_next :=
 teachers[ , move_district_next := 
             !(district_fill == district_next | is.na(district_next))]
 
-#now eliminate final-year teachers
-teachers = teachers[year <= incl_rng[2L]]
+#subset to focus timeframe, eliminate teachers outside 
+#  do this after defining switching to allow for any sort of
+#  gap year situation
+teachers = teachers[year %between% incl_rng]
 
 #area: 0050 (all-purpose elementary teachers)
 #      0300 (English, typically middle/high school)

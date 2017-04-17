@@ -111,9 +111,9 @@ suppressWarnings(
     T1, caption =
       'Year-to-year Transitions of Teachers by Experience, 2000-08', 
     label = 'tbl:move_by_exp', digits = 1L, 
-    align = paste0('lp{.103\\linewidth}p{.14\\linewidth}',
-                   'p{.15\\linewidth}p{.09\\linewidth}',
-                   'p{.16\\linewidth}R{.16}')),
+    align = paste0('lp{.12\\linewidth}p{.14\\linewidth}',
+                   'p{.17\\linewidth}p{.10\\linewidth}',
+                   'p{.17\\linewidth}R{.13}')),
     sanitize.text.function = identity))
 )
 idx = grep('^Teacher', tbl) - 1L

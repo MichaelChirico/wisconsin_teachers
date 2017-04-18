@@ -575,9 +575,9 @@ The preeminent distinction of long-distance moves is moderation -- all average d
 # - Compare within-urban differential in achievement
 #   (require MWK charter schools back in data)
 # - Use scale scores, not proficiency
-#Code to get nominal vs. residual pay differential for Urban-Suburban
-#  switchers, _by highest_degree_
-# teachers[move_district_next & urbanicity_next_d == 'Suburban' & 
+# #Code to get nominal vs. residual pay differential for Urban-Suburban
+# #  switchers, _by highest_degree_
+# teachers[move_district_next & urbanicity_next_d == 'Suburban' &
 #            urbanicity_d == 'Large Urban' & total_exp_floor <= 10, {
 #              dl = lapply(
 #                list(schedule_lsalary_next - schedule_lsalary_next_cf,
@@ -605,6 +605,26 @@ T4D =
                  val = c(rbind(sapply(dl, mean), sapply(dl, se))))
              }, keyby = urbanicity_d
            ][ , dcast(.SD, var ~ urbanicity_d, value.var = 'val')]
+
+lose_msg = if (!all(T4D[var %in% c('1M', '2M')]$`Large Urban` < 0))
+  'MAJOR DATA CHANGE FLAG' else ''
+lose_resid_msg = 
+  if (T4D[ , `Large Urban`[var == '1M'] > `Large Urban`[var == '2M']])
+    'MAJOR DATA CHANGE FLAG' else ''
+lose_degree_msg = 
+  teachers[move_district_next & urbanicity_next_d == 'Suburban' &
+             urbanicity_d == 'Large Urban' & total_exp_floor <= 10, {
+               p_nom = t.test(I(schedule_lsalary_next - 
+                                  schedule_lsalary_next_cf) ~ 
+                                highest_degree)$p.value
+               p_res = t.test(I(schedule_lsalary_resid_next - 
+                                  schedule_lsalary_resid_next_cf) ~ 
+                                highest_degree)$p.value
+               if (p_nom < .1 || p_res < .1) 'MAJOR DATA CHANGE FLAG' else ''}]
+         
+pct_prof_coef_d = T4D[var == '3M', `Large Urban`]
+pct_black_coef_d = T4D[var == '5M', `Large Urban`]
+pct_frl_coef_d = T4D[var == '6M', `Large Urban`]
 
 T4S = 
   teachers[move_district_next & urbanicity_next_d == 'Suburban' & 
@@ -643,6 +663,26 @@ T4[type == 's', var := '']
 T4[ , type := NULL]
 T4[grepl('^Percent', var), var := paste('\\quad', var)]
 
+suburban_black_msg10 = 
+  if (districts[urbanicity == 'Suburban',
+                mean(pct_black < .1, na.rm = TRUE) <= .85])
+    'MAJOR DATA CHANGE FLAG' else ''
+suburban_black_msg2 = 
+  if (districts[urbanicity == 'Suburban',
+                mean(pct_black < .02, na.rm = TRUE) <= .55])
+    'MAJOR DATA CHANGE FLAG' else ''
+pct_black_mwk = 
+  districts[urbanicity == 'Large Urban',
+            sum(n_students*pct_black, na.rm = TRUE)/
+              sum(n_students, na.rm = TRUE)]
+pct_frl_mwk = 
+  districts[urbanicity == 'Large Urban',
+            sum(n_students*pct_frl, na.rm = TRUE)/
+              sum(n_students, na.rm = TRUE)]
+pct_frl_suburb = 
+  districts[urbanicity == 'Suburban',
+           median(pct_frl, na.rm = TRUE)]
+
 tbl = capture.output(print(xtable(
   T4, caption = paste('Average Change in Salary and in District and Campus',
                       'Student Characteristics (and Standard Deviations)',
@@ -673,9 +713,9 @@ tbl = c(tbl[1L:idx], 'Average Student Characteristics & & & & \\\\',
 cat(tbl, sep = '\n')
 ```
 
-Table \ref{tbl:change_by_urb}, which parallels Table 4 of HKR, is the first analysis where the mechanisms of the teacher labor market appear to be working differently from those found in Texas. In particular, while HKR find Large Urban - Suburban district switchers penalize themselves in pay but are rewarded in demographic-adjusted pay, Wisconsin teachers lose out on both measures when leaving Large Urban districts, and in fact are even worse off in residual pay than they are in nominal pay. This difference can at least partially be attributed to HKR's exclusion of certification as a conditioning variable, as the pattern here differs substantially by degree. While district switchers with a Bachelor's degree experience a `r ''`.8% nominal and `r ''`3.8% residual drop in wages, Master's degree switchers experience a `r ''`6% nominal, but only a `r ''`3% residual drop in wages.
+Table \ref{tbl:change_by_urb}, which parallels Table 4 of HKR, again uncovers a labor market functioning similar to that in Texas. In particular, while HKR find Large Urban - Suburban district switchers penalize themselves in pay but are rewarded in demographic-adjusted pay, Wisconsin teachers `r lose_msg`lose out on both measures when leaving Large Urban districts, albeit the residual pay penalty is `r lose_resid_msg`much lower than that of nominal pay. This difference does not appear to be attributable to HKR's exclusion of certification as a conditioning variable, as the pattern here `r lose_degree_msg`differs insignificantly by degree.
 
-The other results of HKR are confirmed in even more dramatic fashion. There is strong evidence of selection on the student performance metric, which does vary quite widely in suburban districts. Teachers leaving Milwaukee tend to end up at districts with `r ''`37% more students deemed to be at grade level on the state standardized test. On the other hand, teachers leaving Large Urban districts (i.e, Milwaukee) for the suburbs experience a precipitous drop of `r ''`53% black students and `r ''`60% subsidized lunch eligibility. This is practically a tautological result, as the student demographics outside of urban areas in Wisconsin are pretty uniformly non-minority -- about `r ''`90% of suburban districts have fewer than 10% black students, and more than `r ''`60% have fewer than 2% black students, whereas Milwaukee is about `r ''`62% black. Similarly, teachers leaving Milwaukee for the suburbs have little choice but to end up in a district with far fewer economically disadvantaged students -- whereas `r ''`71% of Milwaukee Public Schools students are eligible, the median percentage in suburban schools is `r ''`11%. 
+The other results of HKR are confirmed in even more dramatic fashion. There is strong evidence of selection on the student performance metric, which does vary quite widely in suburban districts. Teachers leaving Milwaukee tend to end up at districts with `r to.pct(pct_prof_coef_d, 0)`% more students deemed to be at grade level on the state standardized test. On the other hand, teachers leaving Large Urban districts (i.e, Milwaukee) for the suburbs experience a precipitous drop of `r to.pct(-pct_black_coef_d, 0)`% black students and `r to.pct(-pct_frl_coef_d, 0)`% subsidized lunch eligibility. This is practically a tautological result, as the student demographics outside of urban areas in Wisconsin are pretty uniformly non-minority -- about `r suburban_black_msg10`90% of suburban districts have fewer than 10% black students, and about `r suburban_black_msg2`60% have fewer than 2% black students, whereas Milwaukee is about `r to.pct(pct_black_mwk, 0)`% black. Similarly, teachers leaving Milwaukee for the suburbs have little choice but to end up in a district with far fewer economically disadvantaged students -- whereas `r to.pct(pct_frl_mwk, 0)`% of Milwaukee students are eligible, the median percentage in suburban schools is `r to.pct(pct_frl_suburb, 0)`%. 
 
 This phenomenon is reflected further in the suburban-to-suburban moves, which reflect little change in the ethnic/racial makeup of student bodies, since a dramatic shift would demonstrate very strong influence of this factor. We also find evidence of selection into economically better-off districts among suburban switchers, but the magnitude of this difference is attenuated with respect to that reported by HKR. We do not find patterns of selection on student performance as strongly as was found in HKR. This may be a reflection of the crudeness of the proficiency measure as compared to the more variable raw scale score measures used by HKR. Lastly, we confirm the finding of HKR that there does not appear to be evidence that teachers are able to select into the more desirable schools within their target districts -- The differences in campus-level characteristics are almost identical to the differences in district-level characteristics. This is likely a reflection of supply-side constraints, as the choicest appointments in a district may be awarded to long-serving serving teachers (promotion from within), as well as suburban districts perhaps having only a small number of schools at which to teach a given grade level/subject.
 

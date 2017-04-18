@@ -510,7 +510,7 @@ obtain from eliminating the largest cities in Texas.
 \centering
 \begin{tabular}{lrrrrrrr}
   \hline
- & \multicolumn{4}{c}{\multirow{2}{*}{Percent of Teachers Who Move to}} & \multirow{4}{*}{\parbox{0.09\linewidth}{Number Teachers Changing Districts}} & \multirow{4}{*}{\parbox{0.07\linewidth}{Percent of Origin Teachers}} & \multirow{4}{*}{\parbox{0.07\linewidth}{Change in Share of Teachers 2000-06}}\\
+ & \multicolumn{4}{c}{\multirow{2}{*}{Percent of Teachers Who Move to}} & \multirow{4}{*}{\parbox{0.09\linewidth}{Number Teachers Changing Districts}} & \multirow{4}{*}{\parbox{0.07\linewidth}{Percent of Origin Teachers}} & \multirow{4}{*}{\parbox{0.09\linewidth}{Change in Share of Teachers 2000-06}}\\
  & \multicolumn{4}{c}{} & & & \\ \cline{2-5}
 & & & & & & & \\
 Origin Community & Large Urban & Small Urban & Suburban & Rural &  &  &  \\ 
@@ -588,7 +588,7 @@ of younger teachers as compared to all teachers.
 \centering
 \begin{tabular}{lccccccc}
   \hline
- & \multicolumn{3}{c}{Men by Experience Class} & \multicolumn{3}{c}{Women by Experience Class} & \multirow{2}{*}{\parbox{0.09\linewidth}{All Teachers 0-9 Years}}\\ \cline{2-4} \cline{5-7}
+ & \multicolumn{3}{c}{Men by Experience Class} & \multicolumn{3}{c}{Women by Experience Class} & \multirow{2}{*}{\parbox{0.1\linewidth}{All Teachers 0-9 Years}}\\ \cline{2-4} \cline{5-7}
  & 1-3 years & 4-6 years & 7-11 years & 1-3 years & 4-6 years & 7-11 years &  \\ 
   \hline
 Base year salary (log) & -0.006 & 0.019 & 0.041 & -0.003 & 0.020 & 0.012 & 0.006 \\ 
@@ -686,7 +686,7 @@ the latter is more efficacious (see Fulbeck
 \centering
 \begin{tabular}{lccccccc}
   \hline
- & \multicolumn{3}{c}{Men by Experience Class} & \multicolumn{3}{c}{Women by Experience Class} & \multirow{2}{*}{\parbox{0.09\linewidth}{All Teachers 0-9 Years}}\\ \cline{2-4} \cline{5-7}
+ & \multicolumn{3}{c}{Men by Experience Class} & \multicolumn{3}{c}{Women by Experience Class} & \multirow{2}{*}{\parbox{0.1\linewidth}{All Teachers 0-9 Years}}\\ \cline{2-4} \cline{5-7}
  & 1-3 years & 4-6 years & 7-11 years & 1-3 years & 4-6 years & 7-11 years &  \\ 
   \hline
 Base year salary (log) & 0.017 & 0.016 & -0.011 & -0.017 & 0.016 & -0.000 & -0.001 \\ 
@@ -740,9 +740,10 @@ young male teachers does weaken the latter explanation.
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{lp{.12\textwidth}p{.12\textwidth}p{.12\textwidth}p{.12\textwidth}}
+\begin{tabular}{lp{.135\textwidth}p{.135\textwidth}p{.135\textwidth}p{.135\textwidth}}
   \hline
- & \multicolumn{2}{c}{District Average Characteristics} & \multicolumn{2}{c}{Campus Average Characteristics}\\ \cline{2-5}
+ & \multicolumn{2}{c}{\multirow{2}{*}{\parbox{0.2\linewidth}{District Average Characteristics}}} & \multicolumn{2}{c}{\multirow{2}{*}{\parbox{0.2\linewidth}{Campus Average Characteristics}}}\\
+ & & & & \\ \cline{2-5}
  & Large Urban to Suburban & Suburban to Suburban & Large Urban to Suburban & Suburban to Suburban \\
   \hline
 Base year salary (log) & -0.065 & 0.016 & --- & --- \\ 
@@ -852,7 +853,7 @@ only tend to select on the latter characteristic).
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{p{.25\textwidth}p{.13\textwidth}p{.13\textwidth}p{.13\textwidth}}
+\begin{tabular}{p{.3\textwidth}p{.15\textwidth}p{.15\textwidth}p{.15\textwidth}}
   \hline
 Quartile of Distribution & Probability Teachers Move to New School within District & Probability Teachers Move to New District & Probability Teachers Exit Public Schools \\ 
   \hline
@@ -921,7 +922,7 @@ observe the opposite pattern, which is difficult to explain \emph{prima
 facie}, and suggests the presence of confounding factors distorting the
 patterns away from what should be expected.
 
-\begin{table}
+\begin{sidewaystable}
 \begin{center}
 \begin{tabular}{l c c c c c }
 \hline
@@ -958,7 +959,7 @@ Observations                                & 32,998         & 30,194         & 
 \caption{Estimated Effects of Starting Teacher Salary and Student Demographic Characteristics on the Probability that Teachers Leave School Districts, by Experience (linear probability models; Huber-White standard  errors in parentheses)}
 \label{tbl:reg_lpm}
 \end{center}
-\end{table}
+\end{sidewaystable}
 
 Having identified some key patterns in moments of the data, we now move
 on to try and separate the confounding effects of each of these and
@@ -1004,34 +1005,34 @@ assortative matching on ethnicity among districts in Wisconsin (though
 the patterns for whites differ sharply from those of nonwhites, the
 patterns for black and Hispanic teachers are hard to distinguish).
 
-\begin{table}
+\begin{sidewaystable}
 \begin{center}
 \begin{tabular}{l c c c c c }
 \hline
  & \multicolumn{4}{c}{Teacher Experience} \\ \cline{2-6}
  & 1-3 years & 4-6 years & 7-11 years & 12-30 years & >30 years \\
 \hline
-First year base salary (log)                & $0.01$       & $-0.12^{**}$  & $-0.04^{*}$ & $0.01$       & $-0.19^{**}$ \\
+First year base salary (log)                & $0.01$       & $-0.12^{***}$ & $-0.04^{*}$ & $0.01$       & $-0.19^{**}$ \\
                                             & $(0.03)$     & $(0.04)$      & $(0.02)$    & $(0.01)$     & $(0.06)$     \\
-First year base salary (log) * female       & $-0.06^{*}$  & $0.09^{**}$   & $0.03$      & $-0.02$      & $0.17^{**}$  \\
+First year base salary (log) * female       & $-0.07^{*}$  & $0.09^{**}$   & $0.02$      & $-0.02$      & $0.17^{**}$  \\
                                             & $(0.03)$     & $(0.03)$      & $(0.02)$    & $(0.01)$     & $(0.06)$     \\
 Campus average student characteristics      &              &               &             &              &              \\
-\quad Percent proficient                    & $-0.15^{*}$  & $-0.02$       & $-0.07$     & $0.02$       & $0.02$       \\
+\quad Percent proficient                    & $-0.15$      & $-0.03$       & $-0.08^{*}$ & $0.02$       & $0.02$       \\
                                             & $(0.08)$     & $(0.06)$      & $(0.04)$    & $(0.02)$     & $(0.10)$     \\
-\quad Percent eligible for subsidized lunch & $-0.03$      & $-0.00$       & $-0.03$     & $-0.01$      & $-0.18$      \\
+\quad Percent eligible for subsidized lunch & $-0.05$      & $-0.02$       & $-0.02$     & $-0.01$      & $-0.17$      \\
                                             & $(0.08)$     & $(0.06)$      & $(0.04)$    & $(0.02)$     & $(0.10)$     \\
-\quad Percent Black                         & $0.28$       & $0.37$        & $0.55^{**}$ & $0.04$       & $0.01$       \\
-                                            & $(0.28)$     & $(0.26)$      & $(0.18)$    & $(0.10)$     & $(0.45)$     \\
-\quad Percent Hispanic                      & $0.02$       & $-0.00$       & $-0.18$     & $-0.07$      & $0.08$       \\
+\quad Percent Black                         & $0.25$       & $0.45$        & $0.52^{**}$ & $0.04$       & $0.11$       \\
+                                            & $(0.28)$     & $(0.26)$      & $(0.18)$    & $(0.11)$     & $(0.46)$     \\
+\quad Percent Hispanic                      & $0.02$       & $0.00$        & $-0.21^{*}$ & $-0.07$      & $0.06$       \\
                                             & $(0.18)$     & $(0.15)$      & $(0.09)$    & $(0.05)$     & $(0.24)$     \\
 Interactions                                &              &               &             &              &              \\
-\quad Black * percent Black                 & $-0.18^{*}$  & $-0.17^{*}$   & $-0.06$     & $-0.05$      & $-0.15$      \\
+\quad Black * percent Black                 & $-0.19^{*}$  & $-0.15^{*}$   & $-0.06$     & $-0.04$      & $-0.14$      \\
                                             & $(0.08)$     & $(0.07)$      & $(0.05)$    & $(0.04)$     & $(0.11)$     \\
-\quad Hispanic * percent Black              & $-0.17^{**}$ & $-0.18^{***}$ & $-0.12^{*}$ & $-0.11^{**}$ & $-0.08$      \\
+\quad Hispanic * percent Black              & $-0.17^{**}$ & $-0.18^{***}$ & $-0.12^{*}$ & $-0.11^{**}$ & $-0.09$      \\
                                             & $(0.06)$     & $(0.05)$      & $(0.05)$    & $(0.04)$     & $(0.33)$     \\
-\quad Black * percent Hispanic              & $0.07$       & $-0.08$       & $0.00$      & $0.10$       & $-0.65$      \\
-                                            & $(0.26)$     & $(0.25)$      & $(0.15)$    & $(0.11)$     & $(0.40)$     \\
-\quad Hispanic * percent Hispanic           & $0.19$       & $-0.04$       & $-0.13$     & $0.25$       & $0.45$       \\
+\quad Black * percent Hispanic              & $0.05$       & $-0.16$       & $0.02$      & $0.10$       & $-0.81^{*}$  \\
+                                            & $(0.26)$     & $(0.25)$      & $(0.15)$    & $(0.11)$     & $(0.41)$     \\
+\quad Hispanic * percent Hispanic           & $0.14$       & $-0.10$       & $-0.12$     & $0.25$       & $0.45$       \\
                                             & $(0.28)$     & $(0.23)$      & $(0.21)$    & $(0.20)$     & $(1.07)$     \\
 \hline
 Observations                                & 32,998        & 30,194         & 43,581       & 99,172        & 18,487        \\
@@ -1041,7 +1042,7 @@ Observations                                & 32,998        & 30,194         & 4
 \caption{Estimated Effects of Starting Teacher Salary and Student Demographic Characteristics on the Probability that Teachers Leave School Districts with District Fixed Effects, by Experience (linear probability models; Huber-White standard errors in parentheses)}
 \label{tbl:reg_lpm_fe}
 \end{center}
-\end{table}
+\end{sidewaystable}
 
 To account in a rudimentary way for district-specific hiring policies,
 HKR move on to their Table 8 which repeats Table 7 with district fixed
@@ -1061,7 +1062,7 @@ between student characteristics and exit probability for white teachers
 can be chalked up to district-to-district heterogeneity in preferences
 or hiring policies.
 
-\begin{table}
+\begin{sidewaystable}
 \begin{center}
 \begin{tabular}{l c c c c }
 \hline
@@ -1100,7 +1101,7 @@ II. Exit Teaching                               &               &               
 \caption{Multinomial Logit Estimated Effects of Teacher Salary and Student Demographic Characteristics on the Probabilities That Teachers Switch School Districts or Exit Teaching Relative to Remaining in Same District}
 \label{tbl:reg_mlogit}
 \end{center}
-\end{table}
+\end{sidewaystable}
 
 Finally, the conflation of switching districts and exiting teaching may
 mask important heterogeneity between these two choices. To separate

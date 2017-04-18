@@ -202,7 +202,7 @@ tbl = c(tbl[1L:(idx - 1L)],
         paste0(paste('', mcol(mrow('Percent of Teachers Who Move to', 2), 4),
                      mrow(pbox('Number Teachers Changing Districts', .09), 4),
                      mrow(pbox('Percent of Origin Teachers', .07), 4),
-                     mrow(pbox('Change in Share of Teachers 2000-06', .07), 4), 
+                     mrow(pbox('Change in Share of Teachers 2000-06', .09), 4), 
                      sep = ' & '), '\\\\'),
         ' & \\multicolumn{4}{c}{} & & & \\\\ \\cline{2-5}',
         '& & & & & & & \\\\', tbl[idx + 0L:1L],
@@ -338,7 +338,7 @@ idx = grep('years', tbl)
 tbl = c(tbl[1L:(idx - 1L)],
         paste0(paste('', mcol('Men by Experience Class', 3L),
                      mcol('Women by Experience Class', 3L),
-                     mrow(pbox('All Teachers 0-9 Years', .09), 2L),
+                     mrow(pbox('All Teachers 0-9 Years', .1), 2L),
                      sep = ' & '), '\\\\ \\cline{2-4} \\cline{5-7}'),
         tbl[idx:length(tbl)])
 
@@ -487,7 +487,7 @@ idx = grep('years', tbl)
 tbl = c(tbl[1L:(idx - 1L)],
         paste0(paste('', mcol('Men by Experience Class', 3L),
                      mcol('Women by Experience Class', 3L),
-                     mrow(pbox('All Teachers 0-9 Years', .09), 2L),
+                     mrow(pbox('All Teachers 0-9 Years', .1), 2L),
                      sep = ' & '), '\\\\ \\cline{2-4} \\cline{5-7}'),
         tbl[idx:length(tbl)])
 
@@ -521,7 +521,7 @@ The preeminent distinction of long-distance moves is moderation -- all average d
 # - How to express drop in %Black/Hispanic/FRL
 #   RELATIVELY (i.e., accounting for the fact
 #   that there are no minority/poor students outside MWK)
-# - Compare within-urban differntial in achievement
+# - Compare within-urban differential in achievement
 #   (require MWK charter schools back in data)
 # - Use scale scores, not proficiency
 #Code to get nominal vs. residual pay differential for Urban-Suburban
@@ -599,16 +599,17 @@ tbl = capture.output(print(xtable(
                       'Change Districts, by Community Type of Origin',
                       'and Destination District'),
   label = 'tbl:change_by_urb', 
-  align = paste0('llp{.12\\textwidth}p{.12\\textwidth}',
-                 'p{.12\\textwidth}p{.12\\textwidth}')),
+  align = paste0('llp{.135\\textwidth}p{.135\\textwidth}',
+                 'p{.135\\textwidth}p{.135\\textwidth}')),
   sanitize.text.function = identity))
 
 idx = grep('Urban', tbl) - 1L
 
 tbl = c(tbl[1L:idx],
-        paste0(paste('', mcol('District Average Characteristics', 2L),
-                     mcol('Campus Average Characteristics', 2L),
-                     sep = ' & '), '\\\\ \\cline{2-5}'),
+        paste0(paste(
+          '', mcol(mrow(pbox('District Average Characteristics', .2), 2L), 2L),
+          mcol(mrow(pbox('Campus Average Characteristics', .2), 2L), 2),
+          sep = ' & '), '\\\\\n & & & & \\\\ \\cline{2-5}'),
         ' & Large Urban to Suburban & Suburban to Suburban & ' %+%
           'Large Urban to Suburban & Suburban to Suburban \\\\',
         tbl[(idx + 2L):length(tbl)])
@@ -751,7 +752,7 @@ tbl = capture.output(print(xtable(
                       'Characteristics (data weighted by number of',
                       'teachers in school)'),
   label = 'tbl:change_by_quartile',
-  align = 'lp{.25\\textwidth}p{.13\\textwidth}p{.13\\textwidth}p{.13\\textwidth}'), 
+  align = 'lp{.3\\textwidth}p{.15\\textwidth}p{.15\\textwidth}p{.15\\textwidth}'), 
   sanitize.text.function = identity, NA.string = '---'))
 
 idx = grep('Highest', tbl)
@@ -830,7 +831,8 @@ tbl = capture.output(texreg(
   groups = list('Campus average student characteristics' = 3:6,
                 'Interactions' = 7:10), override.pvalues = pvals,
   reorder.coef = c(1, 6, 2:5, 7:10), override.se = lapply(SEs, se_vcov),
-  include.rsquared = FALSE, include.adjrs = FALSE, include.rmse = FALSE))
+  include.rsquared = FALSE, include.adjrs = FALSE, 
+  include.rmse = FALSE, sideways = TRUE, use.packages = FALSE))
 
 idx = grep('years', tbl)
 tbl = c(tbl[1L:(idx - 1L)],
@@ -902,7 +904,8 @@ tbl = capture.output(texreg(
   groups = list('Campus average student characteristics' = 3:6,
                 'Interactions' = 7:10), override.pvalues = pvals,
   reorder.coef = c(1, 6, 2:5, 7:10), override.se = lapply(SEs, se_vcov),
-  include.rsquared = FALSE, include.adjrs = FALSE, include.rmse = FALSE))
+  include.rsquared = FALSE, include.adjrs = FALSE, 
+  include.rmse = FALSE, sideways = TRUE, use.packages = FALSE))
 
 idx = grep('years', tbl)
 tbl = c(tbl[1L:(idx - 1L)],
@@ -977,7 +980,8 @@ tbl = capture.output(texreg(
                   'Remaining in Same District'),
   reorder.coef = c(1, 9, 3, 5, 7, 11, 2, 10, 4, 6, 8, 12),
   groups = list('I. Switch Districts' = 1:6, 'II. Exit Teaching' = 7:12),
-  include.aic = FALSE, include.loglik = FALSE, include.nobs = FALSE))
+  include.aic = FALSE, include.loglik = FALSE,
+  include.nobs = FALSE, sideways = TRUE, use.packages = FALSE))
 
 idx = grep('years', tbl)
 tbl = c(tbl[1L:(idx - 1L)],

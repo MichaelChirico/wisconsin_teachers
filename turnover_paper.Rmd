@@ -817,6 +817,7 @@ HKR examine the state of Texas, which features substantially more ethnic heterog
 # - for Hanushek/Rivkin -- is Table 6 also restricted
 #   to younger teachers??
 # - how much is Milwaukee alone driving some of these results?
+#    * idem Kenosha (erroneous year of data)
 T6 = 
   melt(teachers, id.vars = c('year', 'move_district_next', 
                              'move_within_next', 'quit_next'), 
@@ -828,6 +829,19 @@ T6 =
               `Probability Teachers Exit Public Schools` = 
                 mean(quit_next)), 
           keyby = .(variable, value)]
+
+
+resid_lo_hi_ratio = 
+  T6[variable == 'lwage_resid_avg_q', {
+    v = get(grep('New District', names(T6), 
+                 value = TRUE, fixed = TRUE))
+    v[value == 'Lowest']/v[value == 'Highest']}]
+pct_prof_lo_hi_ratio = 
+  T6[variable == 'pct_prof_q', {
+    v = get(grep('Exit', names(T6),
+                 value = TRUE, fixed = TRUE))
+    v[value == 'Highest']/v[value == 'Lowest']}]
+     
 T6[variable == 'lwage_resid_avg_q', grep('within', names(T6)) := NA]
 T6[ , variable := NULL]
 cols = grep('^Prob', names(T6))
@@ -856,9 +870,9 @@ cat(tbl, sep = '\n')
 
 To the end of examining heterogeneity in the impact of school and district characteristic differentials on teacher mobility, HKR present their Table 6, which breaks down the three exit rates for each (weighted) quartile of the covariate distribution. We replicate that analysis here in Table \ref{tbl:change_by_quartile}. Saliently, our results for the correlation of school characteristics for within-district movers are nearly identical to those found in Texas, which gives a stronger indication that we have identified some fundamental nonpecuniary mechanisms driving sorting among schools in a district.
 
-Differences with respect to the results in Texas begin to emerge for the other destinations of school leavers (other districts and other professions). As noted in Table \ref{tbl:move_by_exp}, overall rates of switching districts are quite low compared to Texas and national averages; conditional on this, the patterns of movement by quartile of residual salary exhibit a similar pattern to that in Texas, with teachers in the lowest quartile about `r ''`35% more likely to change districts than teachers in the highest residual pay quartile.  By contrast to HKR, however, who found the opposite association, we find the same trend (at attenuated magnitudes) with respect to leaving Wisconsin public schools, suggesting salary considerations are also important for teachers considering options outside of public school teaching (or in other states).
+Differences with respect to the results in Texas begin to emerge for the other destinations of school leavers (other districts and other professions). As noted in Table \ref{tbl:move_by_exp}, overall rates of switching districts are quite low compared to Texas and national averages; conditional on this, the patterns of movement by quartile of residual salary exhibit a similar pattern to that in Texas, with teachers in the lowest quartile about `r to.pct(resid_lo_hi_ratio - 1, 0)`% more likely to change districts than teachers in the highest residual pay quartile.  By contrast to HKR, however, who found the opposite association, we find the same trend (at attenuated magnitudes) with respect to leaving Wisconsin public schools, suggesting salary considerations are also important for teachers considering options outside of public school teaching (or in other states).
 
-We also find fairly strong patterns in quitting associated with subsidized lunch eligibility and with the ethnic makeup of schools, with teachers at the most economically advantaged schools `r ''`15% less likely to exit teaching; similar numbers obtain for both the quantity of black and of Hispanic students. For teachers moving within districts, however, we observe the opposite pattern, which is difficult to explain _prima facie_, and suggests the presence of confounding factors distorting the patterns away from what should be expected.
+We also find fairly strong patterns in quitting associated with subsidized lunch eligibility and with the ethnic makeup of schools, with teachers at the most economically advantaged schools `r to.pct(1-pct_prof_lo_hi_ratio, 0)`% less likely to exit teaching; similar numbers obtain for both the quantity of black and of Hispanic students. For teachers moving within districts, however, we observe the opposite pattern, which is difficult to explain _prima facie_, and suggests the presence of confounding factors distorting the patterns away from what should be expected.
 
 ```{r table_7_reg_lpm, results = 'asis'}
 #** TO DO **
@@ -941,7 +955,7 @@ cat(tbl[grep('[^ &\\]', tbl)], sep = '\n')
 
 Having identified some key patterns in moments of the data, we now move on to try and separate the confounding effects of each of these and other factors in affecting teacher turnover with the aim of identifying more fundamentally the association between salient district and school characteristics on teacher turnover. Table \ref{tbl:reg_lpm} provides the main coefficients of interest from a simple linear probability regression model predicting leaving a district (i.e., either switching districts or exiting teaching); this corresponds to HKR Table 7. 
 
-By contrast to the strength of such results implied in earlier results, the importance of student achievement has dwindled in the regression specification. Only for probationary teachers does district-level average proficiency independently predict turnover (to the tune of a `r ''`6 percent drop). The same goes for base salary differentials -- in contrast to HKR, we find little evidence of an independent influence of salary on turnover rates, for males nor for female teachers[^class_size]. This does not appear to be due to imprecision -- the magnitude of HKR's standard errors follows closely those found for the Wisconsin data, despite our smaller sample sizes.
+By contrast to the strength of such results implied in earlier results, the importance of student achievement has dwindled in the regression specification, and does not come out as independently significant for any subgroup. The same goes for base salary differentials -- in contrast to HKR, we find little evidence of an independent influence of salary on turnover rates, for males nor for female teachers[^class_size]. This does not appear to be due to imprecision -- the magnitude of HKR's standard errors follows closely those found for the Wisconsin data, despite our smaller sample sizes.
 
 [^class_size]: HKR also mention results not printed in their paper suggesting a paucity of evidence suggesting class size is an important factor in teacher turnover decisions; we give tepid support to this statement, as class size does indeed appear to be related to turnover, but somewhat weakly and only for younger teachers.
 

@@ -84,6 +84,11 @@ Lastly, we turn to DPI's public data again to get school- and district-level per
 
 # Results
 ```{r table_1_move_by_exp, results = 'asis', message = FALSE}
+#**TO DO**
+# - Some districts dissolve/merge within the time
+#   frame of this (e.g., Chetek-Weyerhaeuser) --
+#   should deal with them (specially force
+#   move_district FALSE? what of move_school?)
 library(funchir)
 T1 = rbind(
   teachers[ , .(`Remain in Same School` = 100*sum(!move_school_next)/.N,
@@ -223,6 +228,16 @@ pct_ever_go_suburban =
 
 suburban_new_hires = teachers[urbanicity_s == 'Suburban',
                               sum(total_exp_floor == 1L)]
+mwk_net = 
+  teachers[(move_district_next),
+           sum(district_next == '3619') - 
+             sum(district_fill == '3619')]
+#Madison, Elmbrook, Waukesha, Waunakee, Oconomowoc
+attractive = c('3269', '0714', '6174', '6181', '4060')
+attr_net = 
+    teachers[(move_district_next),
+           sum(district_next %in% attractive) - 
+             sum(district_fill %in% attractive)]
 # Re: Hanushek comment "Urban teachers equally likely as suburban teachers
 #   to remain in the same school", consult:
 # teachers[grep('Urban', urbanicity_s), mean(stay_next & !move_within_next)]
@@ -230,9 +245,24 @@ suburban_new_hires = teachers[urbanicity_s == 'Suburban',
 # Re: Hanushek comment "Urban teachers ~ 10% more likely to quit", consult:
 # teachers[grep('Urban', urbanicity_s), mean(quit_next)]
 # teachers[grep('Suburban', urbanicity_s), mean(quit_next)]
+
+# #most/least "attractive" districts (by net in/outflow)
+# arr = 
+#   teachers[(move_district_next & !grepl('^[79]', district_next)), 
+#            .(arrivals = .N), keyby = district_next]
+# dep = 
+#   teachers[(move_district_next), .(exits = .N), by = district_fill]
+# 
+# arrdep = merge(arr, dep, by.x = 'district_next', by.y = 'district_fill', all = TRUE)
+#       
+# arrdep[is.na(arrivals), arrivals := 0]
+# arrdep[is.na(exits), exits := 0]
+# arrdep[ , net_flow := arrivals - exits]
 ```
 
 Table \ref{tbl:markov} replicates HKR Table 2, and supports its most important conclusions. HKR argue that there is little support for the idea that scores of young teachers are using large urban schools as a training ground before "settling down" with easier assignments in the suburb, based on the general low level of turnover from Large Urban districts. We affirm the scarcity of transitions from districts in Milwaukee, while also noting that such a path is certainly present, as evidenced by the majority of those who do leave Large Urban districts ending up in a Surburban district in both settings. HKR also observe that the likelihoods of remaining in the same school and of quitting are roughly the same for urban and suburban teachers, an observation which we can confirm in Wisconsin. We further note that while Table \ref{tbl:markov} only presents a cross-sectional picture, the career-long trend reaffirms this -- only `r to.pct(pct_ever_go_suburban, 1L)`% of teachers starting their careers at a large urban district ever work at a suburban district. Lastly, we echo the suggestion of HKR that this phenomenon cannot be driven _per se_ by demand-side constraints -- in our time period of observation, we observe only `r prettyNum(total_urban_moves, big.mark = ',')` urban teachers change districts, whereas `r prettyNum(suburban_new_hires, big.mark = ',')` teachers were hired in suburban districts, though of course this does not rule out arguments based for example on stricter screening of applicants transferring from urban districts. 
+
+We note, however, that though tales of flight from troubled urban districts is apparently anecdotal, it is far from apocryphal. To wit, while 50 percent of districts have a net inflow (arrivals less departures) of four or fewer teachers (in absolute value), Milwaukee's net outflow was `r abs(mwk_net)` teachers, and the five highest-inflow districts, all suburbs of Milwaukee or districts adjacent the main university town of Madison, saw in total an inflow of `r attr_net` teachers in this time. This being a two-sided market, this state of affairs is perhaps largely attributable to the dynamic nature of student populations at these districts -- but these, as well, are reflective of the appeal of the districts to parents (and teachers as parents).
 
 ```{r tx_wi_urb_dist, fig.cap = '\\label{fig:ti_wi_urb}Comparison of the Prevalence of Different Community Types'}
 wi_ti[ , plot(table(State, `Community Type`), las = 1L,
@@ -1000,7 +1030,9 @@ With respect to the importance of student demographics, our results again point 
 
 # Conclusion
 
-That salary incentives appear to play such a limited role in driving teacher churn is bound at first glance to be a disappointment for policymakers. The most powerful predictors of turnover in educators in Wisconsin are all basically beyond the control of administrators, who have no readily-manipulated direct lever for assigning students to schools[^gerrymandering]. HKR found school quality (as measured by average standardized test performance) to be of key importance for attracting/retaining teachers, but we found no evidence that student proficiency (as measured by attainment levels on standardized tests) is a factor in the turnover decision for Wisconsin teachers. Regardless, manipulating school performance is famously difficult, and is in fact the original goal administrators often have in mind when they turn to labor market policies in the first place, so that telling administrators they can improve teacher retention by improving student performance amounts essentially to circular reasoning.
+That salary incentives appear to play such a limited role in driving teacher churn is bound at first glance to be a disappointment for policymakers. The most powerful predictors of turnover in educators in Wisconsin are all basically beyond the control of administrators, who have no readily-manipulated direct lever for assigning students to schools[^gerrymandering]. HKR found school quality (as measured by average standardized test performance) to be of key importance for attracting/retaining teachers, but we found no evidence that student proficiency (as measured by attainment levels on standardized tests) is a factor in the turnover decision for Wisconsin teachers. Regardless, manipulating school performance is famously difficult[^cheating], and is in fact the original goal administrators often have in mind when they turn to labor market policies in the first place, so that telling administrators they can improve teacher retention by improving student performance amounts essentially to circular reasoning.
+
+[^cheating]: See, for example, the widespread cheating scandals on standardized tests by teachers in Chicago [@jacob], Atlanta, and Philadelphia as an example of the lengths professionals feel they need to go to effect change in testing outcomes.
 
 [^gerrymandering]: There is evidence [e.g., @richards] that catchment area manipulation (educational gerrymandering) is being used by some schools to select their student populations, but the equilibrium outcome of the strategic interactions of districts competing for the most "desirable" students is far from clear.
 

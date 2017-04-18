@@ -336,7 +336,28 @@ f_del_prem = diff(unlist(
 prem_trend_msg = if (m_del_prem < 0 || f_del_prem < 0) 
   'MAJOR DATA CHANGE FLAG' else ''
 
+mid_career_premium = 
+  teachers[move_district_next & total_exp_floor %between% c(4, 11),
+           mean(schedule_lsalary_resid_next - 
+                  schedule_lsalary_resid_next_cf, na.rm = TRUE)]
+
 adj_wage_coef = T3[var == '2M', all]
+prof_coefs = unlist(T3[var == '3M', !'var'])
+prof_coefs_m = prof_coefs[grep('^M', names(prof_coefs))]
+prof_coefs_f = prof_coefs[grep('^F', names(prof_coefs))]
+pct_prof_coef = prof_coefs['all']
+pct_prof_msg = if (any(prof_coefs_f < prof_coefs_m) ||
+                   any(prof_coefs_m[1L] < prof_coefs_m[-1L]) ||
+                   any(prof_coefs_f[1L] < prof_coefs_f[-1L]))
+  'MAJOR DATA CHANGE FLAG' else ''
+                   
+pct_black_coef = T3[var == '5M', all]
+pct_frl_coef = T3[var == '6M', all]
+
+var_explained = 
+  teachers[ , var(schedule_lsalary_pred, na.rm = TRUE)/
+              var(schedule_lsalary, na.rm = TRUE)]
+var_explained_msg = if (var_explained <= .7) 'MAJOR DATA CHANGE FLAG' else ''
 
 T3[ , var := rep(c('Base year salary (log)', 'Adjusted salary (log)',
                    'Percent proficient', 'Percent Hispanic',
@@ -454,13 +475,13 @@ payscales[ , {
 
 One potential explanation of the weakness of the wage results is that there simply is not sufficient heterogeneity among available contracts to generate mobility incentives. Figure \ref{fig:premia} demonstrates that this is not a likely explanation. No matter their current experience or certification level, a teacher in a district paying the 25th percentile of wages for that experience-certification cell would gain on average `r to.pct(avg_7525)`% by changing to a district at the 75th percentile. Especially for younger teachers, this potential gain would accumulate annually to become a hefty sum over the course of the career -- discounting the average annual gain for Master's-certified teachers at 6% and adding over 20 years, this is roughly `r dol.form(total_gain_ma, dig = -4, tex = TRUE)` on the table; results are more dramatic for teachers further in the tails of the wage distribution.
 
-Attempting to isolate the influence of district characteristics on wage effects, HKR suggest comparing the differential leverage of residual wages to get a more focused estimate of the association between wages and mobility[^residual_ses]. We run a similar regression using the payscales estimated in the companion paper, but evaluate separate regressions not just for each level of experience, but also for each certification track. This leads to a boost in the overall fraction of explained variance from 60% cited by HKR to `r teachers[ , round(100*var(schedule_lsalary_pred, na.rm = TRUE)/var(schedule_lsalary, na.rm = TRUE))]`% here; as in HKR, other included covariates are consistently significant, suggesting their strong independent correlation with salary levels.
+Attempting to isolate the influence of district characteristics on wage effects, HKR suggest comparing the differential leverage of residual wages to get a more focused estimate of the association between wages and mobility[^residual_ses]. We run a similar regression using the payscales estimated in the companion paper, but evaluate separate regressions not just for each level of experience, but also for each certification track. This leads to a boost in the overall fraction of explained variance from 60% cited by HKR to `r var_explained_msg``r to.pct(var_explained, 0)`% here; as in HKR, other included covariates are consistently significant, suggesting their strong independent correlation with salary levels.
 
 [^residual_ses]: HKR mention they failed to adjust the standard errors associated with the adjusted wage differentials to account for the fact that they involve residuals from a regression. We explored accounting for this by bootstrapping the regression through resampling teachers and recalculating residuals, but confirm that little changes as a result.
 
-Unlike HKR, we find the demographic-independent wage differentials to be no more important than the uncontrolled raw wages, with the predicted wage improvement amounting to `r to.pct(adj_wage_coef, 1L)`%. In further contrast to HKR, we find a positive relationship between experience and residual wage differentials, with mid-career district switchers experiencing `r ''`2-3% higher wages upon arrival to their new employer, by contrast to the null relationship for probationary teachers. This pattern is consistent across the dimension of certification which was ignored by HKR, suggesting the opposite result cannot be attributed to bias introduced by movement patterns of Bachelor's- vs. Master's-certified instructors.
+Unlike HKR, we find the demographic-independent wage differentials to be no more important than the uncontrolled raw wages, with the predicted wage improvement amounting to `r to.pct(adj_wage_coef, 1L)`%. In further contrast to HKR, we find a positive relationship between experience and residual wage differentials, with mid-career district switchers experiencing roughly `r to.pct(mid_career_premium, 1)`% higher wages upon arrival to their new employer, by contrast to the null relationship for probationary teachers. This pattern is consistent across the dimension of certification which was ignored by HKR, suggesting the opposite result cannot be attributed to bias introduced by movement patterns of Bachelor's- vs. Master's-certified instructors.
 
-Student demographic differentials are very important for predicting teacher turnover, a finding which held in Texas as it does in Wisconsin. Most important in all experience classes and for both genders are the measures of student performance and student poverty -- district switchers end up at schools with `r ''`4% more students at grade level overall, an effect which is stronger for female teachers and for young teachers. They also end up on average with about `r ''`7% fewer students (school-wide) eligible for subsidized lunch. While this finding would need to be bolstered with experimental or quasi-experimental evidence, it hints at the potentially limited scope of teacher labor market policies intended to ameliorate teacher supply problems in hard-to-serve districts -- schools can much more easily exert influence over their compensation policies than they can dictate their student bodies, but the latter is more efficacious [see @fulbeck and @glazerman]. 
+Student demographic differentials are very important for predicting teacher turnover, a finding which held in Texas as it does in Wisconsin. Most distinguished in all experience classes and for both genders are changes in measures of student performance, student poverty and the percetnage of black students -- district switchers end up at schools with `r to.pct(pct_prof_coef, 0)`% more students at grade level overall, an effect which is `r pct_prof_msg`stronger for female teachers and for young teachers. They also end up on average with about `r to.pct(-pct_frl_coef, 0)`% fewer students (school-wide) eligible for subsidized lunch and `r to.pct(-pct_black_coef, 0)`% fewer black students. While this finding would need to be bolstered with experimental or quasi-experimental evidence, it hints at the potentially limited scope of teacher labor market policies intended to ameliorate teacher supply problems in hard-to-serve districts -- schools can much more easily exert influence over their compensation policies than they can dictate their student bodies, but the latter is more efficacious [see @fulbeck and @glazerman]. 
 
 ```{r table_3_long_distance, results = 'asis'}
 T3D = 

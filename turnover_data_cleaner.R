@@ -20,8 +20,7 @@ wds = c(data = '/media/data_drive/wisconsin/')
 ###############################################################################
 incl_cols = c('year', 'cesa', 'district_fill', 'school_fill', 
               'teacher_id', 'highest_degree', 'total_exp_floor',
-              'full_time_equiv', 'gender', 'ethnicity_main',
-              'move_district_next', 'move_school_next', 'quit_next',
+              'full_time_equiv', 'gender', 'ethnicity_main', 'quit_next',
               #only needed for data cleaning
               'position_code', 'area', 'district_work_type', 
               'months_employed', 'days_of_contract', 'category')
@@ -89,6 +88,24 @@ teachers[ , district_next :=
             shift(district_fill, 1L, type = 'lead'), by = teacher_id]
 teachers[ , move_district_next := 
             !(district_fill == district_next | is.na(district_next))]
+
+#reset district switch indicator for exogenous switchers:
+#  1) Glidden School District (2205) and Park Falls School District (4242)
+#     merge from 2009-10 to form Chequamegon School District (1071)
+#  2) Weyerhaeuser School District (6410) and 
+#     Chetek School District (1078) merge from 2010-11 to form 
+#     Chetek-Weyerhaueser Area School District (1080)
+teachers[year == 2009 & district_fill %in% c('2205', '4242') & 
+           district_next == '1071', 
+         #can do better than automatically assuming teachers don't
+         #  move schools (some do, it seems), but there's no clear
+         #  mapping -- some junior highs became middle schools,
+         #  etc., so still a lot of exogenous school switching
+         paste0('move_', c('school', 'district'), '_next') := FALSE]
+
+teachers[year == 2010 & district_fill %in% c('6410', '1078') & 
+           district_next == '1080',
+         paste0('move_', c('school', 'district'), '_next') := FALSE]
 
 #subset to focus timeframe, eliminate teachers outside 
 #  do this after defining switching to allow for any sort of

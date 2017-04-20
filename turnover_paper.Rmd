@@ -269,7 +269,7 @@ wi_ti[ , plot(table(State, `Community Type`), las = 1L,
               color = c('red', 'blue', 'darkgreen', 'lavender'),
               main = 'Urbanicity in Texas and Wisconsin, 2010')]
 wi_pct_districts_nonurb = 
-  wi_ti[State == 'WI', mean(`Community Type` %in% 
+  wi_ti[State == 'Wisconsin', mean(`Community Type` %in% 
                               c('Rural', 'Suburban'), na.rm = TRUE)]
 ```
 

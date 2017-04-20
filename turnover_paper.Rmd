@@ -113,7 +113,8 @@ n_retd =
 suppressWarnings(
   tbl <- capture.output(print(xtable(
     T1, caption =
-      'Year-to-year Transitions of Teachers by Experience, 2000-08', 
+      paste0('Year-to-year Transitions of Teachers by Experience, ',
+             incl_rng[1L], '-', incl_rng[2L] %% 100), 
     label = 'tbl:move_by_exp', digits = 1L, 
     align = paste0('lp{.12\\linewidth}p{.14\\linewidth}',
                    'p{.17\\linewidth}p{.10\\linewidth}',

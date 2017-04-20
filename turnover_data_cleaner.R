@@ -64,7 +64,9 @@ teachers =
   teachers[.(teachers[ , all(position_code == '53'),
                        by = teacher_id]$teacher_id)]
   
-#define movement indicators in this file.
+#define movement indicators in this file. do 
+#  districts first to cover the case when
+#  a teacher moves to a new school with the same id #
 #  Two older approaches that were unsatisfactory:
 #  1) Using district_next_main and move_district_next as
 #     defined in teacher_match_and_clean --
@@ -78,23 +80,29 @@ teachers =
 #     who took a break from full-time teaching but
 #     ultimately coming back full-time at the same
 #     district appear to "switch" to the same district,
-teachers[ , school_next :=
-            shift(school_fill, 1L, type = 'lead'), by = teacher_id]
-teachers[ , move_school_next := 
-            #if school_next is missing, it's the last observation
-            #  (i.e., quit_next is TRUE)
-            !(school_fill == school_next | is.na(school_next))]
 teachers[ , district_next :=
             shift(district_fill, 1L, type = 'lead'), by = teacher_id]
 teachers[ , move_district_next := 
+            #if school_next is missing, it's the last observation
+            #  (i.e., quit_next is TRUE)
             !(district_fill == district_next | is.na(district_next))]
+teachers[ , school_next :=
+            shift(school_fill, 1L, type = 'lead'), by = teacher_id]
+teachers[ , move_school_next := 
+            #move district implies move school
+            move_district_next |
+            !(school_fill == school_next | is.na(school_next))]
 
 #reset district switch indicator for exogenous switchers:
+#  see dpi.wi.gov/sites/default/files/imce/sms/doc/rg_sdnamechanges.doc
 #  1) Glidden School District (2205) and Park Falls School District (4242)
 #     merge from 2009-10 to form Chequamegon School District (1071)
 #  2) Weyerhaeuser School District (6410) and 
 #     Chetek School District (1078) merge from 2010-11 to form 
 #     Chetek-Weyerhaueser Area School District (1080)
+#  3) Trevor Grade School District (5061) and
+#     Wilmot Grade School District (5075)  merge from 2006-07 to form
+#     Trevor-Wilmot Consolidated School District (5780)
 teachers[year == 2009 & district_fill %in% c('2205', '4242') & 
            district_next == '1071', 
          #can do better than automatically assuming teachers don't
@@ -105,6 +113,10 @@ teachers[year == 2009 & district_fill %in% c('2205', '4242') &
 
 teachers[year == 2010 & district_fill %in% c('6410', '1078') & 
            district_next == '1080',
+         paste0('move_', c('school', 'district'), '_next') := FALSE]
+
+teachers[year == 2006 & district_fill %in% c('5061', '5075') & 
+           district_next == '5780',
          paste0('move_', c('school', 'district'), '_next') := FALSE]
 
 #subset to focus timeframe, eliminate teachers outside 

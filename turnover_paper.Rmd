@@ -85,13 +85,11 @@ Lastly, we turn to DPI's public data again to get school- and district-level per
 # Results
 ```{r table_1_move_by_exp, results = 'asis', message = FALSE}
 #**TO DO**
-# - Some districts dissolve/merge within the time
-#   frame of this (e.g., Chetek-Weyerhaeuser) --
-#   should deal with them (specially force
-#   move_district FALSE? what of move_school?)
+# - How to deal with charter closures?
 library(funchir)
 T1 = rbind(
-  teachers[ , .(`Remain in Same School` = 100*sum(!move_school_next)/.N,
+  teachers[ , .(`Remain in Same School` =
+                  100*sum(!move_school_next & !quit_next)/.N,
                 `Change Schools Within District` = 
                   100*sum(move_within_next)/.N,
                 `Switch Districts` = 100*sum(move_district_next)/.N,
@@ -100,7 +98,8 @@ T1 = rbind(
                 `Number of Teachers` = prettyNum(.N, big.mark = ',')),
             keyby = .(`Teacher Experience` = exp_split)],
   teachers[ , .(`Teacher Experience` = 'All',
-                `Remain in Same School` = 100*sum(!move_school_next)/.N,
+                `Remain in Same School` = 
+                  100*sum(!move_school_next & !quit_next)/.N,
                 `Change Schools Within District` = 
                   100*sum(move_within_next)/.N,
                 `Switch Districts` = 100*sum(move_district_next)/.N,

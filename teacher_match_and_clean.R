@@ -521,6 +521,9 @@ tlsd_err[ , first_name :=
 full_data[year == 2010 & district == '5733',  fringe := 
             tlsd_err[.SD, x.fringe, on = c('last_name', 'first_name')]]
 
+# Other data curiosities unexplored:
+#   the number of PhDs appears to have jumped in 2001-02
+
 ###############################################################################
 #                         Further Pre-Processing                              #
 ###############################################################################

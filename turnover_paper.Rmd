@@ -84,8 +84,6 @@ Lastly, we turn to DPI's public data again to get school- and district-level per
 
 # Results
 ```{r table_1_move_by_exp, results = 'asis', message = FALSE}
-#**TO DO**
-# - How to deal with charter closures?
 library(funchir)
 T1 = rbind(
   teachers[ , .(`Remain in Same School` =
@@ -124,7 +122,7 @@ suppressWarnings(
 idx = grep('^Teacher', tbl) - 1L
 tbl = c(tbl[1L:idx], 
         ' & \\multicolumn{4}{c}{Percent of Teachers Who} & \\\\ \\cline{2-5}',
-        tbl[(idx+1L):length(tbl)])
+        tbl[(idx + 1L):length(tbl)])
 cat(tbl, sep = '\n')
 
 quit_rates = teachers[, mean(quit_next), keyby = total_exp_floor]
@@ -145,9 +143,35 @@ mid_quits = quit_rates[total_exp_floor %between% c(10, 20), mean(V1)]
 #           bs[ , as.list(quantile(V1, c(.025, .975))), keyby = total_exp_floor],
 #           by = 'total_exp_floor')
 # Y[ , matplot(total_exp_floor, .SD[ , !"total_exp_floor"])]
+
+# code to produce indicator for exogenous moves
+#   induced by charter closures -- less than 200
+#   such moves in total, and the source schools
+#   are too small to have been fit with COBS,
+#   so we salary effects can't be seen analogously
+# library(readxl)
+# closures = 
+#   read_excel(paste0('/media/data_drive/wisconsin/charter_schools/',
+#                     'charter_closures_report.xls'), skip = 2L, 
+#              col_names = c('sch_year', 'cesa', 'district', 'authorizer',
+#                            'school', 'school_name', 'grades_served',
+#                            'year_closed', 'closure_reason'))
+# setDT(closures)
+# 
+# closures = closures[!grepl('no longer charter status', closure_reason)]
+# #this school appears to have lose its charter status,
+# #  see correspondence with Latoya Holiday Apr. 21, 2017
+# closures = closures[!(district == '3619' & school == '0419')]
+# 
+# closures[ , year := as.integer(gsub('^([0-9]{4}).*', '\\1', sch_year)) + 1L]
+# 
+# teachers[closures, exogenous_switch := TRUE,
+#          on = c('year', district_fill = 'district', school_fill = 'school')]
 ```
 
-Table \ref{tbl:move_by_exp} replicates Table 1 of @hanushek (HKR), and as HKR found in Texas, most turnover in Wisconsin is happening within districts and out of the profession. In Wisconsin, the fraction of teachers transitioning among districts is vanishingly small after a "burn-in" period of roughly 6 years -- only `r round(100*teachers[total_exp_floor >= 7, mean(move_district_next)], 1)`% of such teachers do so (compared with `r round((4.5*75284 + 2.5*165873 + 0.7*6978)/(75284+165873+6978), 1)`% for the comparable group in HKR), but is still relatively higher among the youngest teachers -- roughly twice as high for the "probationary" teachers (1-3 years' experience) as for teachers with 7-11 years' experience in both states.
+Table \ref{tbl:move_by_exp} replicates Table 1 of @hanushek (HKR)[^cite_pkg], and as HKR found in Texas, most turnover in Wisconsin is happening within districts and out of the profession. In Wisconsin, the fraction of teachers transitioning among districts is vanishingly small after a "burn-in" period of roughly 6 years -- only `r round(100*teachers[total_exp_floor >= 7, mean(move_district_next)], 1)`% of such teachers do so (compared with `r round((4.5*75284 + 2.5*165873 + 0.7*6978)/(75284+165873+6978), 1)`% for the comparable group in HKR), but is still relatively higher among the youngest teachers -- roughly twice as high for the "probationary" teachers (1-3 years' experience) as for teachers with 7-11 years' experience in both states.
+
+[^cite_pkg]: This and subsequent analyses were greatly facilitated by several facilities of the R programming language, for which due credit must be given to @r, @rstudio, @xie, @leifeld, @dahl, @henningsen, @zeileis2002, @zeileis2004, @zeileis2006 and @croissant.
 
 By contrast, movement patterns within districts in the two states are very similar, lending weight to teachers "earning their stripes" within a district to be able to choose the best schools as a privilege of seniority. As expected, we also observe a U-shaped pattern in teachers exiting Wisconsin public schools, which jives with two types of quits. Early-career quitters who change to private schools, change state of residence, or change professions, and late-career quitters who retire -- this is epecially evident among teachers with more than 30 years' experience, a group which sees a mass exodus of fully `r n_retd` percent of its teachers annually. Results not included here break down the exit rates by experience level, where this dichotomy is even more dramatic -- first-year exit rates are about `r to.pct(new_quits, 0)` percent and quickly level off at around `r to.pct(mid_quits, 0)` percent before spiking again past around 25 years.
 

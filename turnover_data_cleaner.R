@@ -142,12 +142,15 @@ teachers = teachers[!grepl('^[79]', district_fill)]
 
 #school_fill: should be assigned to an actual school
 #  09xx are district-wide/multiple-school appointments
+#  ** only occurred through 2003-04 **
 teachers = teachers[nzchar(school_fill) & !grepl('^09', school_fill)]
 
 #50 years seems a reasonable enough cap
+# ** surplus of teachers with experience < 1 in 2003-04 **
 teachers = teachers[total_exp_floor <= 50L & total_exp_floor > 0]
              
 #district_work_type: 04 are regular public schools
+# ** may not actually eliminate any teachers **
 teachers = teachers[district_work_type %in% c('04', '49')]
 
 #months_employed / days_of_contract

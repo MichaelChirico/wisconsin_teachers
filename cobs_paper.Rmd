@@ -49,7 +49,6 @@ Our implementation was also aided by the imposition of concavity on the $y(\tau,
 ```{r sample_restrictions, include = FALSE}
 library(data.table) #since sourcing a chunk doesn't bring the libraries here
 library(funchir) #for tile.axes
-to.pct = function(x, dig = Inf) round(100 * x, digits = dig)
 pn = function(x) prettyNum(x, big.mark = ',')
 
 #use some command line utilities to automatically

@@ -288,7 +288,7 @@ Table \ref{tbl:markov} replicates HKR Table 2, and supports its most important c
 
 We note, however, that though tales of flight from troubled urban districts is apparently anecdotal, it is far from apocryphal. To wit, while 50 percent of districts have a net inflow (arrivals less departures) of four or fewer teachers (in absolute value), Milwaukee's net outflow was `r abs(mwk_net)` teachers, and the five highest-inflow districts, all suburbs of Milwaukee or districts adjacent the main university town of Madison, saw in total an inflow of `r attr_net` teachers in this time. This being a two-sided market, this state of affairs is perhaps largely attributable to the dynamic nature of student populations at these districts -- but these, as well, are reflective of the appeal of the districts to parents (and teachers as parents).
 
-```{r tx_wi_urb_dist, fig.cap = '\\label{fig:ti_wi_urb}Comparison of the Prevalence of Different Community Types'}
+```{r tx_wi_urb_dist, fig.cap = '\\label{fig:ti_wi_urb}Comparison of the Prevalence of Different Community Types', fig.path = 'figures/'}
 wi_ti[ , plot(table(State, `Community Type`), las = 1L,
               color = c('red', 'blue', 'darkgreen', 'lavender'),
               main = 'Urbanicity in Texas and Wisconsin, 2010')]
@@ -462,7 +462,7 @@ cat(tbl, sep = '\n')
 
 Table \ref{tbl:change_by_ge} replicates Table 3 of HKR, and confirms its most important insights. Raw salary differentials predict teacher mobility, but the average pay differential is not on average very large -- only about `r dol.form(25*round(avg_premium/25), tex = TRUE)`, or `r to.pct(avg_premium_rel - 1, 1)`% higher than the counterfactually expected wage that would have obtained had the district-switching teacher remained in their current district. This premium `r prem_trend_msg`increases with age for both male and female teachers.
 
-```{r potential_premium, fig.cap = '\\label{fig:premia}How Much Do Teachers Stand to Gain from Changing Districts throughout Their Careers?'}
+```{r potential_premium, fig.cap = '\\label{fig:premia}How Much Do Teachers Stand to Gain from Changing Districts throughout Their Careers?', fig.path = 'figures/'}
 payscales[ , {
   qs = quantile(wage, c(.1, .25, .4, .6, .75, .9))
   .(r9010 = qs['90%']/qs['10%'] - 1,

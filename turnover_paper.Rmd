@@ -33,6 +33,8 @@ library(mlogit)
 
 # Introduction
 
+\comm{BEGIN_INTRO}
+
 Good teachers have large impacts on student achievement[^teachers_important]. It is therefore imperative for public schools to be able to attract and retain high-quality teachers. Of preeminent concern for policymakers, then, is the strength of the various manipulable levers at their disposal for influencing teacher labor markets. More specifically, state education administrators would like to identify the policy implications of various tools on three types of teacher mobility: intra-district switching, where due to the collectively bargained nature of most teachers' salaries, only nonpecuniary considerations matter, inter-district switching, where teachers move to another school district in the same state, and exo-district switching, where teachers leave the public teaching workforce entirely[^new_teachers].
 
 [^teachers_important]: See, e.g., @rockoff.
@@ -43,7 +45,11 @@ In this paper, we consider pecuniary and non-pecuniary predictors of various typ
 
 We explore to the extent possible potential contributors to this discrepancy in results; most salient are the differences between Texas, where @hanushek conduct their study, and Wisconsin. Wisconsin is a largely rural state -- its largest city/metropolitan area (in fact it is the only city considered to be "large" for NCES reporting purposes), Milwaukee, currently has roughly 600,000 residents (1,500,000 including the metropolitan area), making it around the 30th-largest city in the United States. By contrast, Texas has six cities larger than this, with El Paso being the nearest in size to Milwaukee. Though the non-urban parts of Texas are themselves sparsely populated and distinctly rural, the more uniform lack of major population centers in Wisconsin is likely to be reflected in considerably different preferences among local residents for various aspects of potential teaching positions. 
 
+\comm{END_INTRO}
+
 # Literature Review
+
+\comm{BEGIN_BODY}
 
 Because the potential policy implications of turnover in the teaching profession (from human capital and equity/distributional perspectives both) are far-reaching and polypartisan, the literature on turnover-related topics in education is extensive. As relates to this paper, there are five broad (and often overlapping) categories of inquiry: the relationship between turnover and wages, which has tended to focus on “opportunity wages” outside of the field of education; the relationship between turnover, school demographics, and other nonpecuniary benefits, which has tended to focus on distributional inequalities--whether teachers with certain characteristics are more or less likely to be teaching certain disadvantaged groups; the relationship between turnover and teacher quality as measured by student performance, usually value added (VA); collective bargaining agreements in education, focusing by and large on the implications (or lack thereof) of seniority-preferential clauses; and the recent phenomenon of specific retention incentives, the provisioning of wage bonuses to teachers willing to teach in high-needs schools.
 
@@ -1136,5 +1142,7 @@ That salary incentives appear to play such a limited role in driving teacher chu
 [^gerrymandering]: There is evidence [e.g., @richards] that catchment area manipulation (educational gerrymandering) is being used by some schools to select their student populations, but the equilibrium outcome of the strategic interactions of districts competing for the most "desirable" students is far from clear.
 
 The upside is that this paper is far from settling the debate about welfare-maximizing teacher turnover policies. Limitations in our data prevent us from associating to teachers anything but crude measures of their productivity; measures such as experience, certification, and race are famously poor predictors of teacher quality measures such as value-added. We are thus unable to provide any input to the question of whether _high-quality_ teachers have patterns of mobility which resemble that of the teaching population as a whole, or whether heterogeneity in their preferences can be used to devise appropriate policies.
+
+\comm{END_BODY}
 
 # References

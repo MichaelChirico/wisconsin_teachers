@@ -147,7 +147,8 @@ teachers = teachers[nzchar(school_fill) & !grepl('^09', school_fill)]
 
 #50 years seems a reasonable enough cap
 # ** surplus of teachers with experience < 1 in 2003-04 **
-teachers = teachers[total_exp_floor <= 50L & total_exp_floor > 0]
+max_exp = 50L
+teachers = teachers[total_exp_floor > 0 & total_exp_floor <= max_exp]
              
 #district_work_type: 04 are regular public schools
 # ** may not actually eliminate any teachers **

@@ -9,7 +9,7 @@ output:
       in_header: turnover_paper_header.tex
 fontsize: 12pt
 linestretch: 1.5
-abstract: 'Given the consistently-affirmed importance of teacher quality to student success, understanding teacher churn is crucial to formulating and evaluating teacher labor market policy. This paper replicates and extends the analysis of @hanushek over a longer and more recent time period in Wisconsin and confirms all of its major findings, namely that while inter-district pay differentials are a significant determinant of turnover, school quality measures are much better predictors of all three types of churn -- within and between school districts and out of local public schools.'
+abstract: 'Given the consistently-affirmed importance of teacher quality to student success, understanding teacher churn is crucial to formulating and evaluating teacher labor market policy. This paper replicates and extends the analysis of @hanushek over a longer and more recent time period in Wisconsin and confirms all of its major findings, namely that while inter-district pay differentials are a significant determinant of turnover and that school quality measures are much better predictors of all three types of churn -- within and between school districts and out of local public schools. We further implement and validate a new technique for inferring contract schedules from observed cross-sectional wage data.'
 bibliography: references.bib
 link-citations: true
 ---
@@ -33,7 +33,7 @@ library(mlogit)
 
 # Introduction
 
-\comm{BEGIN_INTRO}
+\TAG{BEGIN_INTRO}
 
 Good teachers have large impacts on student achievement[^teachers_important]. It is therefore imperative for public schools to be able to attract and retain high-quality teachers. Of preeminent concern for policymakers, then, is the strength of the various manipulable levers at their disposal for influencing teacher labor markets. More specifically, state education administrators would like to identify the policy implications of various tools on three types of teacher mobility: intra-district switching, where due to the collectively bargained nature of most teachers' salaries, only nonpecuniary considerations matter, inter-district switching, where teachers move to another school district in the same state, and exo-district switching, where teachers leave the public teaching workforce entirely[^new_teachers].
 
@@ -45,11 +45,13 @@ In this paper, we consider pecuniary and non-pecuniary predictors of various typ
 
 We explore to the extent possible potential contributors to this discrepancy in results; most salient are the differences between Texas, where @hanushek conduct their study, and Wisconsin. Wisconsin is a largely rural state -- its largest city/metropolitan area (in fact it is the only city considered to be "large" for NCES reporting purposes), Milwaukee, currently has roughly 600,000 residents (1,500,000 including the metropolitan area), making it around the 30th-largest city in the United States. By contrast, Texas has six cities larger than this, with El Paso being the nearest in size to Milwaukee. Though the non-urban parts of Texas are themselves sparsely populated and distinctly rural, the more uniform lack of major population centers in Wisconsin is likely to be reflected in considerably different preferences among local residents for various aspects of potential teaching positions. 
 
-\comm{END_INTRO}
+To the end of exploring the pecuniary aspects of teacher turnover, we expand upon the efforts of @hanushek to infer teachers' tenure-wage paths from teacher-level data. Most unionized teachers are paid according to a salary schedule (specifying wages as an increasing function of tenure and certification) explicated in contracts collectively bargained at the district level. With this in hand, teachers are able to infer their future potential wage trajectories at their own and other potential district employers. Lacking the physical contract faced by the teachers, an econometrician armed only with administrative data reporting actual wages in a given year must use some imputation techniques to deduce the wage structure. We explore the utility of natural Constrained B-Splines (COBS) to this end. COBS are an enhanced version of the traditional semiparametric splines technique enhanced by the ability to impose a monotonicity constraint on the resultant curve.
+
+\TAG{END_INTRO}
 
 # Literature Review
 
-\comm{BEGIN_BODY}
+\TAG{BEGIN_BODY}
 
 Because the potential policy implications of turnover in the teaching profession (from human capital and equity/distributional perspectives both) are far-reaching and polypartisan, the literature on turnover-related topics in education is extensive. As relates to this paper, there are five broad (and often overlapping) categories of inquiry: the relationship between turnover and wages, which has tended to focus on “opportunity wages” outside of the field of education; the relationship between turnover, school demographics, and other nonpecuniary benefits, which has tended to focus on distributional inequalities--whether teachers with certain characteristics are more or less likely to be teaching certain disadvantaged groups; the relationship between turnover and teacher quality as measured by student performance, usually value added (VA); collective bargaining agreements in education, focusing by and large on the implications (or lack thereof) of seniority-preferential clauses; and the recent phenomenon of specific retention incentives, the provisioning of wage bonuses to teachers willing to teach in high-needs schools.
 
@@ -67,16 +69,53 @@ Finally, an emerging strand of literature is looking at the potential for transf
 
 # Data
 
-The State of Wisconsin's Department of Public Instruction (DPI) releases annual Salary, Position & Demographic reports through the WISEstaff data collection system, and these reports represent "a point-in-time collection of all staff members in public schools as of the 3rd Friday of September..." [@dpi], which serve as the primary source of data on teachers in this paper. Data are available at the position-teacher level cross-sectionally, with each entry corresponding to one of possibly several positions held by each school district employee. Identifiers in each file permit unique identification of an employee within a given year, but this identifier does not follow teachers between years. To overcome this substantial hurdle to identifying teacher mobility, data are first fed through the matching algorithm described in further detail in the appendix. Essentially, we are aided by the presence of various imperfect identifiers which are more stable over time, most crucially teachers' first and last names and years of birth. By building on these covariates and incorporating some limited fuzzy matching techniques, we construct a panel of teachers spanning the 1994-95 academic year (AY) through AY2015-16 [^spring]. 
+```{r sample_restrictions, include = FALSE}
+#use some command line utilities to automatically
+#  generate some counts for the pre-cleaning counts
+raw_file_pattern = 
+  '/media/data_drive/wisconsin/teacher_raw_data/data_files/*.csv'
+count_all_lines = 
+  paste0('wc -l ', raw_file_pattern, ' | ',
+         'grep total | awk \'{gsub("[^0-9]", "")}1\'')
+count_headers = paste('ls', raw_file_pattern, '| wc -l')
+full_N = as.integer(system(count_all_lines, intern = TRUE)) - 
+  as.integer(system(count_headers, intern = TRUE))
+```
+
+The State of Wisconsin's Department of Public Instruction (DPI) releases annual Salary, Position & Demographic reports through the WISEstaff data collection system, and these reports represent "a point-in-time collection of all staff members in public schools as of the 3rd Friday of September..." [@dpi], which serve as the primary source of data on teachers in this paper. Data are available at the position-teacher level cross-sectionally, with each entry corresponding to one of possibly several positions held by each school district employee. Identifiers in each file permit unique identification of an employee within a given year, but this identifier does not follow teachers between years. To overcome this substantial hurdle to identifying teacher mobility, data are first fed through the matching algorithm described in further detail in the appendix. Essentially, we are aided by the presence of various imperfect identifiers which are more stable over time, most crucially teachers' first and last names and years of birth. By building on these covariates and incorporating some limited fuzzy matching techniques, we construct a panel of teachers spanning the 1994-95 academic year (AY) through AY2015-16 [^spring] consisting of `r pn(full_N)` teacher-position-year observations (many teachers serve in multiple roles within a school/district, and each of these is filed separately in the DPI system). The matching algorithm necessitates elimination of `r pn(full_N - NN[1L])` (`r to.pct(1 - NN[1L]/full_N, 1L)`%) observations on account of belonging to teachers who could not be uniquely identified in a given year of data due to sharing a first name, last name, and birth year with another teacher in the data. Specific to the exercise at hand, with data reliability and precision in mind, we make a series of further restrictions on the data, as depicted in Figure \ref{fig:samp_res}.
+
+```{r drop_plot, fig.cap = '\\label{fig:samp_res}Sample Restrictions'}
+barmat = rbind(rev(NN), c(rev(-diff(NN)), 0))
+colnames(barmat) = 
+  c('Numerical Stability Flag', 'Taught Regular Subject',
+    '1-30 Years\' Experience', 'Total Pay Plausible', 
+    'Full-Year Employment', 'District Type', 
+    'Highest-Intensity Post', 'Full-Time', 
+    'Staff Category', 'MA/BA Holders', 'Teachers', 'All Staff')
+par(mar = c(5.1, 6.1, 4.1, 2.1))
+barplot(barmat, col = c('blue', 'red'), horiz = TRUE, las = 1L,
+        main = 'Effect of Successive Restrictions on Sample Size',
+        xlab = 'Sample Size', cex.names = .6)
+```
 
 [^spring]: For brevity, we herein refer to academic years by the spring year, e.g., AY2003-04 will be simply 2004.
 
-As noted in the companion paper, the introduction of Wisconsin Act 10 introduced a substantial structural break in the labor market for Wisconsin teachers, so we include only data from `r teachers[ , sprintf('%d-%d', min(year), max(year))]` to avoid conflating the effects of this policy on teacher turnover, a topic covered in more detail in the companion paper and elsewhere, with the earlier functioning of the labor market (i.e., we do not want to mix the results from distinct equilibria of the teacher labor market, but would prefer to analyze the pre- and post-Act-10 markets separately). We drop all employees who are not full-time, full-year regular teachers of a major core subject (all-purpose elementary teachers or English/Math) at a single regular public school with a Bachelor's or Master's degree and fewer than 50 years' recorded experience; taken together, these restrictions eliminate `r round(100*abs(N_subset_I/N_full - 1))`% of employees, the lion's share of which come from eliminating substitutes/support staff and teachers non-core subjects[^position_code]. We then eliminate teachers with missing information on their subsequent school or district and teachers with instability in their recorded ethnicity, as well as teachers not categorized as white, black, or Hispanic, eliminating a further `r round(100*(N_subset_I - N_subset_II)/N_full, 1L)`% of all employees[^ethnicity]. Finally, we drop teachers' multiple positions by keeping only the highest-intensity position for each teacher, as measured by full-time equivalency, resulting in a final count of `r prettyNum(nrow(teachers), big.mark = ',')` teacher-year observations.
+The introduction of Wisconsin Act 10 introduced a substantial structural break in the labor market for Wisconsin teachers, so we include only data from `r teachers[ , sprintf('%d-%d', min(year), max(year))]` to avoid conflating the effects of this policy on teacher turnover with the earlier functioning of the labor market (i.e., we do not want to mix the results from distinct equilibria of the teacher labor market, but would prefer to analyze the pre- and post-Act-10 markets separately). We drop all employees who are not full-time, full-year regular teachers of a major core subject (all-purpose elementary teachers or English/Math) at a single regular public school with a Bachelor's or Master's degree and fewer than `r max_exp` years' recorded experience; taken together, these restrictions eliminate `r round(100*abs(N_subset_I/N_full - 1))`% of employees, the lion's share of which come from eliminating substitutes/support staff and teachers non-core subjects[^position_code]. We then eliminate teachers with missing information on their subsequent school or district and teachers with instability in their recorded ethnicity, as well as teachers not categorized as white, black, or Hispanic, eliminating a further `r round(100*(N_subset_I - N_subset_II)/N_full, 1L)`% of all employees[^ethnicity]. Finally, we drop teachers' multiple positions by keeping only the highest-intensity position for each teacher, as measured by full-time equivalency, resulting in a final count of `r pn(nrow(teachers))` teacher-year observations.
 
 [^position_code]: We also eliminate any teacher who appears in any role besides "Teacher" in any year. In particular, this eliminates a nontrivial number of educators who either begin their career with an "ease-in" period or end it with a "soft retirement" period, during which they act as a substitute teacher before or after a career otherwise focused on teaching. Such teachers often have part-time roles at several local schools, which introduces sufficient ambiguity in the definition of mobility so as to obscure interpretation of results, so we opt for a stricter definition of full-time teaching than is completely necessary.
 [^ethnicity]: Wisconsin teachers are predominantly white (`r pct_white`%).
 
 This data is also used for the incorporation of counterfactual salary calculations, by incorporating the salary schedules estimated in the companion paper. Details of the fit procedure can be found there, but essentially salary schedules are computed as monotonicity- and concavity-constrained median-targeted splines [@ng] for each level of certification (Bachelor's or Master's degree) in each district in each year[^area_diff]. Data sparsity led this procedure to be unreliable in many cases, so ultimately around `r teachers[ , round(100*mean(is.na(schedule_lsalary)))]`% of teachers have missing salary information[^na_salary], mostly in rural districts or other districts with only one or two schools and a small number of students.
+
+To wit, from the full staff file are first eliminated all non-teaching positions; most common among the dropped observations are "Other Support Staff", "Program Aide", and "Short-term Substitute Teacher," all of whom are likely to have their pay structured in ways that differ substantially from teachers (e.g., these positions are often part of a separately-bargained contract). We then remove all teachers whose highest degree is neither a Bachelor's nor a Master's degree, a minor restriction which allows substantial clarity in understanding districts' pay structure. For more precision, we next eliminate teachers not categorized as professionals in regular education (as opposed by and large to those in special education)^[Sensitivity analyses to this and other restrictions are given in the Appendix.].
+
+The next two restrictions are related to a teacher's full-time equivalency. Full-time equivalency is for the most part used to break down the relative use of staff's time on various duties (for example, non-teaching time), or to place substitute teachers on a pay grade commensurate with their work load. Given the possibility of split duties to dilute the contribution of a teacher's classroom role to their pay, we eliminate teachers whose full-time equivalency across teaching roles is not 100; we then select only the highest-intensity (highest-FTE) role for each teacher in a given year^[With a very small number of likely-erroneous exceptions, each teacher's observation at a given district in a given year is associated with exactly one value for their pay (so that pay is not broken down by position), which means that neither can we "scale up" less-than-full-time teachers' pay to full time values, nor is it particularly important to select the highest-intensity role for each teacher.].
+
+The next three restrictions have only a minor effect on sample size, and they are to eliminate districts not categorized as Wisconsin Public Schools (for the most part, observations failing this test are teachers employed by CESAs, Wisconsin's supra-district administrative unit), to eliminate teachers recorded as having worked a period of time different from a full school year, and to eliminate a small number of teachers whose pay was implausibly small for a full time staff member (less than \$10,000 in a year). After this, we cut teachers outside 1-30 years' experience for clarity and precision (sample sizes begin to drop off around 25 years of teaching), after which we eliminate teachers assigned to non-teaching subjects (health, academic support, gifted & talented support, etc.).
+
+Finally, we make a series of cuts which are either required for COBS to function, or else increase the reliability of its output substantially. The most noteworthy/far-reaching of these numerical restrictions is to eliminate any teachers working in districts where there are not at least 20 total teachers in each degree track. While ultimately arbitrary, this number is reasonable to limit the potential effect of an individual teacher given the function to be fit to 30 levels of experience with minimal functional form restrictions. The other numerical flags require both the BA & MA track to be represented at a district, for at least 7 different levels of experience to be represented within a degree track, and for at least 5 unique values of the two measures of pay (salary and fringe benefits) to be available in each degree track; any teacher at a district failing these tests is dropped.
+
+The sum total of all of these restrictions leaves us with an analysis sample of `r pn(nrow(full_data))` teacher-year observations, made up of `r pn(n_teachers)` individual teachers in `r full_data[ , uniqueN(district_fill)]` districts over `r full_data[ , uniqueN(year)]` years. In total, there is sufficient data to fit `r pn(uniqueN(full_data, by = c('year', 'district_fill', 'highest_degree')))` $y_t(\tau, c, d)$ curves, an average of roughly `r round(nrow(full_data)/uniqueN(full_data, by = c('year', 'district_fill', 'highest_degree')), -2)` observations per curve.
 
 [^area_diff]: One difference is that the salaries included in the payscales estimation were less restrictive with respect to included subject areas. This was done since contracts are collectively bargained at the district level for all teachers, with scant mention of subject area in wage determination.
 
@@ -88,9 +127,151 @@ We supplement the DPI teacher salary data set in several ways to incorporate dat
 
 Lastly, we turn to DPI's public data again to get school- and district-level performance metrics. While @hanushek were able to obtain school- and district-level average scale scores on a standardized test in Texas, such a metric is not publicly available in Wisconsin for all years. Instead, we calculate student proficiency rates for each school and district as the percentage of test-takers deemed to be at grade level in mathematics or reading in a given year on the Wisconsin Knowledge and Concepts Examination (WKCE), which is administered to 4th, 8th, and 10th-grade students.
 
+# Salary Scale Imputation with Constrained B-Splines
+
+For many years, the ubiquitous characteristic of collectively bargained teachers' contracts has been the salary table, which gives a mapping from the calendar year, a teacher's experience (their length of tenure at the current district), and their certification (typically Master's vs. Bachelor's degree) to their wage. This table gives current teachers a clear understanding of how their pay will advance as a function of their labor inputs, and thereby gives forward-looking potential teachers and potential migrant teachers a clear understanding of their potential pay arcs under a district-switching decision-making framework, especially given that this information is typically openly available. 
+
+It would behoove an econometrician seeking to understand education labor market dynamics, then, to incorporate this information on future pay into their statistical modeling framework. Unfortunately, this data is typically not available in a format lending itself to easy analysis at scale -- whether locked inside idiosyncratically formatted and sporadically-available contract PDFs or hidden behind large-scale freedom of information act inquiries, the temporal and financial costs of scraping such data into a usable form can be substantial.
+
+Much more common in empirical settings is access to teacher-year-level salary data of the form $y_{i, t} = y(\tau_{i, t}, c_{i, t}, d_{i, t}) + \varepsilon_{i, t}$, where $\tau_{i,t}$, $c_{i, t}$ and $d_{i, t}$ are the tenure, certification, and district of teacher $i$ in year $t$, and $\varepsilon_{i, t}$ represents unaccount factors affecting the wage (e.g., not all teachers work full time, and many teachers supplement their income with additional duties like coaching). Here we consider one approach and some empirical lessons for trying to estimate the underlying mapping $y(\tau, c, d)$ from such data.
+
+There are a multitude of inference/imputation techniques suitable to the inference of a latent function of unknown parametric form available in the statistician/econometrician's palette. The powerful flexibility of nonparametric approaches (local regression, splines, Random Fourier Feature expansions) is a double-edged sword; as it happens, in this particular setting, even if we know linearity is not a reasonable functional form restriction, we do know some very basic properties of the underlying tenure-wage curves that will be violated in general by uninformed estimation techniques. In particular, we know that such tenure-wage curves are non-decreasing and that they are non-negative, i.e., $y(\tau', c, d) >= y(\tau, c, d)$ whenever $\tau' >= \tau$, and $y(0, c, d) \geq 0$.
+
+@he introduce a linear programming approach to incorporating monotonicity, curvature, and pointwise restraints to quantile regression spline estimation techniques, and @ng present an overview of the R package \texttt{cobs} which gives an efficient implementation of this approach (COBS standing for Constrained B-Splines). The basic idea of quantile regression spline estimation is to swap out the standard squared loss function for a quantile-dependent weighted absolute loss function to target conditional quantiles instead of conditional means. Monotonicity, point, and curvature restrictions enter as penalized terms to the objective function; \texttt{cobs} expresses this in a fashion which facilitates the application of standard linear programming techniques for efficiency, and handles internally the issues of knot selection and penalty parameter assignment through cross-validation.
+
+We implement and fine-tune this general approach with an eye to being as minimally-invasive as possible. The first innovation is required by the poor performance of standard COBS fit in extrapolation. Data sparsity in smaller districts means that it is often the case that only a small range of interesting $\tau$ values are observed in a given year-certification-district. Monotonicty constraints are only built into the B-spline routine internally; the underlying basis functions may produce decreasing fits outside the observed range of data. To overcome this, we take a cue from the literature tackling Runge's Phenomenon [@runge], wherein polynomial approximations tend to exhibit extreme oscillations in extrapolation. This issue is one of the motivations behind natural cubic/smoothing splines [see, e.g., @friedman; @wahba; @green; or @deboor], which handle this issue by using a simple linear basis function outside the outermost interpolating knots. We incorporate this technique of linear extension only when necessary by testing the COBS fit for monotonicity; $\tau$ values failing this constraint are replaced by extending the final non-decreasing fit values through the end of the range of extrapolation.
+
+Next, a major shortcoming of COBS for this context is its limit to one-dimensional spline fits; while techniques for nonparametric B-spline fits are available in arbitrary dimensions [see @deboor], at present COBS is only capable of imposing monotonicity on one dimension of a curve. In our context, however, $y(\tau, c)$ is increasing not only with respect to $\tau$, but also with respect to $c$ (as, without fail until only very recently in Wisconsin, certification was rewarded with a Master's premium, typically a percentage increase in wage). One solution would be to generalize the implementation of COBS to handle a second dimension by simply adding penalty terms along this dimesion. We abandon this approach because of the categorical nature of the certification dimension -- there are not numerical units to the difference between having a Master's vs. Bachelor's degree; the assignment of such a number required by this approach would itself become an implementation hyperparameter, meaning that the ultimate fit would itself be sensitive to the choice of continuous representation.
+
+Instead, we use a two-step procedure to fit the Bachelor's and Master's pay tracks in serial. In the first step, we fit the Bachelor's career track as a typical one-dimensional COBS fit. In the second step, we first construct Master's premia for each observation by subtracting out the predicted Bachelor's pay corresponding to each observed level of tenure for a teacher with a Master's degree. We then use COBS to fit a non-decreasing Master's premium curve over all tenure levels on these residuals, before finally adding the Master's premium and Bachelor's fit curves to get the overal Master's fit curve. Monotonicity of the result is guaranteed by forcing upwards monotonicity on the Master's premium, a restriction in line with the empirical observation that Master's degree pay is often simply a fixed-percentage rise over the corresponding Bachelor's pay.
+
+Our implementation was also aided by the imposition of concavity on the $y(\tau, BA)$. While not a theoretically-assured functional form restriction, concavity improves the goodness of fit notably. Small-sample district-level observations and simple reduced-form regressions of wages versus quadratic forms in experience support this shape's validity. A variety of contracts obtained from a database for teachers in nearby Michigan also meet this condition, and the decrease in marginal returns to experience is also commonly found in the wider study of labor markets. We do not impose this restriction on the fit for the Master's premium (the only restrictions there being non-negativity at 0 and, as mentioned, an increasing relationship with tenure). 
+
+```{r milwaukee, fig.cap = '\\label{fig:mwk}Pay in Milwaukee, 2003-2006'}
+mwk = full_data[district_fill == 3619]
+par(mfrow = c(2, 2),
+    mar = c(0.1, 0.1, 0.6, 0.1),
+    oma = c(5.1, 5.1, 4.1, 2.1))
+yrs = 2003:2006
+parm = list(x = list(),
+            y = list(las = 1L))
+for (ii in 1:4) {
+  yr = yrs[ii]
+  mwk[year == yr, 
+      as.list(c(N = .N, quantile(salary, c(.25, .5, .75)))), 
+      keyby = .(ba = highest_degree == 4,
+                ex = total_exp_floor)
+      ][CJ(ba = c(FALSE, TRUE), ex = 1:30), on = c('ba', 'ex')
+        ][ , {
+          ex = unique(ex)
+          BA = .SD[(ba), !c(1:3), with = FALSE]
+          MA = .SD[(!ba), !c(1:3), with = FALSE]
+          ymx = 1.05*max(unlist(c(BA, MA)), na.rm = TRUE)
+          matplot(ex, BA, type = 'l', lty = c(2, 1, 2), 
+                  lwd = 1L, col = 'blue', ylim = c(0, ymx),
+                  axes = FALSE)
+          mtext(yr, side = 3L, cex = .6, line = -.5)
+          if (ii %% 2 == 1) mtext('Salary', side = 2, line = 4)
+          if (ii > 2) mtext('Tenure', side = 1, line = 3)
+          matplot(ex, MA, type = 'l', lty = c(2, 1, 2), 
+                  lwd = 1L, col = 'red', add = TRUE)
+          tile.axes(ii, 2, 2, parm)
+          par(new = TRUE)
+          barplot(matrix(N, nrow = 2, byrow = TRUE),
+                  beside = TRUE, col = c('red', 'blue'),
+                  ylim = c(0, 2.5*max(N, na.rm = TRUE)), axes = FALSE)}]
+}
+legend('right', c('BA', 'MA', 'Median', '25/75 %ile', '# Teachers'),
+       col = c('blue', 'red', 'black', 'black', 'black'),
+       lty = c(1, 1, 1, 2, NA), pch = c(NA, NA, NA, NA, 15), bty = 'n', cex = .5)
+mtext('Empirical Distribution of Salary in Milwaukee\n' %+%
+        'By Certification', outer = TRUE, side = 3)
+```
+
+As an illustrative example of the patterns in the data we wish to quantify and formalize, we turn briefly now to Milwaukee Public Schools, the largest district in Wisconsin. Figure \ref{fig:mwk} depicts key moments of the empirical distribution of salary in 4 years at Milwaukee Public Schools, broken down by tenure and certification. The central lines on each plot (Bachelor's pay track in blue, Master's pay track in red) are the empirical median levels of pay, and thus give a rough approximation to $y(\tau, c)$. The dashed-line intervals on either side represent the 25th and 75th percentiles.
+
+Notably, these intervals and the medians themselves tend to get quite noisy at later stages in the career, especially for the Bachelor's track. This fact that reflects the almost universal certification of teachers by about 15 years into their career. This is reflected in the bar graph below each set of curves, which shows the distribution of teachers in each certification track by tenure. Almost all new teachers start with only a Bachelor's degree; the relative presence of Master's degrees grows over time as more teachers certify mid-career.
+
+We can also note two more key empirical facts from this plot. First, the vanishing presence of teachers in both certification tracks leads the empirical median to be a poor approximation of $y(\tau, c)$ since it frequently fails to respect the fundamental monotonicity constraint discussed above. With respect to tenure, this tends to affect the Bachelor's track later in the career as more teachers certify, and the Master's track very early in the career before teachers certify. The monotonicity with respect to $c$ is maintained here for Milwaukee, but this is not always the case; our estimation procedure is thus careful to impose these restrictions internally.
+
+Second, structural breaks are an important empirical phenomenon in this context. Each time a contract is renegotiated at a district, the tenure-wage curves can potentially change shape dramatically. It is with this in mind that we refrain, given our ignorance with respect to when such structural breaks occur, from combining information from adjacent years in fitting a given year's curve, an approach which would substantially enhance the statistical power avaiable to sparsely-populated districts. Such a structural break is apparent in Milwaukee, for example, between 2003 and 2004 and between 2005 and 2006, where the shape of the Master's pay scale has shifted notably. While we eschew, for example, full Bayesian estimation of structural breaks in a given district, such techniques are applicable; instead, we settle for the purposes at hand with investigating evidence for such breaks _ex post_.
+
+## Goodness of Fit
+
+Returning to the motivating example illustrated in Figure \ref{fig:mwk}, we turn first to the performance in Milwaukee, where, given the relative sample size, performance is expected to be very good. Indeed this is the case, as seen in Figure \ref{fig:mwk_fit}. The COBS fit has retained all the salient features of the empirical median return to experience and certification, while simultaneously improving over this nonparametric conditional median by ironing out nonmonotonicities found empirically as a result of small-sample bias. 
+
+```{r milwaukee_fit, fig.cap = '\\label{fig:mwk_fit}Estimation Results for Milwaukee, 2003-2006'}
+X = mwk[ , .(med_ba = median(salary[highest_degree == 4]),
+             med_ma = median(salary[highest_degree == 5])),
+         keyby = .(year, tenure = total_exp_floor)
+         ][scales[district_fill == 3619, .(year, tenure, wage_ba, wage_ma)],
+             on = c('year', 'tenure')]
+par(mfrow = c(2, 2),
+    mar = c(0.1, 0.1, 0.6, 0.1),
+    oma = c(5.1, 5.1, 4.1, 2.1))
+parm = list(x = list(),
+            y = list(las = 1L))
+for (ii in 1:4) {
+  yr = yrs[ii]
+  X[year == yr, {
+    ymx = 1.05*max(c(wage_ma, wage_ba))
+    y = .SD[ , !c("year", "tenure")]
+    matplot(tenure, y, type = 'l', lty = c(2, 2, 1, 1), 
+            lwd = 1, col = c('blue', 'red', 'blue', 'red'),
+            ylim = c(0, ymx), axes = FALSE)
+    mtext(yr, side = 3L, cex = .6, line = 0)
+    if (ii %% 2 == 1) mtext('Salary', side = 2, line = 4)
+    if (ii > 2) mtext('Tenure', side = 1, line = 3)
+    tile.axes(ii, 2, 2, parm)}]
+  box()
+}
+legend('right', c('BA', 'MA', 'Empirical Median', 'COBS Fit'),
+       col = c('blue', 'red', 'black', 'black'),
+       lty = c(1, 1, 2, 1), bty = 'n', cex = .5)
+mtext('Comparison of Fit Schedule and Empirical Median in Milwaukee\n' %+%
+        'By Certification', outer = TRUE, side = 3)
+```
+
+Perhaps more telling is the goodness of fit in minimally small districts. Four such examples are featured in Figure \ref{fig:small_fit}. These four districts just barely satisfy the sample restriction that at least 20 teachers be present in both the BA and MA pay track (Melrose-Mindoro and Shell Lake have exactly 20 in each); for this reason, rather than plot the empirical median, we simply present the full distribution of wage and experience in these districts. Here again the COBS fit captures the essence of the wage-tenure curve even in these sparsely-staffed districts. While one can imagine Shell Lake or Waterford Union's actual contract schedule to feature the sort of late-career leveling that we have seen elsewhere, the power to identify and separate such features distinctly from those captured is strongly limited by the lack of data.
+
+```{r small_dist_fit, fig.cap = '\\label{fig:small_fit}Estimation Results for Sparse Districts'}
+par(mfrow = c(2, 2),
+    mar = c(0.1, 0.1, 0.6, 0.1),
+    oma = c(5.1, 5.1, 4.1, 2.1))
+parm = list(x = list(),
+            y = list(las = 1L))
+dists = c(`Melrose-Mindoro (2008)` = 3428, 
+          `Shell Lake (2013)` = 5306,
+          `Waterford Union High School (2007)` = 6083,
+          `Cochrane-Fountain City (2001)` = 1155)
+ymx = 1.05*max(scales[district_fill %in% dists, wage_ma],
+                 full_data[district_fill %in% dists, salary])
+for (ii in 1:4) {
+  dst = dists[ii]
+  scales[district_fill == dst,
+         matplot(tenure, cbind(wage_ba, wage_ma),
+                 col = c('blue', 'red'), lty = 1, type = 'l',
+                 axes = FALSE, ylim = c(0, ymx))]
+  full_data[district_fill == dst,
+            points(total_exp_floor, salary, col = 
+                     ifelse(highest_degree == 4, 'blue', 'red'))]
+  mtext(names(dists)[ii], side = 3L, cex = .6, line = 0)
+  if (ii %% 2 == 1) mtext('Salary', side = 2, line = 4)
+  if (ii > 2) mtext('Tenure', side = 1, line = 3)
+  tile.axes(ii, 2, 2, parm)
+  box()
+}
+legend('bottomright', c('COBS Fit, BA', 'COBS Fit, MA', 'Observed Pairs'),
+       col = c('blue', 'red', 'black'),
+       lty = c(1, 1, NA), pch = c(NA, NA, 1), bty = 'n', cex = .5)
+mtext('Comparison of Fit Schedule and Observed Wages in Small Districts\n' %+%
+        'By Certification', outer = TRUE, side = 3)
+```
+
 # Results
 ```{r table_1_move_by_exp, results = 'asis', message = FALSE}
 library(funchir)
+pn = function(x) format(x, big.mark = ',')
 T1 = rbind(
   teachers[ , .(`Remain in Same School` =
                   100*sum(!move_school_next & !quit_next)/.N,
@@ -99,7 +280,7 @@ T1 = rbind(
                 `Switch Districts` = 100*sum(move_district_next)/.N,
                 `Exit Wisconsin \\mbox{Public Schools}` = 
                   100*sum(quit_next)/.N,
-                `Number of Teachers` = prettyNum(.N, big.mark = ',')),
+                `Number of Teachers` = pn(.N)),
             keyby = .(`Teacher Experience` = exp_split)],
   teachers[ , .(`Teacher Experience` = 'All',
                 `Remain in Same School` = 
@@ -109,7 +290,7 @@ T1 = rbind(
                 `Switch Districts` = 100*sum(move_district_next)/.N,
                 `Exit Wisconsin \\mbox{Public Schools}` = 
                   100*sum(quit_next)/.N,
-                `Number of Teachers` = prettyNum(.N, big.mark = ','))])
+                `Number of Teachers` = pn(.N))])
 
 n_retd = 
   5*round(T1[`Teacher Experience` == '>30 years'][[grep('Exit', names(T1))]]/5)
@@ -198,8 +379,7 @@ T2 = rbind(
     idx = move_district_next
     N_move = sum(idx)
     c(as.list(table2(urbanicity_s_next[idx], prop = TRUE, pct = TRUE)),
-      list(n_change = prettyNum(N_move, big.mark = ','), 
-           pct_origin = 100*N_move/.N,
+      list(n_change = pn(N_move), pct_origin = 100*N_move/.N,
            change_share = 
              share_change[.BY, sprintf('%.1f\\%%', 100*delta), 
                           on = 'urbanicity_s']))
@@ -208,8 +388,7 @@ T2 = rbind(
     idx = move_district_next
     N_move = sum(idx)
     c(as.list(table2(urbanicity_s_next[idx], prop = TRUE, pct = TRUE)),
-      list(n_change = prettyNum(N_move, big.mark = ','), 
-           pct_origin = 100*N_move/.N))
+      list(n_change = pn(N_move), pct_origin = 100*N_move/.N))
   }, keyby = urbanicity_s],
   fill = TRUE)
 total_urban_moves =
@@ -290,7 +469,7 @@ attr_net =
 # arrdep[ , net_flow := arrivals - exits]
 ```
 
-Table \ref{tbl:markov} replicates HKR Table 2, and supports its most important conclusions. HKR argue that there is little support for the idea that scores of young teachers are using large urban schools as a training ground before "settling down" with easier assignments in the suburb, based on the general low level of turnover from Large Urban districts. We affirm the scarcity of transitions from districts in Milwaukee, while also noting that such a path is certainly present, as evidenced by the majority of those who do leave Large Urban districts ending up in a Surburban district in both settings. HKR also observe that the likelihoods of remaining in the same school and of quitting are roughly the same for urban and suburban teachers, an observation which we can confirm in Wisconsin. We further note that while Table \ref{tbl:markov} only presents a cross-sectional picture, the career-long trend reaffirms this -- only `r to.pct(pct_ever_go_suburban, 1L)`% of teachers starting their careers at a large urban district ever work at a suburban district. Lastly, we echo the suggestion of HKR that this phenomenon cannot be driven _per se_ by demand-side constraints -- in our time period of observation, we observe only `r prettyNum(total_urban_moves, big.mark = ',')` urban teachers change districts, whereas `r prettyNum(suburban_new_hires, big.mark = ',')` teachers were hired in suburban districts, though of course this does not rule out arguments based for example on stricter screening of applicants transferring from urban districts. 
+Table \ref{tbl:markov} replicates HKR Table 2, and supports its most important conclusions. HKR argue that there is little support for the idea that scores of young teachers are using large urban schools as a training ground before "settling down" with easier assignments in the suburb, based on the general low level of turnover from Large Urban districts. We affirm the scarcity of transitions from districts in Milwaukee, while also noting that such a path is certainly present, as evidenced by the majority of those who do leave Large Urban districts ending up in a Surburban district in both settings. HKR also observe that the likelihoods of remaining in the same school and of quitting are roughly the same for urban and suburban teachers, an observation which we can confirm in Wisconsin. We further note that while Table \ref{tbl:markov} only presents a cross-sectional picture, the career-long trend reaffirms this -- only `r to.pct(pct_ever_go_suburban, 1L)`% of teachers starting their careers at a large urban district ever work at a suburban district. Lastly, we echo the suggestion of HKR that this phenomenon cannot be driven _per se_ by demand-side constraints -- in our time period of observation, we observe only `r pn(total_urban_moves)` urban teachers change districts, whereas `r pn(suburban_new_hires)` teachers were hired in suburban districts, though of course this does not rule out arguments based for example on stricter screening of applicants transferring from urban districts. 
 
 We note, however, that though tales of flight from troubled urban districts is apparently anecdotal, it is far from apocryphal. To wit, while 50 percent of districts have a net inflow (arrivals less departures) of four or fewer teachers (in absolute value), Milwaukee's net outflow was `r abs(mwk_net)` teachers, and the five highest-inflow districts, all suburbs of Milwaukee or districts adjacent the main university town of Madison, saw in total an inflow of `r attr_net` teachers in this time. This being a two-sided market, this state of affairs is perhaps largely attributable to the dynamic nature of student populations at these districts -- but these, as well, are reflective of the appeal of the districts to parents (and teachers as parents).
 
@@ -798,7 +977,7 @@ T5[ , (cols) := lapply(.SD, function(x) {
   o = character(length(x))
   o[pidx & !sidx] = sprintf('%.1f%%', 100*x[pidx & !sidx])
   o[pidx & sidx] = sprintf('(%.1f%%)', 100*x[pidx & sidx])
-  o[nidx] = prettyNum(x[nidx], big.mark = ',')
+  o[nidx] = pn(x[nidx])
   o}), .SDcols = cols]
 T5[type == 's', var := '']
 T5[ , type := NULL]
@@ -825,7 +1004,7 @@ tbl = c(tbl[1L:(idx - 1L)],
 cat(tbl, sep = '\n')
 ```
 
-HKR examine the state of Texas, which features substantially more ethnic heterogeneity than does Wisconsin. As a result, they are better-equipped to identify heterogeneity in preferences by teacher ethnicity. Wisconsin, however, only has `r teachers[ethnicity_main %in% c('Black', 'Hispanic'), prettyNum(uniqueN(teacher_id), big.mark = ',')]` of its `r teachers[ , prettyNum(uniqueN(teacher_id), big.mark = ',')]` teachers non-white, so our results are underpowered relative to HKR. Table \ref{tbl:change_by_eth} presents these results, which parallel HKR Table 5. Given how few observations we have of black or Hispanic teachers switching districts, we eschew any temptation to interpret these results. Only black switchers within districts provide enough records to interpret meaningfully; in Wisconsin, we find (in contrast to white within-district switchers) black teachers tend to migrate to economically better-off and higher-performing schools (white teachers only tend to select on the latter characteristic). 
+HKR examine the state of Texas, which features substantially more ethnic heterogeneity than does Wisconsin. As a result, they are better-equipped to identify heterogeneity in preferences by teacher ethnicity. Wisconsin, however, only has `r teachers[ethnicity_main %in% c('Black', 'Hispanic'), pn(uniqueN(teacher_id))]` of its `r teachers[ , pn(uniqueN(teacher_id))]` teachers non-white, so our results are underpowered relative to HKR. Table \ref{tbl:change_by_eth} presents these results, which parallel HKR Table 5. Given how few observations we have of black or Hispanic teachers switching districts, we eschew any temptation to interpret these results. Only black switchers within districts provide enough records to interpret meaningfully; in Wisconsin, we find (in contrast to white within-district switchers) black teachers tend to migrate to economically better-off and higher-performing schools (white teachers only tend to select on the latter characteristic). 
 
 ```{r table_6_change_by_quartile, results = 'asis'}
 #** TO DO **
@@ -1143,6 +1322,6 @@ That salary incentives appear to play such a limited role in driving teacher chu
 
 The upside is that this paper is far from settling the debate about welfare-maximizing teacher turnover policies. Limitations in our data prevent us from associating to teachers anything but crude measures of their productivity; measures such as experience, certification, and race are famously poor predictors of teacher quality measures such as value-added. We are thus unable to provide any input to the question of whether _high-quality_ teachers have patterns of mobility which resemble that of the teaching population as a whole, or whether heterogeneity in their preferences can be used to devise appropriate policies.
 
-\comm{END_BODY}
+\TAG{END_BODY}
 
 # References

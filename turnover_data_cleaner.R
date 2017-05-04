@@ -8,18 +8,28 @@
 #                   Package Setup & Convenient Functions                      #
 ###############################################################################
 library(data.table)
-library(Hmisc) # for weighted quantiles
-library(funchir)
+where_funchir = grep('package:funchir', search(), fixed = TRUE)
+if (length(where_funchir)) {
+  #force ggplot2 to load above funchir to prevent %+% masking
+  library(ggplot2, pos = where_funchir + 1L)
+  library(Hmisc) # for weighted quantiles
+} else {
+  library(Hmisc)
+  library(funchir)
+}
 library(sp)
 library(rgeos)
+library(cobs)
+library(parallel)
+library(quantmod)
 
 wds = c(data = '/media/data_drive/wisconsin/')
 
 ###############################################################################
 #                              Main Teacher File                              #
 ###############################################################################
-incl_cols = c('year', 'cesa', 'district_fill', 'school_fill', 
-              'teacher_id', 'highest_degree', 'total_exp_floor',
+incl_cols = c('year', 'cesa', 'district_fill', 'school_fill', 'salary',
+              'teacher_id', 'highest_degree', 'total_exp_floor', 'fringe',
               'full_time_equiv', 'gender', 'ethnicity_main', 'quit_next',
               #only needed for data cleaning
               'position_code', 'area', 'district_work_type', 
@@ -34,7 +44,7 @@ teachers =
         select = incl_cols, colClasses = colClasses,
         key = 'teacher_id,year,district_fill,school_fill')
 
-incl_yrs = 2000:2010
+incl_yrs = setNames(nm = 2000:2010)
 incl_rng = range(incl_yrs)
 N_full = teachers[year %between% incl_rng, uniqueN(teacher_id)]
 
@@ -44,8 +54,27 @@ teachers =
   unique(teachers[order(-full_time_equiv)], by = c('teacher_id', 'year'))
 setkey(teachers, teacher_id, year)
 
+#copy of the data to be used to create payscales; key differences:
+#  - less restrictive on position_code: include teachers
+#    who sometimes hold positions besides teacher
+#  - less restrictive on area: include most regular subject areas
+#  - less restrictive on ethnicity/gender stability
+#  - more restrictive on observed pay -- require salary + fringe > 10k
+#  - more restrictive on small districts: see flags below - 
+#    degree, node, teach, sal, and frn count flags
+teachers_ps = copy(teachers)
+
 #position_code: 53 = full-time teacher
-#  mostly eliminating support staff and substitutes;
+#Only want full-time teachers
+#  (eliminate 1,924,483 = 46%)
+#   *Mostly categorized as:
+#   "Other Support Staff" [98], "Program Aide" [97],
+#   "Short-term Substitute Teacher" [43], or in major
+#   administrative/staff positions, e.g.
+#   Athletic Coach [77]/Program Coordinator [64]/
+#   Principal [51]/Speech-Language Pathologist [84]/
+#   Plant Maintenance Personnel [72]/Guidance Counselor [54]/
+#   Cafeteria Worker [73]/Clerical Support Staff [68])
 #  take care to eliminate any teacher who was not a
 #  full time teacher in every year they appear -- 
 #  definitions were getting hazy when we allowed
@@ -63,6 +92,7 @@ setkey(teachers, teacher_id, year)
 teachers = 
   teachers[.(teachers[ , all(position_code == '53'),
                        by = teacher_id]$teacher_id)]
+teachers_ps = teachers_ps[position_code == '53']
   
 #define movement indicators in this file. do 
 #  districts first to cover the case when
@@ -123,6 +153,7 @@ teachers[year == 2006 & district_fill %in% c('5061', '5075') &
 #  do this after defining switching to allow for any sort of
 #  gap year situation
 teachers = teachers[year %between% incl_rng]
+teachers_ps = teachers_ps[year %between% incl_rng]
 
 #area: 0050 (all-purpose elementary teachers)
 #      0300 (English, typically middle/high school)
@@ -131,41 +162,76 @@ teachers = teachers[year %between% incl_rng]
 #    0550(Art)/0701(Social Studies)/0620(General Science)/
 #    0725(History)/0316(Reading)/0605(Biology)/
 #    0910(Health)/0610(Chemistry)
+#  Most common excluded subject areas from payscales data area:
+#  [0910] - Health
+#  [0002] - Academic Support - Teachers
+#  [0940] - Academic Support - Non-Special Education Students
+#  [0014] - Gifted & Talented
+#  [0935] - At-Risk Tutor
+#  [0001] - Non-teaching Time
+#  [0952] - Alternative Education
 teachers = teachers[area %in% c('0050', '0300', '0400')]
+teachers_ps = teachers_ps[substring(area, 2L, 2L) %in% 2:7 | area == '0050']
 
 #highest_degree: 4 = BA, 5 = MA
 teachers = teachers[highest_degree %in% 4L:5L]
+teachers_ps = teachers_ps[highest_degree %in% 4L:5L]
 
 #district_fill: 7xxx and 9xxx are positions at a CESA
 #  or at an otherwise exceptional school (mental institution, etc.)
 teachers = teachers[!grepl('^[79]', district_fill)]
+teachers_ps = teachers_ps[!grepl('^[79]', district_fill)]
 
 #school_fill: should be assigned to an actual school
 #  09xx are district-wide/multiple-school appointments
 #  ** only occurred through 2003-04 **
 teachers = teachers[nzchar(school_fill) & !grepl('^09', school_fill)]
+teachers_ps = teachers_ps[nzchar(school_fill) & !grepl('^09', school_fill)]
 
-#50 years seems a reasonable enough cap
+#30 years seems a reasonable enough cap
+#Restrict focus to total experience (rounded down) between 1 & 30;
+#  Total exp = 0 appears to be some sort of error? Very rare anyway.
+#  There are nontrivial #s of teachers beyond 30 years, but 30 seems
+#  as good a place as any (see robustness checks). box-plotting
+#  pay vs. total experience, we see the series start to change around
+#  25 (narrowing of IQR), suggesting some selection effects starting
+#  to become important.
 # ** surplus of teachers with experience < 1 in 2003-04 **
-max_exp = 50L
+max_exp = 30L
 teachers = teachers[total_exp_floor > 0 & total_exp_floor <= max_exp]
+teachers_ps = teachers_ps[total_exp_floor > 0 & total_exp_floor <= max_exp]
              
 #district_work_type: 04 are regular public schools
 # ** may not actually eliminate any teachers **
 teachers = teachers[district_work_type %in% c('04', '49')]
+teachers_ps = teachers_ps[district_work_type %in% c('04', '49')]
 
 #months_employed / days_of_contract
-#  Through 2003-04, months used, days thereafter
+#Despite efforts to focus on full-time teachers, some,
+#  as per the months_employed construct (used pre-2003)
+#  or the days_of_contract construct (used since), still enter
+#  with what must be less than full-time contracts;
+#  examining, e.g., boxplots of salary against this variable
+#  suggest there is still a systemic deficiency in pay for
+#  those working less than the "full year"; this increasing
+#  relationship appears to stabilize between 8.75 and 10.5 months 
+#  (or 175-195 days contracted), so eliminate those outside these bounds
+#  (eliminate 14,284 = 1.4%)
 #    *Eliminate those who never worked >=8.75 months
 #    *Eliminate those who never worked >=175 days
 teachers = teachers[(months_employed >= 875 | year > 2003) &
                       (days_of_contract >= 175 | year <= 2003)]
+teachers_ps = teachers_ps[(months_employed >= 875 | year > 2003) &
+                            (days_of_contract >= 175 | year <= 2003)]
 
 #category: 1 are professional, regular education teachers
+#  vast majority dropped are 0: professional, special education
 teachers = teachers[category == "1"]
+teachers_ps = teachers_ps[category == "1"]
 
 #eliminate teachers with FTE <= 80
 teachers = teachers[full_time_equiv >= 80]
+teachers_ps = teachers_ps[full_time_equiv >= 80]
 
 N_subset_I = uniqueN(teachers$teacher_id)
 
@@ -178,15 +244,50 @@ teachers = teachers[ , if (uniqueN(ethnicity_main) == 1L &&
 
 N_subset_II = uniqueN(teachers$teacher_id)
 
-#eliminate teachers for whom it's complicated to
-#  determine whether they actually switched districts
-#  because they're hired at more than one school or
-#  district in a given year (only district binds)
-teachers = teachers[ , if (uniqueN(district_fill) == 1L) .SD, 
-                     by = .(teacher_id, year)]
-
 pct_white = teachers[ , round(100*mean(ethnicity_main == 'White'))]
 
+#further restrictions for the payscales data
+#Seems unlikely a full-time teacher should be
+#  making <10k in a year, so this should be eliminated as erroneous
+teachers_ps = teachers_ps[salary + fringe >= 10000]
+
+#Now, eliminate schools with insufficient coverage
+yrdsdg = c("year", "district_fill", "highest_degree")
+yrds = c('year', 'district_fill')
+setkeyv(teachers_ps, yrdsdg)
+setindexv(teachers_ps, yrds)
+          
+#In order to use the paired approach to fitting, need
+#  both degree scales represented
+teachers_ps[ , degree_count_flag := uniqueN(highest_degree) != 2L, by = yrds]
+
+#Can't interpolate if there are only 2 or 3
+#  unique experience cells represented
+teachers_ps[ , node_count_flag := uniqueN(total_exp_floor) < 7L, by = yrdsdg]
+
+#Nor if there are too few teachers
+teachers_ps[ , teach_count_flag := .N < 20L, by = yrdsdg]
+
+#Also troublesome when there is little variation in salaries like so:
+teachers_ps[ , sal_count_flag := uniqueN(salary) < 5L, by = yrdsdg]
+teachers_ps[ , frn_count_flag := uniqueN(fringe) < 5L, by = yrdsdg]
+
+# Impose the flag on both certification tracks whenever partially violated
+flg = c('node_count', 'teach_count', 'sal_count', 'frn_count') %+% '_flag'
+teachers_ps[ , (flg) := lapply(.SD, any), by = yrds, .SDcols = flg]
+
+#Discard any variables hit by a flag
+teachers_ps = 
+  teachers_ps[!(degree_count_flag | node_count_flag | teach_count_flag |
+                sal_count_flag | frn_count_flag)]
+
+#Discard variables not necessary for interpolation
+n_teachers = teachers_ps[ , uniqueN(teacher_id)]
+teachers_ps = 
+  teachers_ps[, .(year, district_fill, highest_degree, 
+                total_exp_floor, salary, fringe)]
+
+#some additional derived variables we'll use for the main data
 teachers[ , ethnicity_main :=
             factor(ethnicity_main, levels = c('White', 'Black', 'Hispanic'))]
 teachers[ , nonwhite := ethnicity_main != 'White']
@@ -203,13 +304,139 @@ levels(teachers$exp_split) =
 ###############################################################################
 #                               Salary Covariates                             #
 ###############################################################################
-payscales = 
-  fread(wds['data'] %+% 'wisconsin_salary_scales_imputed.csv',
-        colClasses = list(character = 'district_fill'),
-        select = c('year', 'district_fill', 'tenure', 'wage_ba', 'wage_ma'))
-payscales = melt(payscales[year %between% incl_rng], 
-                 id.vars = c('year', 'district_fill', 'tenure'),
-                 measure.vars = patterns('^wage_'),
+## @knitr interpolator
+setindex(teachers_ps, year, district_fill)
+
+#fast prediction - to cut out predict.cobs overhead
+fpr = function(cb) with(cb, cobs:::.splValue(2, knots, coef, zs))
+
+#when predicting beyond the range of data, cobs no longer enforces
+#  the monotonicity constraint; so extend linearly for all later points
+## _could also do this to cover very low predicted wages at very low
+##  levels of tenure for sparsely-populated districts, but the
+##  implications of this for a model are not as dire_
+linear_extend = function(x, idx) {
+  x[idx] = x[idx[1L] - 1L] + diff(x[idx[1L] - 2L:1L]) * seq_len(length(idx))
+  x
+}
+
+#constants
+zs = seq_len(max_exp)
+## ** ? somehow having a very high top-end constraint breaks cobs
+# #salary @ 0 >= 0; salary @ 30 at most sal_max
+# end_cons = rbind(c(1, 0, 0),
+#                  c(-1, 30, sal_max))
+end_cons = cbind(1, 0, 0)
+
+cl <- makeCluster(detectCores())
+clusterExport(cl, c('teachers_ps', 'end_cons', 'fpr', 'zs', 'incl_yrs'),
+             envir = environment())
+clusterEvalQ(cl, {library(data.table); library(cobs)})
+payscales = rbindlist(mclapply(incl_yrs, function(yr) {
+  teachers_ps[.(yr), {
+    ba = highest_degree == 4L
+    wage_ba = fpr(cobs(
+      total_exp_floor[ba], salary[ba], print.warn = FALSE,
+      maxiter = 5000L, print.mesg = FALSE,
+      keep.data = FALSE, keep.x.ps = FALSE,
+      #lambda selection led to strange fits and caused errors,
+      #  but should in principle be specifying lambda = -1
+      constraint = c('increase', 'concave'),
+      knots.add = TRUE, repeat.delete.add = TRUE,
+      pointwise = end_cons
+    ))
+    #using .01 -- numerical issues cause
+    #  linear_extend logic to fail otherwise
+    if (length(idx <- which(diff(wage_ba) < -1e-2) + 1L)) {
+      wage_ba = linear_extend(wage_ba, idx)
+    }
+    #some regressions support the hypothesis
+    #  that fringe benefits are monotonically
+    #  increasing with tenure, even though
+    #  there's not strong theoretical support for this
+    fringe_ba = fpr(cobs(
+      total_exp_floor[ba], fringe[ba], print.warn = FALSE,
+      maxiter = 5000L, print.mesg = FALSE,
+      keep.data = FALSE, keep.x.ps = FALSE,
+      #despite concavity imposition, which is
+      #  evidently valid in most cases, some schedules are
+      #  returned linear, and this appears to be valid as well --
+      #  see for example of seemingly linear schedules:
+      #  District: 2625, Years: 2010-2013
+      #  District: 2541, Years: 2014
+      #  District: 4557, Years: 2012-2013
+      constraint = c('increase', 'concave'),
+      knots.add = TRUE, repeat.delete.add = TRUE,
+      pointwise = end_cons
+    ))
+    if (length(idx <- which(diff(fringe_ba) < -1e-2) + 1L)) {
+      fringe_ba = linear_extend(fringe_ba, idx)
+    }
+    #some regressions support the hypothesis
+    #  that the MA vs. BA premium (difference, not ratio)
+    #  is increasing with tenure; this is in line
+    #  with the finding that many MA lanes are simply
+    #  fixed percentage premiums over the BA lane,
+    #  so that the raw difference will increase as BA does
+    premium_ma = 
+      fpr(cobs(
+        total_exp_floor[!ba], 
+        #wage premium is salary (for MA holders) minus
+        #  wage_ba corresponding to their experience level
+        #  (don't need to adjust indexing since, e.g.,
+        #   total_exp_floor == 2 means we need wage_ba[2])
+        salary[!ba] - wage_ba[total_exp_floor[!ba]], 
+        print.warn = FALSE,  maxiter = 5000,
+        keep.data = FALSE, keep.x.ps = FALSE,
+        print.mesg = FALSE, constraint = 'increase',
+        knots.add = TRUE, repeat.delete.add = TRUE, 
+        pointwise = end_cons
+      ))
+    wage_ma = wage_ba + premium_ma
+    fringe_ma = fpr(cobs(
+      total_exp_floor[!ba], fringe[!ba], print.warn = FALSE,
+      maxiter = 5000, print.mesg = FALSE,
+      keep.data = FALSE, keep.x.ps = FALSE,
+      constraint = c('increase', 'concave'),
+      knots.add = TRUE, repeat.delete.add = TRUE,
+      pointwise = end_cons
+    ))
+    if (length(idx <- which(diff(fringe_ma) < -1e-2) + 1L)) {
+      fringe_ma = linear_extend(fringe_ma, idx)
+    }
+    .(tenure = zs, wage_ba = wage_ba, fringe_ba = fringe_ba, 
+      wage_ma = wage_ma, fringe_ma = fringe_ma)}, 
+    #note: this approach leads year to be assigned as a character
+    by = district_fill]}), idcol = 'year')
+stopCluster(cl)
+
+payscales[ , year := as.integer(year)]
+
+#post-fit clean-up: real-dollar wages
+#provide deflated wage data
+#note that data values are recorded at the end
+#  of September in each academic year, so,
+#  since I index AY by spring year, we use the
+#  'prior' year's CPI in October as the base
+#Also perpetual reminder: YYstaff.txt is the data for
+#  the (YY-1)-YY academic year
+oct1s = as.Date(paste0(incl_yrs - 1L, '-10-01'))
+oct_cpi = suppressWarnings(
+  getSymbols("CPIAUCSL", src = "FRED", auto.assign = FALSE)[oct1s]
+)
+inflation_index = 
+  data.table(year = incl_yrs,
+             #coredata returns the "column" as a matrix, so drop it
+             index = drop(coredata(oct_cpi))/oct_cpi[[length(oct_cpi)]])
+payscales[inflation_index,
+          `:=`(wage_ba_real = wage_ba/i.index,
+               wage_ma_real = wage_ma/i.index,
+               fringe_ba_real = fringe_ba/i.index,
+               fringe_ma_real = fringe_ma/i.index),
+          on = "year"]
+
+payscales = melt(payscales, id.vars = c('year', 'district_fill', 'tenure'),
+                 measure.vars = patterns('^wage_[bm]a$'),
                  variable.name = 'highest_degree', value.name = 'wage')
 payscales[ , highest_degree := 4L + (highest_degree == 'wage_ma')]
 payscales[ , lwage := log(wage)]
@@ -272,6 +499,7 @@ teachers[payscales,
 ###############################################################################
 #                           District-Level Covariates                         #
 ###############################################################################
+## @knitr complete_read
 teachers[ , paste0(dist_cols, '_next_d') :=
             districts[.SD, ..dist_cols, 
                       on = c('year', district = 'district_next')]]
@@ -369,7 +597,3 @@ teachers[dist_DT, distance_moved := i.distance,
                 school_fill = 'school_from',
                 district_next = 'district_to',
                 school_next = 'school_to')]
-
-## @knitr stop_read
-
-fwrite(teachers, wds['data'] %+% 'teacher_turnover_data.csv')

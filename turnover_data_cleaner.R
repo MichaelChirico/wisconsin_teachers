@@ -33,9 +33,9 @@ colClasses = with(
           'wisconsin_teacher_data_full_colClass.csv', header = FALSE),
   setNames(V2[V1 %in% incl_cols], V1[V1 %in% incl_cols]))
 
+data_path = wds['data'] %+% "wisconsin_teacher_data_full.csv"
 teachers = 
-  fread(wds['data'] %+% "wisconsin_teacher_data_full.csv",
-        select = incl_cols, colClasses = colClasses,
+  fread(data_path, select = incl_cols, colClasses = colClasses,
         key = 'teacher_id,year,district_fill,school_fill')
 
 incl_yrs = setNames(nm = 2000:2010)

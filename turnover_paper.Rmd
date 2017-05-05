@@ -36,6 +36,9 @@ pn = function(x) format(x, big.mark = ',')
 #  most time-consuming step (interpolation)
 ```
 ```{r interpolator, cache = TRUE, include = FALSE}
+#for intermediate debugging to skip interpolation step
+# payscales = fread(payscales, wds['data'] %+%
+#                     "wisconsin_salary_scales_imputed.csv")
 ```
 ```{r complete_read, cache = TRUE, include = FALSE}
 ```
@@ -92,7 +95,7 @@ full_N = as.integer(system(count_all_lines, intern = TRUE)) -
   as.integer(system(count_headers, intern = TRUE))
 ```
 
-The State of Wisconsin's Department of Public Instruction (DPI) releases annual Salary, Position & Demographic reports through the WISEstaff data collection system, and these reports represent "a point-in-time collection of all staff members in public schools as of the 3rd Friday of September..." [@dpi], which serve as the primary source of data on teachers in this paper. Data are available at the position-teacher level cross-sectionally, with each entry corresponding to one of possibly several positions held by each school district employee. Identifiers in each file permit unique identification of an employee within a given year, but this identifier does not follow teachers between years. To overcome this substantial hurdle to identifying teacher mobility, data are first fed through the matching algorithm described in further detail in the appendix. Essentially, we are aided by the presence of various imperfect identifiers which are more stable over time, most crucially teachers' first and last names and years of birth. By building on these covariates and incorporating some limited fuzzy matching techniques, we construct a panel of teachers spanning the 1994-95 academic year (AY) through AY2015-16 [^spring] consisting of `r pn(full_N)` teacher-position-year observations (many teachers serve in multiple roles within a school/district, and each of these is filed separately in the DPI system). The matching algorithm necessitates elimination of `r pn(full_N - NN[1L])` (`r to.pct(1 - NN[1L]/full_N, 1L)`%) observations on account of belonging to teachers who could not be uniquely identified in a given year of data due to sharing a first name, last name, and birth year with another teacher in the data. Specific to the exercise at hand, with data reliability and precision in mind, we make a series of further restrictions on the data, as depicted in Figure \ref{fig:samp_res}.
+The State of Wisconsin's Department of Public Instruction (DPI) releases annual Salary, Position & Demographic reports through the WISEstaff data collection system, and these reports represent "a point-in-time collection of all staff members in public schools as of the 3rd Friday of September..." [@dpi], which serve as the primary source of data on teachers in this paper. Data are available at the position-teacher level cross-sectionally, with each entry corresponding to one of possibly several positions held by each school district employee. Identifiers in each file permit unique identification of an employee within a given year, but this identifier does not follow teachers between years. To overcome this substantial hurdle to identifying teacher mobility, data are first fed through the matching algorithm described in further detail in the appendix. Essentially, we are aided by the presence of various imperfect identifiers which are more stable over time, most crucially teachers' first and last names and years of birth. By building on these covariates and incorporating some limited fuzzy matching techniques, we construct a panel of teachers spanning the 1994-95 academic year (AY) through AY2015-16 [^spring] consisting of `r pn(full_N)` teacher-position-year observations (many teachers serve in multiple roles within a school/district, and each of these is filed separately in the DPI system). The matching algorithm necessitates elimination of `r #pn(full_N - NN[1L])` (`r #to.pct(1 - NN[1L]/full_N, 1L)`%) observations on account of belonging to teachers who could not be uniquely identified in a given year of data due to sharing a first name, last name, and birth year with another teacher in the data. Specific to the exercise at hand, with data reliability and precision in mind, we make a series of further restrictions on the data.
 
 [^spring]: For brevity, we herein refer to academic years by the spring year, e.g., AY2003-04 will be simply 2004.
 
@@ -111,7 +114,7 @@ The next three restrictions have only a minor effect on sample size, and they ar
 
 Finally, we make a series of cuts which are either required for COBS to function, or else increase the reliability of its output substantially. The most noteworthy/far-reaching of these numerical restrictions is to eliminate any teachers working in districts where there are not at least 20 total teachers in each degree track. While ultimately arbitrary, this number is reasonable to limit the potential effect of an individual teacher given the function to be fit to 30 levels of experience with minimal functional form restrictions. The other numerical flags require both the BA & MA track to be represented at a district, for at least 7 different levels of experience to be represented within a degree track, and for at least 5 unique values of the two measures of pay (salary and fringe benefits) to be available in each degree track; any teacher at a district failing these tests is dropped.
 
-The sum total of all of these restrictions leaves us with an analysis sample of `r pn(nrow(full_data))` teacher-year observations, made up of `r pn(n_teachers)` individual teachers in `r full_data[ , uniqueN(district_fill)]` districts over `r full_data[ , uniqueN(year)]` years. In total, there is sufficient data to fit `r pn(uniqueN(full_data, by = c('year', 'district_fill', 'highest_degree')))` $y_t(\tau, c, d)$ curves, an average of roughly `r round(nrow(full_data)/uniqueN(full_data, by = c('year', 'district_fill', 'highest_degree')), -2)` observations per curve.
+The sum total of all of these restrictions leaves us with an analysis sample of `r pn(nrow(teachers_ps))` teacher-year observations, made up of `r pn(n_teachers)` individual teachers in `r teachers_ps[ , uniqueN(district_fill)]` districts over `r teachers_ps[ , uniqueN(year)]` years. In total, there is sufficient data to fit `r pn(uniqueN(teachers_ps, by = c('year', 'district_fill', 'highest_degree')))` $y_t(\tau, c, d)$ curves, an average of roughly `r round(nrow(teachers_ps)/uniqueN(teachers_ps, by = c('year', 'district_fill', 'highest_degree')), -2)` observations per curve.
 
 [^area_diff]: One difference is that the salaries included in the payscales estimation were less restrictive with respect to included subject areas. This was done since contracts are collectively bargained at the district level for all teachers, with scant mention of subject area in wage determination.
 
@@ -204,6 +207,7 @@ X = mwk[ , .(med_ba = median(salary[highest_degree == 4]),
                  year + district_fill + tenure ~ highest_degree,
                  value.var = 'wage'),
              on = c('year', 'tenure')]
+setnames(X, c('4', '5'), c('wage_ba', 'wage_ma'))
 par(mfrow = c(2, 2),
     mar = c(0.1, 0.1, 0.6, 0.1),
     oma = c(5.1, 5.1, 4.1, 2.1))
@@ -232,7 +236,8 @@ mtext('Comparison of Fit Schedule and Empirical Median in Milwaukee\n' %+%
 
 Perhaps more telling is the goodness of fit in minimally small districts. Four such examples are featured in Figure \ref{fig:small_fit}. These four districts just barely satisfy the sample restriction that at least 20 teachers be present in both the BA and MA pay track (Melrose-Mindoro and Shell Lake have exactly 20 in each); for this reason, rather than plot the empirical median, we simply present the full distribution of wage and experience in these districts. Here again the COBS fit captures the essence of the wage-tenure curve even in these sparsely-staffed districts. While one can imagine Shell Lake or Waterford Union's actual contract schedule to feature the sort of late-career leveling that we have seen elsewhere, the power to identify and separate such features distinctly from those captured is strongly limited by the lack of data.
 
-```{r small_dist_fit, fig.cap = '\\label{fig:small_fit}Estimation Results for Sparse Districts'}
+```{r small_dist_fit, fig.cap = '\\label{fig:small_fit}Estimation Results for Sparse Districts', eval = FALSE}
+# some districts disappeared
 par(mfrow = c(2, 2),
     mar = c(0.1, 0.1, 0.6, 0.1),
     oma = c(5.1, 5.1, 4.1, 2.1))
@@ -242,17 +247,20 @@ dists = c(`Melrose-Mindoro (2008)` = 3428,
           `Shell Lake (2013)` = 5306,
           `Waterford Union High School (2007)` = 6083,
           `Cochrane-Fountain City (2001)` = 1155)
-ymx = 1.05*max(scales[district_fill %in% dists, wage_ma],
-                 full_data[district_fill %in% dists, salary])
+ymx = 1.05*max(payscales[district_fill %in% dists & 
+                           highest_degree == 5L, wage],
+               teachers_ps[district_fill %in% dists, salary])
 for (ii in 1:4) {
   dst = dists[ii]
-  scales[district_fill == dst,
-         matplot(tenure, cbind(wage_ba, wage_ma),
-                 col = c('blue', 'red'), lty = 1, type = 'l',
-                 axes = FALSE, ylim = c(0, ymx))]
-  full_data[district_fill == dst,
-            points(total_exp_floor, salary, col = 
-                     ifelse(highest_degree == 4, 'blue', 'red'))]
+  payscales[district_fill == dst, {
+    idx = highest_degree == 4L
+    matplot(tenure, cbind(wage[idx], wage[!idx]),
+            col = c('blue', 'red'), lty = 1L, type = 'l',
+            axes = FALSE, ylim = c(0, ymx))
+  }]
+  teachers_ps[district_fill == dst,
+              points(total_exp_floor, salary, col = 
+                       ifelse(highest_degree == 4L, 'blue', 'red'))]
   mtext(names(dists)[ii], side = 3L, cex = .6, line = 0)
   if (ii %% 2 == 1) mtext('Salary', side = 2, line = 4)
   if (ii > 2) mtext('Tenure', side = 1, line = 3)

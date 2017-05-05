@@ -8,20 +8,14 @@
 #                   Package Setup & Convenient Functions                      #
 ###############################################################################
 library(data.table)
-where_funchir = grep('package:funchir', search(), fixed = TRUE)
-if (length(where_funchir)) {
-  #force ggplot2 to load above funchir to prevent %+% masking
-  library(ggplot2, pos = where_funchir + 1L)
-  library(Hmisc) # for weighted quantiles
-} else {
-  library(Hmisc)
-  library(funchir)
-}
+library(Hmisc) # for weighted quantiles
+library(funchir)
 library(sp)
 library(rgeos)
 library(cobs)
 library(parallel)
 library(quantmod)
+`%+%` = funchir::`%+%` #stupid ggplot2
 
 wds = c(data = '/media/data_drive/wisconsin/')
 
@@ -188,16 +182,16 @@ teachers_ps = teachers_ps[!grepl('^[79]', district_fill)]
 teachers = teachers[nzchar(school_fill) & !grepl('^09', school_fill)]
 teachers_ps = teachers_ps[nzchar(school_fill) & !grepl('^09', school_fill)]
 
-#30 years seems a reasonable enough cap
-#Restrict focus to total experience (rounded down) between 1 & 30;
+#35 years seems a reasonable enough cap (need to be >30 to match HKR)
+#Restrict focus to total experience (rounded down) between 1 & 35;
 #  Total exp = 0 appears to be some sort of error? Very rare anyway.
-#  There are nontrivial #s of teachers beyond 30 years, but 30 seems
+#  There are nontrivial #s of teachers beyond 35 years, but 35 seems
 #  as good a place as any (see robustness checks). box-plotting
 #  pay vs. total experience, we see the series start to change around
 #  25 (narrowing of IQR), suggesting some selection effects starting
 #  to become important.
 # ** surplus of teachers with experience < 1 in 2003-04 **
-max_exp = 30L
+max_exp = 35L
 teachers = teachers[total_exp_floor > 0 & total_exp_floor <= max_exp]
 teachers_ps = teachers_ps[total_exp_floor > 0 & total_exp_floor <= max_exp]
              
@@ -434,6 +428,9 @@ payscales[inflation_index,
                fringe_ba_real = fringe_ba/i.index,
                fringe_ma_real = fringe_ma/i.index),
           on = "year"]
+
+#intermediate output to facilitate debugging
+fwrite(payscales, wds['data'] %+% "wisconsin_salary_scales_imputed.csv")
 
 payscales = melt(payscales, id.vars = c('year', 'district_fill', 'tenure'),
                  measure.vars = patterns('^wage_[bm]a$'),

@@ -233,27 +233,27 @@ mtext('Comparison of Fit Schedule and Empirical Median in Milwaukee\n' %+%
         'By Certification', outer = TRUE, side = 3)
 ```
 
-Perhaps more telling is the goodness of fit in minimally small districts. Four such examples are featured in Figure <!--\ref{fig:small_fit}-->. These four districts just barely satisfy the sample restriction that at least 20 teachers be present in both the BA and MA pay track (Melrose-Mindoro and Shell Lake have exactly 20 in each); for this reason, rather than plot the empirical median, we simply present the full distribution of wage and experience in these districts. Here again the COBS fit captures the essence of the wage-tenure curve even in these sparsely-staffed districts. While one can imagine Shell Lake or Waterford Union's actual contract schedule to feature the sort of late-career leveling that we have seen elsewhere, the power to identify and separate such features distinctly from those captured is strongly limited by the lack of data.
+Perhaps more telling is the goodness of fit in minimally small districts. Four such examples are featured in Figure \ref{fig:small_fit}. These four districts just barely satisfy the sample restriction that at least 20 teachers be present in both the BA and MA pay track (Melrose-Mindoro and Shell Lake have exactly 20 in each); for this reason, rather than plot the empirical median, we simply present the full distribution of wage and experience in these districts. Here again the COBS fit captures the essence of the wage-tenure curve even in these sparsely-staffed districts. While one can imagine Shell Lake or Waterford Union's actual contract schedule to feature the sort of late-career leveling that we have seen elsewhere, the power to identify and separate such features distinctly from those captured is strongly limited by the lack of data.
 
-```{r small_dist_fit, fig.cap = '\\label{fig:small_fit}Estimation Results for Sparse Districts', eval = FALSE}
-# some districts disappeared
+```{r small_dist_fit, fig.cap = '\\label{fig:small_fit}Estimation Results for Sparse Districts'}
 par(mfrow = c(2, 2),
     mar = c(0.1, 0.1, 0.6, 0.1),
     oma = c(5.1, 5.1, 4.1, 2.1))
 parm = list(x = list(),
             y = list(las = 1L))
-dists = c(`Melrose-Mindoro (2008)` = 3428, 
-          `Shell Lake (2013)` = 5306,
-          `Waterford Union High School (2007)` = 6083,
-          `Cochrane-Fountain City (2001)` = 1155)
+dists = c(`Minocqua J1 School District (2003)` = '3640', 
+          `Auburndale School District (2007)` = '0203',
+          `Montello School District (2009)` = '3689',
+          `Manawa School District (2009)` = '3276')
 ymx = 1.05*max(payscales[district_fill %in% dists & 
                            highest_degree == 5L, wage],
                teachers_ps[district_fill %in% dists, salary])
+#don't have to condition on year -- all only show up once
 for (ii in 1:4) {
   dst = dists[ii]
   payscales[district_fill == dst, {
     idx = highest_degree == 4L
-    matplot(tenure, cbind(wage[idx], wage[!idx]),
+    matplot(tenure[idx], cbind(wage[idx], wage[!idx]),
             col = c('blue', 'red'), lty = 1L, type = 'l',
             axes = FALSE, ylim = c(0, ymx))
   }]
@@ -273,7 +273,9 @@ mtext('Comparison of Fit Schedule and Observed Wages in Small Districts\n' %+%
         'By Certification', outer = TRUE, side = 3)
 ```
 
-A final check on the validity of the imputation procedure woudl be to compare fit schedules side by side with the true schedules, e.g. through root mean-squared error. As mentioned, this typically a difficult undertaking on a mass scale since the true schedules may be hard to come by in a parseable electronic format. Usually, a smaller-scale version of this exercise would be possible through sampling, say, 5-10% of districts at random and spending the time to extract actual schedules by hand for this purpose. Unfortunately, with the passage of Act 10 and the abandonment of collective bargaining in many districts, electronic copies of legacy contracts became hard to come by -- none of the large districts we contacted (nor their former union representatives) had access to old copies of contracts they were willing to share, nor could we find any but a very small number of these contracts online. We present here the comparison of COBS-produced fit to true schedule in three district-year combinations for which we could actually obtain the true schedule.
+A final check on the validity of the imputation procedure woudl be to compare fit schedules side by side with the true schedules, e.g. through root mean-squared error. As mentioned, this typically a difficult undertaking on a mass scale since the true schedules may be hard to come by in a parseable electronic format. Usually, a smaller-scale version of this exercise would be possible through sampling, say, 5-10% of districts at random and spending the time to extract actual schedules by hand for this purpose. Unfortunately, with the passage of Act 10 and the abandonment of collective bargaining in many districts, electronic copies of legacy contracts became hard to come by -- none of the large districts we contacted (nor their former union representatives) had access to old copies of contracts they were willing to share, nor could we find any but a very small number of these contracts online. We present here the comparison of COBS-produced fit to true schedule in three district-year combinations for which we could actually obtain the true schedule[^available].
+
+[^available]: These contracts and a few others from outside of the study time frame are available upon request.
 
 ```{r true_schedule_fit, fig.cap = '\\label{fig:true_fit}Comparison of True Contracted Schedule with Output of Imputation'}
 true_sched = 

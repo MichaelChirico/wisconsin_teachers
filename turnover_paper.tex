@@ -83,7 +83,7 @@
   \postauthor{\par}
   \predate{\centering\large\emph}
   \postdate{\par}
-  \date{May 05, 2017}
+  \date{May 06, 2017}
 
 \usepackage{theapa}
 \usepackage{array}
@@ -637,15 +637,22 @@ restriction in line with the empirical observation that Master's degree
 pay is often simply a fixed-percentage rise over the corresponding
 Bachelor's pay.
 
-Our implementation was also aided by the imposition of concavity on the
-\(y(\tau, BA)\). While not a theoretically-assured functional form
-restriction, concavity improves the goodness of fit notably.
-Small-sample district-level observations and simple reduced-form
-regressions of wages versus quadratic forms in experience support this
-shape's validity. A variety of contracts obtained from a database for
-teachers in nearby Michigan also meet this condition, and the decrease
-in marginal returns to experience is also commonly found in the wider
-study of labor markets\footnote{See, e.g., Heckman, Lochner, and Todd
+Our implementation was also aided by the imposition of weak concavity on
+the \(y(\tau, BA)\). While not a theoretically-assured functional form
+restriction\footnote{In fact, in reality tenure-wage curves are often
+  piecewise convex -- year-over-year rises are specified as a percentage
+  bump which eventually levels off to either linear increase or maxes
+  out and flattens. Nevertheless, the degree of convexity in that
+  section of the curve tends to be low, which leads COBS to fit a good
+  linear approximation there. The lack of a concavity restriction on the
+  Master's pay track allows fit curves which fit this pattern.},
+concavity improves the goodness of fit notably. Small-sample
+district-level observations and simple reduced-form regressions of wages
+versus quadratic forms in experience support this shape's validity. A
+variety of contracts obtained from a database for teachers in nearby
+Michigan also meet this condition, and the decrease in marginal returns
+to experience is also commonly found in the wider study of labor
+markets\footnote{See, e.g., Heckman, Lochner, and Todd
   (\protect\hyperlink{ref-heckman}{2003}).}. We do not impose this
 restriction on the fit for the Master's premium (the only restrictions
 there being non-negativity at 0 and, as mentioned, an increasing
@@ -719,18 +726,84 @@ a result of small-sample bias.
 \end{figure}
 
 Perhaps more telling is the goodness of fit in minimally small
-districts. Four such examples are featured in Figure
-\ref{fig:small_fit}. These four districts just barely satisfy the sample
-restriction that at least 20 teachers be present in both the BA and MA
-pay track (Melrose-Mindoro and Shell Lake have exactly 20 in each); for
-this reason, rather than plot the empirical median, we simply present
-the full distribution of wage and experience in these districts. Here
-again the COBS fit captures the essence of the wage-tenure curve even in
-these sparsely-staffed districts. While one can imagine Shell Lake or
-Waterford Union's actual contract schedule to feature the sort of
-late-career leveling that we have seen elsewhere, the power to identify
-and separate such features distinctly from those captured is strongly
-limited by the lack of data.
+districts. Four such examples are featured in Figure . These four
+districts just barely satisfy the sample restriction that at least 20
+teachers be present in both the BA and MA pay track (Melrose-Mindoro and
+Shell Lake have exactly 20 in each); for this reason, rather than plot
+the empirical median, we simply present the full distribution of wage
+and experience in these districts. Here again the COBS fit captures the
+essence of the wage-tenure curve even in these sparsely-staffed
+districts. While one can imagine Shell Lake or Waterford Union's actual
+contract schedule to feature the sort of late-career leveling that we
+have seen elsewhere, the power to identify and separate such features
+distinctly from those captured is strongly limited by the lack of data.
+
+A final check on the validity of the imputation procedure woudl be to
+compare fit schedules side by side with the true schedules, e.g.~through
+root mean-squared error. As mentioned, this typically a difficult
+undertaking on a mass scale since the true schedules may be hard to come
+by in a parseable electronic format. Usually, a smaller-scale version of
+this exercise would be possible through sampling, say, 5-10\% of
+districts at random and spending the time to extract actual schedules by
+hand for this purpose. Unfortunately, with the passage of Act 10 and the
+abandonment of collective bargaining in many districts, electronic
+copies of legacy contracts became hard to come by -- none of the large
+districts we contacted (nor their former union representatives) had
+access to old copies of contracts they were willing to share, nor could
+we find any but a very small number of these contracts online. We
+present here the comparison of COBS-produced fit to true schedule in
+three district-year combinations for which we could actually obtain the
+true schedule.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics{figures/true_schedule_fit-1.pdf}
+\caption{\label{fig:true_fit}Comparison of True Contracted Schedule with
+Output of Imputation}
+\end{figure}
+
+As seen in Figure \ref{fig:true_fit}, the resulting fit is generally
+superb\footnote{In terms of objective measures of the fit, the mean
+  absolute error is \$1,762, while the overall median error is \$812.
+  This is evidence against the assumption built into the COBS routine of
+  0-median errors \(\varepsilon_{i, t}\), and is understandable -- it is
+  not uncommon for teachers to earn supplementary pay from coaching or
+  extra teaching duties that would push them above their salary
+  schedule-dictated pay grade. With a more complete set of training
+  data, one could potentially account for this by treating the quantile
+  of the data targeted by COBS (.5 by default, i.e., COBS is
+  median-targeted) as a hyperparameter to be fit by cross-validation to
+  prevent overfitting (see Stone \protect\hyperlink{ref-stone}{1974} or
+  Friedman, Hastie, and Tibshirani
+  (\protect\hyperlink{ref-friedman}{2001})).}. Only for the Bachelor's
+track in Monona Grove in 2009 does the COBS-fit curve depart
+substantially from the true contracted schedule. Moreover, this
+departure is likely attributable to the oversimplification taken in this
+paper of restricting pay to follow only two ``lanes'' (Bachelor's and
+Master's degrees), when in reality districts often differentiate among
+holders of these degrees by rewarding those with more credit-hours of
+supplementary coursework under their belts in pursuit of continued
+learning or a higher degree -- in fact, such coursework is often
+required of Bachelor's-certified teachers, which means it is likely that
+the later-career Bachelor-certified teachers observed in Monona Grove
+are actually being paid according to a higher lane. This is exactly what
+is depicted by the gray lines on the Monona Grove plot, which show the
+BA+12 and BA+24 lanes are more representative of instructors at the
+later stages of their career in Monona Grove (the data lack any way of
+detecting a given teacher's extracurricular credit accumulation).
+
+We take the above as strongly affirming the utility of COBS as a tool
+for constructing wage-tenure curves from teacher-level salary data. It
+is able to gloss over noise-induced non-monotonicities in the empirical
+median, not just with the rich data found in urban districts, but also
+in sparsely-populated districts. Moreover, as explored in the case of
+Monona Grove School District, COBS can be seen as doing a good job of
+capturing an aspect of the data which is still latent (namely, the
+degree of progress towards further certification), and of being closer
+to the ``true'' schedules that teachers use to make mobility decisions
+(since it is likely that teachers are able to anticipate extra income
+from holding multiple roles and factor this into their assessment of a
+wage offer).
 
 \section{Results}\label{results}
 
@@ -1710,6 +1783,11 @@ Stinebrickner, Todd R. 2002. ``An Analysis of Occupational Change and
 Departure from the Labor Force: Evidence of the Reasons That Teachers
 Leave.'' \emph{Journal of Human Resources}. University of Wisconsin
 Press, 192--216.
+
+\hypertarget{ref-stone}{}
+Stone, Mervyn. 1974. ``Cross-Validatory Choice and Assessment of
+Statistical Predictions.'' \emph{Journal of the Royal Statistical
+Society. Series B (Methodological)}. JSTOR, 111--47.
 
 \hypertarget{ref-wahba}{}
 Wahba, Grace. 1990. \emph{Spline Models for Observational Data}. SIAM.

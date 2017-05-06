@@ -1,4 +1,4 @@
-## @knitr start_read
+## @knitr read_interpolate
 #Wisconsin Teacher Project
 #Turnover Paper Data Cleaning
 #Michael Chirico
@@ -298,7 +298,6 @@ levels(teachers$exp_split) =
 ###############################################################################
 #                               Salary Covariates                             #
 ###############################################################################
-## @knitr interpolator
 setindex(teachers_ps, year, district_fill)
 
 #fast prediction - to cut out predict.cobs overhead
@@ -496,7 +495,6 @@ teachers[payscales,
 ###############################################################################
 #                           District-Level Covariates                         #
 ###############################################################################
-## @knitr complete_read
 teachers[ , paste0(dist_cols, '_next_d') :=
             districts[.SD, ..dist_cols, 
                       on = c('year', district = 'district_next')]]

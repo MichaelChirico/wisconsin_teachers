@@ -30,19 +30,10 @@ library(funchir)
 pn = function(x) format(x, big.mark = ',')
 ```
 
-```{r start_read, cache = TRUE, include = FALSE}
-#separate background data compilation to three steps
-#  to cut down on re-run time if nothing affects the 
-#  most time-consuming step (interpolation)
-```
-```{r interpolator, cache = TRUE, include = FALSE}
+```{r read_interpolate, cache = TRUE, include = FALSE}
 #for intermediate debugging to skip interpolation step
-# payscales = fread(payscales, wds['data'] %+%
-#                     "wisconsin_salary_scales_imputed.csv")
+# payscales = fread(wds['data'] %+% "wisconsin_salary_scales_imputed.csv")
 ```
-```{r complete_read, cache = TRUE, include = FALSE}
-```
-
 
 # Introduction
 
@@ -120,7 +111,7 @@ Specific to the exercise at hand, with data reliability and precision in mind, w
 
 The data used for the incorporation of counterfactual salary calculations is largely the same, but with a few noteworthy differences. First, as noted in Footnote \ref{ftn:pos_code}, the main turnover data eliminated some teachers who transitioned in and out of being categorized as a full-time teacher due to the muddling effects thereof on defining turnover. This concern not being relevant to constructing the salary schedules, it is not imposed for this data. Next, because all regular teachers are covered by the same collective bargaining agreement, the salary imputation data is less restrictive with respect to the subject codes excluded from the data. This data also ignores instability in recorded gender and ethnicity within a teacher. Finally, the salary data loses observations that are present in the turnover data based on a series of cuts which are either required for COBS to function, or else substantially increase the reliability of its output. The most noteworthy/far-reaching of these numerical restrictions is to eliminate any teachers working in districts where there are not at least 20 total teachers in each degree track. While ultimately arbitrary, this number is reasonable to limit the potential effect of an individual teacher given the function to be fit to 30 levels of experience with minimal functional form restrictions. The other numerical flags require both the BA & MA track to be represented at a district, for at least 7 distinct levels of experience to be represented within a degree track, and for at least 5 unique values of the two measures of pay (salary and fringe benefits) to be available in each degree track; all teachers at districts failing at least one of these tests is dropped.
 
-The sum total of all of these restrictions leaves us with an analysis sample of `r pn(nrow(teachers_ps))` teacher-year observations to be used to estimate pay scales, made up of `r pn(n_teachers)` individual teachers in `r teachers_ps[ , uniqueN(district_fill)]` districts over `r teachers_ps[ , uniqueN(year)]` years. In total, there is sufficient data to fit `r pn(uniqueN(teachers_ps, by = c('year', 'district_fill', 'highest_degree')))` $y_t(\tau, c, d)$ curves, an average of roughly `r round(nrow(teachers_ps)/uniqueN(teachers_ps, by = c('year', 'district_fill', 'highest_degree')), -2)` observations per curve. Ultimately around `r teachers[ , round(100*mean(is.na(schedule_lsalary)))]`% of teachers have missing salary information[^na_salary], mostly in rural districts or other districts with only one or two schools and a small number of students. 
+The sum total of all of these restrictions leaves us with an analysis sample of `r pn(nrow(teachers_ps))` teacher-year observations to be used to estimate pay scales, made up of `r pn(n_teachers)` individual teachers in `r teachers_ps[ , uniqueN(district_fill)]` districts over `r teachers_ps[ , uniqueN(year)]` years. In total, there is sufficient data to fit `r pn(uniqueN(teachers_ps, by = c('year', 'district_fill', 'highest_degree')))` $y_t(\tau, c, d)$ curves, an average of roughly `r round(nrow(teachers_ps)/uniqueN(teachers_ps, by = c('year', 'district_fill', 'highest_degree')), -2)` observations per curve. Ultimately around `r  teachers[ , round(100*mean(is.na(schedule_lsalary)))]`% of teachers have missing salary information[^na_salary], mostly in rural districts or other districts with only one or two schools and a small number of students. 
 
 [^na_salary]: HKR include like-minded restrictions, but combine teachers of different certification within an experience level, despite the major importance of this factor to teacher pay.
 
@@ -148,9 +139,9 @@ Next, a major shortcoming of COBS for this context is its limit to one-dimension
 
 Instead, we use a two-step procedure to fit the Bachelor's and Master's pay tracks in serial. In the first step, we fit the Bachelor's career track as a typical one-dimensional COBS fit. In the second step, we first construct Master's premia for each observation by subtracting out the predicted Bachelor's pay corresponding to each observed level of tenure for a teacher with a Master's degree. We then use COBS to fit a non-decreasing Master's premium curve over all tenure levels on these residuals, before finally adding the Master's premium and Bachelor's fit curves to get the overall Master's fit curve. Monotonicity of the result is guaranteed by forcing upwards monotonicity on the Master's premium, a restriction in line with the empirical observation that Master's degree pay is often simply a fixed-percentage rise over the corresponding Bachelor's pay.
 
-Our implementation was also aided by the imposition of concavity on the $y(\tau, BA)$. While not a theoretically-assured functional form restriction, concavity improves the goodness of fit notably. Small-sample district-level observations and simple reduced-form regressions of wages versus quadratic forms in experience support this shape's validity. A variety of contracts obtained from a database for teachers in nearby Michigan also meet this condition, and the decrease in marginal returns to experience is also commonly found in the wider study of labor markets[^mincer_experience]. We do not impose this restriction on the fit for the Master's premium (the only restrictions there being non-negativity at 0 and, as mentioned, an increasing relationship with tenure). 
+Our implementation was also aided by the imposition of weak concavity on the $y(\tau, BA)$. While not a theoretically-assured functional form restriction[^convexity], concavity improves the goodness of fit notably. Small-sample district-level observations and simple reduced-form regressions of wages versus quadratic forms in experience support this shape's validity. A variety of contracts obtained from a database for teachers in nearby Michigan also meet this condition, and the decrease in marginal returns to experience is also commonly found in the wider study of labor markets[^mincer_experience]. We do not impose this restriction on the fit for the Master's premium (the only restrictions there being non-negativity at 0 and, as mentioned, an increasing relationship with tenure). 
 
-<!-- ACTUAL CONTRACT COMPARISON -->
+[^convexity]: In fact, in reality tenure-wage curves are often piecewise convex -- year-over-year rises are specified as a percentage bump which eventually levels off to either linear increase or maxes out and flattens. Nevertheless, the degree of convexity in that section of the curve tends to be low, which leads COBS to fit a good linear approximation there. The lack of a concavity restriction on the Master's pay track allows fit curves which fit this pattern.
 
 [^mincer_experience]: See, e.g., @heckman.
 
@@ -242,7 +233,7 @@ mtext('Comparison of Fit Schedule and Empirical Median in Milwaukee\n' %+%
         'By Certification', outer = TRUE, side = 3)
 ```
 
-Perhaps more telling is the goodness of fit in minimally small districts. Four such examples are featured in Figure \ref{fig:small_fit}. These four districts just barely satisfy the sample restriction that at least 20 teachers be present in both the BA and MA pay track (Melrose-Mindoro and Shell Lake have exactly 20 in each); for this reason, rather than plot the empirical median, we simply present the full distribution of wage and experience in these districts. Here again the COBS fit captures the essence of the wage-tenure curve even in these sparsely-staffed districts. While one can imagine Shell Lake or Waterford Union's actual contract schedule to feature the sort of late-career leveling that we have seen elsewhere, the power to identify and separate such features distinctly from those captured is strongly limited by the lack of data.
+Perhaps more telling is the goodness of fit in minimally small districts. Four such examples are featured in Figure <!--\ref{fig:small_fit}-->. These four districts just barely satisfy the sample restriction that at least 20 teachers be present in both the BA and MA pay track (Melrose-Mindoro and Shell Lake have exactly 20 in each); for this reason, rather than plot the empirical median, we simply present the full distribution of wage and experience in these districts. Here again the COBS fit captures the essence of the wage-tenure curve even in these sparsely-staffed districts. While one can imagine Shell Lake or Waterford Union's actual contract schedule to feature the sort of late-career leveling that we have seen elsewhere, the power to identify and separate such features distinctly from those captured is strongly limited by the lack of data.
 
 ```{r small_dist_fit, fig.cap = '\\label{fig:small_fit}Estimation Results for Sparse Districts', eval = FALSE}
 # some districts disappeared
@@ -281,6 +272,84 @@ legend('bottomright', c('COBS Fit, BA', 'COBS Fit, MA', 'Observed Pairs'),
 mtext('Comparison of Fit Schedule and Observed Wages in Small Districts\n' %+%
         'By Certification', outer = TRUE, side = 3)
 ```
+
+A final check on the validity of the imputation procedure woudl be to compare fit schedules side by side with the true schedules, e.g. through root mean-squared error. As mentioned, this typically a difficult undertaking on a mass scale since the true schedules may be hard to come by in a parseable electronic format. Usually, a smaller-scale version of this exercise would be possible through sampling, say, 5-10% of districts at random and spending the time to extract actual schedules by hand for this purpose. Unfortunately, with the passage of Act 10 and the abandonment of collective bargaining in many districts, electronic copies of legacy contracts became hard to come by -- none of the large districts we contacted (nor their former union representatives) had access to old copies of contracts they were willing to share, nor could we find any but a very small number of these contracts online. We present here the comparison of COBS-produced fit to true schedule in three district-year combinations for which we could actually obtain the true schedule.
+
+```{r true_schedule_fit, fig.cap = '\\label{fig:true_fit}Comparison of True Contracted Schedule with Output of Imputation'}
+true_sched = 
+  melt(fread(wds['data'] %+% 'actual_contract_schedules.csv'),
+       id.vars = c('district', 'district_name', 'year', 'certification'),
+       measure.vars = patterns('^tenure_'),
+       variable.name = 'tenure', value.name = 'wage')
+true_sched[ , tenure := as.integer(gsub('.*_', '', tenure))]
+#pull out monona BA+12 & BA+24 scales
+idx = true_sched[district == 3675 & 
+                   grepl('BA+', certification, fixed = TRUE), which = TRUE]
+monona_ba = true_sched[idx]
+#now remove
+true_sched = true_sched[!idx]
+#for easier merging, rename & cast as string
+true_sched[ , district_fill := sprintf('%04d', district)]
+true_sched[ , highest_degree := 4L + (certification == 'MA')]
+dyr_com = unique(true_sched[ , .(district_fill, district_name, year)])
+
+par(mfrow = c(1L, 3L), 
+    mar = c(.1, .1, .6, .1), 
+    oma = c(5.1, 5.1, 4.1, 2.1))
+ymx = max(true_sched[dyr_com, wage, on = c('district_fill', 'year')],
+          payscales[dyr_com, wage, on = c('district_fill', 'year')])
+parm = list(x = list(),
+            y = list(las = 1L))
+for(ii in seq_len(nrow(dyr_com))) {
+  this_dist = dyr_com[ii]
+  is_monona = this_dist[ , unique(district_fill)] == '3675'
+  if (is_monona) {
+    monona_ba[ , dcast(.SD, district_name + year + tenure ~ 
+                         certification, value.var = 'wage')
+               ][ , { y = .SD[ , grep('BA', names(.SD)), with = FALSE]
+               matplot(tenure, y, type = 'l', col = 'gray', lty = 1L, 
+                       ylim = c(0, 1.05*ymx), cex.main = .8, axes = FALSE)}]
+    legend('bottomright', c('BA', 'MA', 'Truth', 'Fit', 'Teachers'),
+           col = c('blue', 'red', 'black', 'black', 'black'),
+           lty = c(1L, 1L, 2L, 1L, NA), lwd = 2L,
+           pch = c(NA, NA, NA, NA, 1L))
+  }
+  true_sched[this_dist, {
+    idx = highest_degree == 4L
+    matplot(tenure[idx], cbind(wage[idx], wage[!idx]), lty = 2L,
+            type = 'l', col = c('blue', 'red'), lwd = 2L, 
+            add = is_monona, ylim = c(0, 1.05*ymx), 
+            axes = FALSE, cex.main = .8)
+    }, on = c('district_fill', 'year')]
+  payscales[this_dist, {
+    idx = highest_degree == 4L
+    lines(tenure[idx], wage[idx], col = 'blue', lwd = 2L)
+    lines(tenure[!idx], wage[!idx], col = 'red', lwd = 2L)
+  }, on = c('district_fill', 'year')]
+  teachers[this_dist, {
+    points(total_exp_floor, salary, 
+           col = ifelse(highest_degree == 4, 'blue', 'red'))
+  }, on = c('district_fill', 'year')]
+  if (ii == 1L) mtext('Salary', side = 2, line = 4)
+  mtext('Tenure', side = 1, line = 3)
+  mtext(this_dist[ , sprintf('%s, %d', district_name, year)],
+        side = 3L, line = 0, cex = .6)
+  tile.axes(ii, 1, 3, parm)
+  box()
+}
+title('Data-derived Tenure-Wage Curves vs. True Schedules', 
+      outer = TRUE, cex.main = 1.5)
+err = payscales[true_sched, x.wage - i.wage,
+                on = c('district_fill', 'year', 'highest_degree', 'tenure')]
+mean_abs_dev = mean(abs(err))
+median_dev = median(err)
+```
+
+As seen in Figure \ref{fig:true_fit}, the resulting fit is generally superb[^objective]. Only for the Bachelor's track in Monona Grove in 2009 does the COBS-fit curve depart substantially from the true contracted schedule. Moreover, this departure is likely attributable to the oversimplification taken in this paper of restricting pay to follow only two "lanes" (Bachelor's and Master's degrees), when in reality districts often differentiate among holders of these degrees by rewarding those with more credit-hours of supplementary coursework under their belts in pursuit of continued learning or a higher degree -- in fact, such coursework is often required of Bachelor's-certified teachers, which means it is likely that the later-career Bachelor-certified teachers observed in Monona Grove are actually being paid according to a higher lane. This is exactly what is depicted by the gray lines on the Monona Grove plot, which show the BA+12 and BA+24 lanes are more representative of instructors at the later stages of their career in Monona Grove (the data lack any way of detecting a given teacher's extracurricular credit accumulation). 
+
+[^objective]: In terms of objective measures of the fit, the mean absolute error is `r dol.form(mean_abs_dev, tex = TRUE)`, while the overall median error is `r dol.form(median_dev, tex = TRUE)`. This is evidence against the assumption built into the COBS routine of 0-median errors $\varepsilon_{i, t}$, and is understandable -- it is not uncommon for teachers to earn supplementary pay from coaching or extra teaching duties that would push them above their salary schedule-dictated pay grade. With a more complete set of training data, one could potentially account for this by treating the quantile of the data targeted by COBS (.5 by default, i.e., COBS is median-targeted) as a hyperparameter to be fit by cross-validation to prevent overfitting [see @stone or @friedman].
+
+We take the above as strongly affirming the utility of COBS as a tool for constructing wage-tenure curves from teacher-level salary data. It is able to gloss over  noise-induced non-monotonicities in the empirical median, not just with the rich data found in urban districts, but also in sparsely-populated districts. Moreover, as explored in the case of Monona Grove School District, COBS can be seen as doing a good job of capturing an aspect of the data which is still latent (namely, the degree of progress towards further certification), and of being closer to the "true" schedules that teachers use to make mobility decisions (since it is likely that teachers are able to anticipate extra income from holding multiple roles and factor this into their assessment of a wage offer).
 
 # Results
 ```{r table_1_move_by_exp, results = 'asis', message = FALSE}

@@ -51,9 +51,9 @@ We explore to the extent possible potential contributors to this discrepancy in 
 
 [^wi_large_urban]: In fact, Milwaukee is the only city in Wisconsin considered to be "large" for NCES reporting purposes.
 
-To the end of exploring the pecuniary aspects of teacher turnover, we start by expanding upon the efforts of @hanushek to infer teachers' tenure-wage paths from teacher-level data on pay. Most unionized teachers are paid according to a salary schedule (specifying wages as an increasing function of tenure and certification) explicated in contracts collectively bargained at the district level. With this easily-obtained information in hand, teachers are able to infer their future potential wage trajectories at their own and other potential district employers. Lacking the physical contract faced by the teachers, an econometrician armed only with administrative data reporting actual wages in a given year must use some imputation techniques to deduce the underlying wage structure. We explore the utility of natural Constrained B-Splines (COBS) to this end. COBS are an enhanced version of the traditional semiparametric splines technique enhanced by the ability to impose a monotonicity constraint on the resultant curve.
+To the end of exploring the pecuniary aspects of teacher turnover, we start by expanding upon the efforts of @hanushek to infer teachers' tenure-wage paths from teacher-level data on pay. Most unionized teachers are paid according to a salary schedule (specifying wages as an increasing function of tenure and certification) explicated in contracts collectively bargained at the district level. With this easily-obtained information in hand, teachers are able to infer their future potential wage trajectories at their own and other potential district employers. Lacking the physical contract faced by the teachers, an econometrician armed only with administrative data reporting actual wages in a given year must use some imputation techniques to deduce the underlying wage structure. We explore the utility of natural Constrained B-Splines (COBS) to this end. COBS are an enhanced version of the traditional semiparametric splines technique enhanced by the ability to impose a monotonicity constraint on the resultant curve which allows the fit to incorporate more local information from nearby experience cells.
 
-<!-- INCLUDE A PARAGRAPH SUMMARIZING RESULTS OF COBS -->
+The fidelity and utility of the resulting fitted contract curves are supreme. In both large and small districts, COBS produces a plausible tenure-wage arc which enables us to examine counterfactual wage levels for mobile teachers. By comparing the fit to a small number of wage tables obtained from actual contracts, we also learn that using COBS may be preferable to an attempt to use actual wage tables, as the data-derived curves can reveal latent progress of teachers towards further certification, an aspect which is commonly observed in salary tables but rarely included in teacher-level data.
 
 \TAG{END_INTRO}
 
@@ -1386,6 +1386,18 @@ Finally, the conflation of switching districts and exiting teaching may mask imp
 We continue to see little evidence favoring the salience of wage considerations for Wisconsin teachers; the strongest suggestions found here point to the importance of wages for older male teachers in exiting teaching, a result which is generally opposed to that found by HKR in Texas, where salaries were generally important, but only for the propensity to change districts. Also as in the regression specifications, the prominence of student proficiency found by HKR fails to make a notable appearance in Wisconsin.
 
 With respect to the importance of student demographics, our results again point to the same effects found in Texas. White teachers seem to be spurred to change districts or exit teaching by highly black student populations; the reverse is true of nonwhite teachers, who can be drawn to remain in high-minority districts. Subsidized lunch eligibility's strong effect observed in the combined specification is found here to be concentrated more among those leaving teaching than those changing districts.
+
+# Appendix: Longitudinal Teacher Panel from Unlinked Cross-Sectional Cuts
+
+DPI WISEstaff data does not include a longitudinal identifier for teachers, so we resorted to an alternative approach to matching teachers from year to year. The essence of this algorithm relies on the inclusion of three fields in the DPI data -- `first_name`, `last_name`, and `birth_year`. By matching teacher using these identifiers, it is possible to construct with high accuracy a panel of teachers from simple teacher cross-sections[^find_code].
+
+[^find_code]: The code for this process was done using R and especially helped by the `data.table` package, which can be found at http://r-datatable.com. The code to reproduce this entire project can be found at https://github.com/MichaelChirico/wisconsin_teachers. The script for the algorithm is `teacher_match_and_clean.R`. The `README` file gives steps for full reproduction, including retrieving the raw data.
+
+## Step 0: Pre-Processing
+
+## Steps 1-22: Matching
+
+## Step 23: Post-Processing
 
 # Conclusion
 

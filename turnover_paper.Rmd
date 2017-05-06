@@ -79,7 +79,7 @@ Finally, an emerging strand of literature is looking at the potential for transf
 
 ```{r sample_restrictions, include = FALSE}
 #use some command line utilities to automatically
-#  generate some counts for the pre-cleaning counts
+#  generate some of the pre-cleaning counts
 raw_file_pattern = 
   '/media/data_drive/wisconsin/teacher_raw_data/data_files/*.csv'
 count_all_lines = 
@@ -233,7 +233,7 @@ mtext('Comparison of Fit Schedule and Empirical Median in Milwaukee\n' %+%
         'By Certification', outer = TRUE, side = 3)
 ```
 
-Perhaps more telling is the goodness of fit in minimally small districts. Four such examples are featured in Figure \ref{fig:small_fit}. These four districts just barely satisfy the sample restriction that at least 20 teachers be present in both the BA and MA pay track (Melrose-Mindoro and Shell Lake have exactly 20 in each); for this reason, rather than plot the empirical median, we simply present the full distribution of wage and experience in these districts. Here again the COBS fit captures the essence of the wage-tenure curve even in these sparsely-staffed districts. While one can imagine Shell Lake or Waterford Union's actual contract schedule to feature the sort of late-career leveling that we have seen elsewhere, the power to identify and separate such features distinctly from those captured is strongly limited by the lack of data.
+Perhaps more telling is the goodness of fit in minimally small districts. Four such examples are featured in Figure \ref{fig:small_fit}. These four districts just barely satisfy the sample restriction that at least 20 teachers be present in both the BA and MA pay track (each has fewer than 42 teachers, and only in a single year); for this reason, rather than plot the empirical median, we simply present the full distribution of wage, experience, and certification in these districts. Here again the COBS fit captures the essence of the wage-tenure curve even in these sparsely-staffed districts. Both Montello and Manawa evince the importance of the non-negativity constraint on extrapolated values of the Master's premium -- given the absence of teachers so certified prior to the fifth year of experience, some supplementary discipline is necessary to prevent the tail of this curve from dipping below that for the Bachelor's lane.
 
 ```{r small_dist_fit, fig.cap = '\\label{fig:small_fit}Estimation Results for Sparse Districts'}
 par(mfrow = c(2, 2),
@@ -351,7 +351,7 @@ As seen in Figure \ref{fig:true_fit}, the resulting fit is generally superb[^obj
 
 [^objective]: In terms of objective measures of the fit, the mean absolute error is `r dol.form(mean_abs_dev, tex = TRUE)`, while the overall median error is `r dol.form(median_dev, tex = TRUE)`. This is evidence against the assumption built into the COBS routine of 0-median errors $\varepsilon_{i, t}$, and is understandable -- it is not uncommon for teachers to earn supplementary pay from coaching or extra teaching duties that would push them above their salary schedule-dictated pay grade. With a more complete set of training data, one could potentially account for this by treating the quantile of the data targeted by COBS (.5 by default, i.e., COBS is median-targeted) as a hyperparameter to be fit by cross-validation to prevent overfitting [see @stone or @friedman].
 
-We take the above as strongly affirming the utility of COBS as a tool for constructing wage-tenure curves from teacher-level salary data. It is able to gloss over  noise-induced non-monotonicities in the empirical median, not just with the rich data found in urban districts, but also in sparsely-populated districts. Moreover, as explored in the case of Monona Grove School District, COBS can be seen as doing a good job of capturing an aspect of the data which is still latent (namely, the degree of progress towards further certification), and of being closer to the "true" schedules that teachers use to make mobility decisions (since it is likely that teachers are able to anticipate extra income from holding multiple roles and factor this into their assessment of a wage offer).
+We take the above as strongly affirming the utility of COBS as a tool for constructing wage-tenure curves from teacher-level salary data. It is able to gloss over  noise-induced non-monotonicities in the empirical median, not just with the rich data found in urban districts, but also in sparsely-populated districts. Moreover, as explored in the case of Monona Grove School District, COBS can be seen as doing a good job of capturing an aspect of the data which is still latent (namely, the degree of progress towards further certification), and of being closer to the "true" schedules that teachers use to make mobility decisions (since it is likely that teachers are able to anticipate extra income from holding multiple roles and factor this into their assessment of a wage offer). Lastly, the COBS routine is computationally attractive -- embarassingly parallelizable and implemented very efficiently, the whole routine runs in a few minutes.
 
 # Results
 ```{r table_1_move_by_exp, results = 'asis', message = FALSE}
@@ -859,14 +859,11 @@ The preeminent distinction of long-distance moves is moderation -- all average d
 
 ```{r table_4_change_by_urb, results = 'asis'}
 #** TO DO **
-# - Why are teachers even worse off
-#   in terms of adjusted than unadjusted pay?
 # - How to express drop in %Black/Hispanic/FRL
 #   RELATIVELY (i.e., accounting for the fact
 #   that there are no minority/poor students outside MWK)
 # - Compare within-urban differential in achievement
 #   (require MWK charter schools back in data)
-# - Use scale scores, not proficiency
 # #Code to get nominal vs. residual pay differential for Urban-Suburban
 # #  switchers, _by highest_degree_
 # teachers[move_district_next & urbanicity_next_d == 'Suburban' &
@@ -1012,8 +1009,6 @@ The other results of HKR are confirmed in even more dramatic fashion. There is s
 This phenomenon is reflected further in the suburban-to-suburban moves, which reflect little change in the ethnic/racial makeup of student bodies, since a dramatic shift would demonstrate very strong influence of this factor. We also find evidence of selection into economically better-off districts among suburban switchers, but the magnitude of this difference is attenuated with respect to that reported by HKR. We do not find patterns of selection on student performance as strongly as was found in HKR. This may be a reflection of the crudeness of the proficiency measure as compared to the more variable raw scale score measures used by HKR. Lastly, we confirm the finding of HKR that there does not appear to be evidence that teachers are able to select into the more desirable schools within their target districts -- The differences in campus-level characteristics are almost identical to the differences in district-level characteristics. This is likely a reflection of supply-side constraints, as the choicest appointments in a district may be awarded to long-serving serving teachers (promotion from within), as well as suburban districts perhaps having only a small number of schools at which to teach a given grade level/subject.
 
 ```{r table_5_change_by_eth, results = 'asis'}
-# - to do: re-cast heterogeneity Q in terms
-#   of white vs. non-white
 # - do black teachers _start_ at lower-quality schools?
 T5D = 
   teachers[move_district_next & total_exp_floor <= 10 & 
@@ -1172,8 +1167,6 @@ We also find fairly strong patterns in quitting associated with subsidized lunch
 #   because they only estimated schedule for
 #   experience 1 - 10, but run these regressions
 #   for all experience classes)
-# - why achievement no longer significant? being
-#   picked up through reduced-price lunch?
 # - check units of coefficients
 # - missingness biasing results substantially?
 # - HKR claim there's insufficient variation in
@@ -1259,7 +1252,6 @@ The results in HKR about the differential effects of student body makeup are lar
 #** TO DO **
 # - Do total future discounted pay totals lead to different
 #   results?
-# - What about using real wages?
 reg_l = 
   lapply(split(teachers, f = teachers$exp_split, sorted = TRUE),
          function(DT) DT[ , lm(leave_next ~

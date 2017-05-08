@@ -873,17 +873,102 @@ cat(tbl, sep = '\n')
 # }]
 ```
 
+## Long-Distance Moves
+
 One major aspect of teacher mobility glossed over by HKR is geographic separation. A wide variety of frictions may be geospatially-related or -generated -- social and professional networks tend to be concentrated locally; there are typically substantial fixed costs involved in moving (real estate closing fees, moving expenses, etc.); preferences may depend on climate/geography; and so on. As a first pass at exploring how long-distance moves may differ in nature from those over short distances, we reproduce in Table \ref{tbl:change_far_by_ge} the analysis of Table \ref{tbl:change_by_ge} for only those where the distance between the origin and destination school exceeded 50 miles (a distance deemed sufficient to likely entail a physical move rather than simply an adjusted commute).
 
 The preeminent distinction of long-distance moves is moderation -- all average demographic differentials moderate towards zero, suggesting a diminution of the importance of these aspects in this population. The noteworthy exception to this trend is among probationary teachers -- young males experience wage increases in an uprooting move, while young females experience further declines for long moves. More detailed data would be needed to explore the mechanism at work behind this observation (in particular, none of the differences -- male vs. female or short- vs. long-distance moves -- have $p$ values below .05), but one explanation is a higher willingness among bachelors to change scenery completely, while younger women may tend to be married and moving with their partners. In any case, the overall importance of wages in long-distance moves is close to zero, suggesting wage differentials are either of secondary or tertiary concern in the associated decision processes, or that there is unsufficient heterogeneity in wages at such distances to generate enough moves so motivated, though the case of young male teachers does weaken the latter explanation. 
+
+
+## Supply and Demand for Subject Specialists
+
+Another source of heterogeneity about which HKR have little to say is subject specialty. While it is true that all teachers on a given contract are typically paid  independently of the subject they teach, teaching a hard-to-staff subject should lead to more power in the labor market, so we would expect such teachers to transition to more attractive positions upon moving. Fully accounting for the demand side of labor markets would bestow higher confidence in results which ultimately depend on the strategic interaction of the two sides.
+
+We are aided in trying to explore this aspect of the teacher labor market by the public availability of annual technical reports from DPI about various aggregate indicators for the health of supply and demand for educators in Wisconsin [the last published edition is @fischer]. In addition to providing counts for the number of educators graduating from the in-state education programs broken down by subject area, the report uses a survey distributed to district administrators to give a score (based, for example, on the market tightness -- applications per vacancy) in each Cooperative Educational Service Agency (CESA, the administrative unit for districts between the school district and DPI) rating the need for educators in various subject areas, including those in our study sample, Math, Reading, and Elementary.
+
+```{r table_3_subject, results = 'asis'}
+T3A = 
+  teachers[move_district_next & total_exp_floor <= 10 & highest_degree == 5L, {
+    dl = lapply(
+      list(schedule_lsalary_next - schedule_lsalary_next_cf,
+           schedule_lsalary_resid_next - schedule_lsalary_resid_next_cf,
+           pct_prof_next_d - pct_prof_d, pct_hisp_next_d - pct_hisp_d,
+           pct_black_next_d - pct_black_d, pct_frl_next_d - pct_frl_d),
+      na.omit)
+    .(var = paste0(rep(seq_len(6L), each = 2L), rep(c('M', 'S'), 6L)),
+      val = c(rbind(sapply(dl, mean), sapply(dl, se))))
+  }, keyby = .(exp_split, math = area == '0400')
+  ][ , dcast(.SD, var ~ exp_split + math, value.var = 'val')]
+T3A[teachers[move_district_next & total_exp_floor <= 10 & 
+               highest_degree == 5L, {
+  dl = lapply(
+    list(schedule_lsalary_next - schedule_lsalary_next_cf,
+         schedule_lsalary_resid_next - schedule_lsalary_resid_next_cf,
+         pct_prof_next_d - pct_prof_d, pct_hisp_next_d - pct_hisp_d,
+         pct_black_next_d - pct_black_d, pct_frl_next_d - pct_frl_d),
+    na.omit)
+  .(var = paste0(rep(seq_len(6L), each = 2L), rep(c('M', 'S'), 6L)),
+    val = c(rbind(sapply(dl, mean), sapply(dl, se))))
+}, keyby = .(math = area == '0400')
+][ , dcast(.SD, var ~ math, value.var = 'val')],
+c('all_nonmath', 'all_math') := .(i.FALSE, i.TRUE), on = 'var']
+
+area_change_msg = T3A[ , {
+  dsal = all_math[1L] - all_nonmath[1L]
+  sesal = sqrt(all_math[2L]^2 + all_nonmath[2L]^2)
+  drsal = all_math[3L] - all_nonmath[3L]
+  sersal = sqrt(all_math[4L]^2 + all_nonmath[4L]^2)
+  dprof = all_math[5L] - all_nonmath[5L]
+  dfrl = all_math[11L] - all_nonmath[11L]
+  if (dsal < 0 || drsal < 0 || dsal/sesal > 2 || 
+      drsal/sersal > 2 || dprof > 0 || dfrl < 0)
+    'MAJOR DATA CHANGE FLAG' else ''}]
+
+T3A[ , var := rep(c('Base year salary (log)', 'Adjusted salary (log)',
+                    'Percent proficient', 'Percent Hispanic',
+                    'Percent black', 'Percent subsidized lunch'), each = 2L)]
+T3A[ , type := rep(c('m', 's'), 6L)]
+cols = setdiff(names(T3A), c('var', 'type'))
+sidx = T3A$type == 's'
+pidx = grepl('^Percent', T3A$var)
+T3A[ , (cols) := lapply(.SD, function(x) {
+  o = character(length(x))
+  o[!pidx & !sidx] = sprintf('%.3f', x[!pidx & !sidx])
+  o[!pidx & sidx] = sprintf('(%.3f)', x[!pidx & sidx])
+  o[pidx & !sidx] = sprintf('%.1f%%', 100*x[pidx & !sidx])
+  o[pidx & sidx] = sprintf('(%.1f%%)', 100*x[pidx & sidx])
+  o}), .SDcols = cols]
+T3A[type == 's', var := '']
+T3A[ , type := NULL]
+setnames(T3A, c('', rep(c('Non-Math', 'Math'), 4L)))
+
+tbl = capture.output(print(xtable(
+  T3A, caption = paste('Average Change in Salary and District Student',
+                       'Characteristics (and Standard Deviations) for',
+                       'Teachers with Master\'s Degrees Changing',
+                       'Districts, by Subject Area and Experience'),
+  label = 'tbl:change_area_by_ge', align = 'llcccccccc'), 
+  floating.environment = 'sidewaystable'))
+
+idx = grep('Non-Math', tbl)
+
+tbl = c(tbl[1L:(idx - 1L)],
+        paste0(paste('', mcol(exp_lab[1L], 2L), mcol(exp_lab[2L], 2L), 
+                     mcol(exp_lab[3L], 2L), mcol('All', 2L),
+                     sep = ' & '), 
+               '\\\\ \\cline{2-3} \\cline{4-5} \\cline{6-7} \\cline{8-9}'),
+        tbl[idx:length(tbl)])
+
+cat(tbl, sep = '\n')
+```
+
+Both Reading and Elementary are chronically over-supplied throughout the state, whereas the demand for math teachers varies considerably. In a given year, the market tightness for the former two subjects is roughly twice that in Math (e.g., it was 67.43 for Elementary, 28.65 for English/Speech/Theater/Journalism, and 24.22 for Mathematics). As a result, we expect to see some heterogeneity in labor market success of specialists in Math as compared to the other teachers in our sample. Table \ref{tbl:change_area_by_ge} explores some of the basic insights on subject matter heterogeneity. To mitigate the potential for degree holdings to skew results, we focus on Master's holders and obfuscate gender differences for brevity. Actually, there is little `r area_change_msg`in this table to support the hypothesis that math teachers are given a substantial advantage in the labor market -- math teachers earn more (both in nominal and beyond-demographic pay), but this result is not significant. Further, English teachers are advantaged in ending up at less economically disadvantaged and higher-performing districts.
 
 ```{r table_4_change_by_urb, results = 'asis'}
 #** TO DO **
 # - How to express drop in %Black/Hispanic/FRL
 #   RELATIVELY (i.e., accounting for the fact
 #   that there are no minority/poor students outside MWK)
-# - Compare within-urban differential in achievement
-#   (require MWK charter schools back in data)
 # #Code to get nominal vs. residual pay differential for Urban-Suburban
 # #  switchers, _by highest_degree_
 # teachers[move_district_next & urbanicity_next_d == 'Suburban' &

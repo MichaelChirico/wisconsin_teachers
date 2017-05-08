@@ -424,7 +424,7 @@ full_data[year == 2012 & file_number == 178739, total_exp := 250]
 ## pdf/staff_adams_friendship_2010_2011.pdf
 ## James Kuchta experience has been incorrect since 1999
 full_data[year %in% 2000:2011 & first_name == 'james' & 
-            last_name == 'kuchta' & position_code %in% c('51', '52'),
+            last_name == 'kuchta' & position_code %chin% c('51', '52'),
           c('local_exp', 'total_exp') := .(local_exp + 5, total_exp + 5)]
 
 ## pdf/staff_franklin_public_schools_2010_2011.pdf
@@ -456,7 +456,7 @@ full_data[year == 2010 & id == '000061160', salary := 74906]
 ## pdf/staff_east_troy_10.pdf
 ## Janet Hammelman, Teri Dallas and Jean Barry should be 53-0810
 full_data[year == 2010 & 
-            id %in% c('000116123', '000028912', '000128671'), area := '0810']
+            id %chin% c('000116123', '000028912', '000128671'), area := '0810']
 
 ## pdf/staff_kaukauna_2009_2010.pdf
 ## unclear what to correct about teachers earning more than 77778
@@ -528,7 +528,7 @@ full_data[year == 2010 & district == '5733',  fringe :=
 #                         Further Pre-Processing                              #
 ###############################################################################
 #Try to impute maiden name when it seems to have been stored in the last name
-#  Specifically, when nee is empty, look for names with "(" or "-";
+#  Specifically, when nee is empty, look for names with "(", "/" or "-";
 #  maiden names appear to be stored between parentheses and before hyphens 
 #  (not a perfect system); note that
 #  full_data[gsub("\\s", "", nee) == "", names(table(nee))] 
@@ -538,10 +538,12 @@ full_data[year == 2010 & district == '5733',  fringe :=
 #    terese l demark-russo (uebe) (1998:000237414/1999:000315944)
 #  and she has her maiden name stored as demark
 #  As an alternative, define nee as the name coming after the hyphen:
-full_data[(!nzchar(nee, keepNA = TRUE) & grepl("-", last_name)),
-           c("nee", "nee2") := .(gsub("-.*", "", last_name),
-                                 gsub(".*-", "", last_name))]
-full_data[grepl('[()]', last_name),
+full_data[!nzchar(nee, keepNA = TRUE) & grepl("-", last_name),
+          c("nee", "nee2") := .(gsub("[-/].*", "", last_name),
+                                gsub(".*[-/]", "", last_name))]
+#there are 19 people with only one of ( and ) stored in last_name,
+#  but all of them have nee non-missing, so don't bother
+full_data[!nzchar(nee, keepNA = TRUE) & grepl('[()]', last_name),
           nee := gsub(".*\\(|\\).*", "", last_name)]
 nnames = c(nnames, "nee2")
 
@@ -551,11 +553,42 @@ nnames = c(nnames, "nee2")
 ##  (causing problems & frequent--e.g., "lisa,a"->"lisa a")
 full_data[grepl(",[^ ]", first_name), 
           first_name := gsub(",", " ", first_name, fixed = TRUE)]
+# ]isa gutche in 2003 is clearly lisa gutche
+full_data[ , gsub(']', 'l', first_name)]
+# \effrey maas in 1999 is clearly jeffrey maas
+full_data[ , gsub('\\\\', 'j', first_name)]
+# 0heri and sheri mcallister are clearly cheri mcallister
+full_data[grepl('heri$', first_name) & last_name == 'mcallister',
+          first_name := 'cheri']
+# j0dy l grunwalwd is clearly jody grunwald
+full_data[first_name == 'j0dy l', 
+          c('first_name', 'last_name') := .('jody l', 'grunwald')]
+# l0is a dewey is clearly lois a dewey
+full_data[first_name == 'l0is a', first_name := 'lois a']
+# 0ndrew b mckinney appears to be andrew by mckinney
+full_data[first_name == '0ndrew b', first_name := 'andrew b']
+# 1ancy bruno is nancy bruno
+full_data[first_name == '1ancy', first_name := 'nancy']
+# 8arbara smith is barbara smith
+full_data[first_name == '8arbara', first_name := 'barbara']
+# +elroy l deberg is delroy l deberg
+full_data[first_name == '+elroy l', first_name := 'delroy l']
+# yen-chin chang-beaulieu changed her recorded name to story
+full_data[first_name == 'story' & last_name == 'chang-beaulieu',
+          first_name := 'yen-chin']
+# annette anders0n, kelly r0llin, lynette br0wn should all have o
+full_data[ , gsub('0', 'o', last_name)]
+# sheila m \abiszak is sheila fabiszak
+full_data[first_name == 'sheila m' & last_name == '\\abiszak',
+          last_name := 'fabiszak']
+full_data[grepl('\\.$', nee), nee := gsub('\\s+\\.', '', nee)]
+
 full_data[ , paste0(nnames, "_clean") :=
             lapply(.SD, function(x) {
               gsub(paste0("\\s|", "(\\s|^)[a-z](\\s|$)|", 
                           "\\([^)]*(\\)|$)"), "",
-                   gsub("[-.,'-]", "", x))}),
+                   gsub(']', '', gsub("[-.,'`<\"6\\/]", "", x), 
+                        fixed = TRUE))}),
           .SDcols = nnames]
 ##Names like W C Fields were deleted; restore them
 invisible(lapply(nnames, function(x)
@@ -581,7 +614,7 @@ div10 = c("local_exp", "total_exp")
 full_data[year < 2015L, (div10) := lapply(.SD, `/`, 10), .SDcols = div10]; rm(div10)
 
 #Reformat/create some variables
-#  * birth_year, highest_degre --> integer
+#  * birth_year, highest_degree --> integer
 #  * total_exp_floor (floor of total experience)
 #  * total_pay = salary + fringe
 full_data[ , c("birth_year", "total_exp_floor",

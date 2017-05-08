@@ -35,6 +35,14 @@ pn = function(x) format(x, big.mark = ',')
 # payscales = fread(wds['data'] %+% "wisconsin_salary_scales_imputed.csv")
 ```
 
+```{r kenosha_drop}
+#clear errors in Kenosha data in 2010;
+#  blank pending correspondence with Ann Petering
+teachers[year == 2009 & district_next == '2793',
+         grep('salary.*next', names(teachers)) := NA]
+```
+
+
 # Introduction
 
 \TAG{BEGIN_INTRO}
@@ -91,6 +99,9 @@ total_observations = as.integer(system(count_all_lines, intern = TRUE)) -
 total_matchable = 
   gsub('[^0-9]', '', system(paste('wc -l', data_path), intern = TRUE))
 total_matchable = as.integer(total_matchable) - 1L
+
+ethnicity_flagged = teachers[(ethnicity_flag), uniqueN(teacher_id)]
+gender_flagged = teachers[(gender_flag), uniqueN(teacher_id)]
 ```
 
 The State of Wisconsin's Department of Public Instruction (DPI) releases annual Salary, Position & Demographic reports through the WISEstaff data collection system. These reports represent "a point-in-time collection of all staff members in public schools as of the 3rd Friday of September..." [@dpi], and will serve as the primary source of data on teachers in this paper. Data are available at the position-teacher level cross-sectionally, with each entry corresponding to one of possibly several positions/assignments held by each school district employee[^multiple_positions]. Identifiers in each file permit unique identification of an employee within a given year, but this identifier does not follow teachers between years[^file_number]. To overcome this substantial hurdle to identifying teacher mobility, data are first fed through the matching algorithm described in further detail in the appendix. Essentially, we are aided by the availability of various imperfect identifiers which are more stable over time, most crucially teachers' first and last names and year of birth. By building on these covariates and incorporating some limited fuzzy matching techniques, we construct a panel of teachers spanning the 1994-95 academic year (AY) through AY2015-16 [^spring] consisting of `r pn(total_observations)` teacher-position-year observations. The matching algorithm necessitates elimination of `r pn(total_observations - total_matchable)` (`r to.pct(1 - total_matchable/total_observations, 1L)`%) observations on account of belonging to teachers who could not be uniquely identified in a given year of data due to exact overlap of their first name, last name, and birth year fields with another teacher in the data.
@@ -105,9 +116,7 @@ Specific to the exercise at hand, with data reliability and precision in mind, w
 
 [^position_code]: \label{ftn:pos_code}We also eliminate any teacher who appears in any role besides "Teacher" in any year. In particular, this eliminates a nontrivial number of educators who begin their career with an "ease-in" period, take a mid-career "leave" speckled with a transition to substitute teaching -- perhaps during their child's infancy -- or end it with a "soft retirement" period, during which they act as a substitute teacher at some point in the midst of a career otherwise focused on teaching. Such teachers often have part-time roles at several local schools, which introduces sufficient ambiguity in the definition of mobility so as to obscure interpretation of results, so we opt for a stricter definition of full-time teaching than is completely necessary.
 
-[^ethnicity]: Wisconsin teachers are predominantly white (`r pct_white`%).
-
-<!-- SHOULD DISCUSS THE IMPLICATIONS OF THE GENDER/ETHNICITY FLAGS -->
+[^ethnicity]: Wisconsin teachers are predominantly white (`r pct_white`%). As noted in the Appendix, we also use the panel data to correct noise found in recorded ethnicity and gender over time for some teachers. In the final sample, `r pn(ethnicity_flagged)` and `r pn(gender_flagged)` teachers had their ethnicity and gender (respectively) adjusted.
 
 The data used for the incorporation of counterfactual salary calculations is largely the same, but with a few noteworthy differences. First, as noted in Footnote \ref{ftn:pos_code}, the main turnover data eliminated some teachers who transitioned in and out of being categorized as a full-time teacher due to the muddling effects thereof on defining turnover. This concern not being relevant to constructing the salary schedules, it is not imposed for this data. Next, because all regular teachers are covered by the same collective bargaining agreement, the salary imputation data is less restrictive with respect to the subject codes excluded from the data. This data also ignores instability in recorded gender and ethnicity within a teacher. Finally, the salary data loses observations that are present in the turnover data based on a series of cuts which are either required for COBS to function, or else substantially increase the reliability of its output. The most noteworthy/far-reaching of these numerical restrictions is to eliminate any teachers working in districts where there are not at least 20 total teachers in each degree track. While ultimately arbitrary, this number is reasonable to limit the potential effect of an individual teacher given the function to be fit to 30 levels of experience with minimal functional form restrictions. The other numerical flags require both the BA & MA track to be represented at a district, for at least 7 distinct levels of experience to be represented within a degree track, and for at least 5 unique values of the two measures of pay (salary and fringe benefits) to be available in each degree track; all teachers at districts failing at least one of these tests is dropped.
 
@@ -651,7 +660,8 @@ var_explained =
               var(schedule_lsalary, na.rm = TRUE)]
 var_explained_msg = if (var_explained <= .7) 'MAJOR DATA CHANGE FLAG' else ''
 
-T3[ , var := rep(c('Base year salary (log)', 'Adjusted salary (log)',
+T3[ , var := rep(c('Base year salary (log)', 
+                   'Adjusted salary\\textsuperscript{a} (log)',
                    'Percent proficient', 'Percent Hispanic',
                    'Percent black', 'Percent subsidized lunch'), each = 2L)]
 T3[ , type := rep(c('m', 's'), 6L)]
@@ -662,8 +672,8 @@ T3[ , (cols) := lapply(.SD, function(x) {
   o = character(length(x))
   o[!pidx & !sidx] = sprintf('%.3f', x[!pidx & !sidx])
   o[!pidx & sidx] = sprintf('(%.3f)', x[!pidx & sidx])
-  o[pidx & !sidx] = sprintf('%.1f%%', 100*x[pidx & !sidx])
-  o[pidx & sidx] = sprintf('(%.1f%%)', 100*x[pidx & sidx])
+  o[pidx & !sidx] = sprintf('%.1f\\%%', 100*x[pidx & !sidx])
+  o[pidx & sidx] = sprintf('(%.1f\\%%)', 100*x[pidx & sidx])
   o}), .SDcols = cols]
 T3[type == 's', var := '']
 T3[ , type := NULL]
@@ -674,16 +684,26 @@ tbl = capture.output(print(xtable(
                       'Characteristics (and Standard Deviations) for',
                       'Teachers Changing Districts, by Gender and Experience'),
   label = 'tbl:change_by_ge', align = 'llccccccc'), 
-  floating.environment = 'sidewaystable'))
+  floating.environment = 'sidewaystable', sanitize.text.function = identity))
 
 idx = grep('years', tbl)
+idx2 = grep('\\end{tabular}', tbl, fixed = TRUE)
 
 tbl = c(tbl[1L:(idx - 1L)],
         paste0(paste('', mcol('Men by Experience Class', 3L),
                      mcol('Women by Experience Class', 3L),
                      mrow(pbox('All Teachers 0-9 Years', .1), 2L),
                      sep = ' & '), '\\\\ \\cline{2-4} \\cline{5-7}'),
-        tbl[idx:length(tbl)])
+        tbl[idx:(idx2 - 1L)],
+        paste0(mcol(pbox(paste(
+          '\\scriptsize{Note: a. Adjusted salary is the',
+          'residual of log salary by district and experience',
+          'level on', teachers[ , uniqueN(cesa)], 
+          'regional indicators, three urbanicity indicators,',
+          'and the district percentage proficient on the WKCE',
+          'exam, black, Hispanic, and low income.}'
+          ), .85), 8L), '\\\\'),
+        tbl[idx2:length(tbl)])
 
 cat(tbl, sep = '\n')
 # code to bootstrap adjusted salary SEs
@@ -1387,18 +1407,6 @@ We continue to see little evidence favoring the salience of wage considerations 
 
 With respect to the importance of student demographics, our results again point to the same effects found in Texas. White teachers seem to be spurred to change districts or exit teaching by highly black student populations; the reverse is true of nonwhite teachers, who can be drawn to remain in high-minority districts. Subsidized lunch eligibility's strong effect observed in the combined specification is found here to be concentrated more among those leaving teaching than those changing districts.
 
-# Appendix: Longitudinal Teacher Panel from Unlinked Cross-Sectional Cuts
-
-DPI WISEstaff data does not include a longitudinal identifier for teachers, so we resorted to an alternative approach to matching teachers from year to year. The essence of this algorithm relies on the inclusion of three fields in the DPI data -- `first_name`, `last_name`, and `birth_year`. By matching teacher using these identifiers, it is possible to construct with high accuracy a panel of teachers from simple teacher cross-sections[^find_code].
-
-[^find_code]: The code for this process was done using R and especially helped by the `data.table` package, which can be found at http://r-datatable.com. The code to reproduce this entire project can be found at https://github.com/MichaelChirico/wisconsin_teachers. The script for the algorithm is `teacher_match_and_clean.R`. The `README` file gives steps for full reproduction, including retrieving the raw data.
-
-## Step 0: Pre-Processing
-
-## Steps 1-22: Matching
-
-## Step 23: Post-Processing
-
 # Conclusion
 
 That salary incentives appear to play such a limited role in driving teacher churn is bound at first glance to be a disappointment for policymakers. The most powerful predictors of turnover in educators in Wisconsin are all basically beyond the control of administrators, who have no readily-manipulated direct lever for assigning students to schools[^gerrymandering]. HKR found school quality (as measured by average standardized test performance) to be of key importance for attracting/retaining teachers, but we found no evidence that student proficiency (as measured by attainment levels on standardized tests) is a factor in the turnover decision for Wisconsin teachers. Regardless, manipulating school performance is famously difficult[^cheating], and is in fact the original goal administrators often have in mind when they turn to labor market policies in the first place, so that telling administrators they can improve teacher retention by improving student performance amounts essentially to circular reasoning.
@@ -1408,6 +1416,20 @@ That salary incentives appear to play such a limited role in driving teacher chu
 [^gerrymandering]: There is evidence [e.g., @richards] that catchment area manipulation (educational gerrymandering) is being used by some schools to select their student populations, but the equilibrium outcome of the strategic interactions of districts competing for the most "desirable" students is far from clear.
 
 The upside is that this paper is far from settling the debate about welfare-maximizing teacher turnover policies. Limitations in our data prevent us from associating to teachers anything but crude measures of their productivity; measures such as experience, certification, and race are famously poor predictors of teacher quality measures such as value-added. We are thus unable to provide any input to the question of whether _high-quality_ teachers have patterns of mobility which resemble that of the teaching population as a whole, or whether heterogeneity in their preferences can be used to devise appropriate policies.
+
+# Appendix: Longitudinal Teacher Panel from Unlinked Cross-Sectional Cuts
+
+DPI WISEstaff data does not include a longitudinal identifier for teachers, so we resorted to an alternative approach to matching teachers from year to year. The essence of this algorithm relies on the inclusion of three fields in the DPI data -- `first_name`, `last_name`, and `birth_year`. By matching teacher using these identifiers, it is possible to construct with high accuracy a panel of teachers from simple teacher cross-sections[^find_code].
+
+[^find_code]: The code for this process was done using R and especially helped by the `data.table` package [@dowle]. The code to reproduce this entire project can be found at https://github.com/MichaelChirico/wisconsin_teachers. The script for the algorithm is `teacher_match_and_clean.R`. The `README` file gives steps for full reproduction, including retrieving the raw data.
+
+## Step 0: Pre-Processing
+
+Prior to beginning the matching process, a number of steps are taken to improve the quality of the raw data. The first is to incorporate as many of the errata mentioned in @data_errata as possible. All name variables are then converted to lower case, after which we extract maiden names (identified as the part of the `last_name` field that appears in between parentheses or surrounding a hyphen or forward slash. A search was done of the data for irregular characters (punctuation or numbers) which allowed
+
+## Steps 1-22: Matching
+
+## Step 23: Post-Processing
 
 \TAG{END_BODY}
 

@@ -83,7 +83,7 @@
   \postauthor{\par}
   \predate{\centering\large\emph}
   \postdate{\par}
-  \date{May 06, 2017}
+  \date{May 07, 2017}
 
 \usepackage{theapa}
 \usepackage{array}
@@ -183,7 +183,18 @@ year must use some imputation techniques to deduce the underlying wage
 structure. We explore the utility of natural Constrained B-Splines
 (COBS) to this end. COBS are an enhanced version of the traditional
 semiparametric splines technique enhanced by the ability to impose a
-monotonicity constraint on the resultant curve.
+monotonicity constraint on the resultant curve which allows the fit to
+incorporate more local information from nearby experience cells.
+
+The fidelity and utility of the resulting fitted contract curves are
+supreme. In both large and small districts, COBS produces a plausible
+tenure-wage arc which enables us to examine counterfactual wage levels
+for mobile teachers. By comparing the fit to a small number of wage
+tables obtained from actual contracts, we also learn that using COBS may
+be preferable to an attempt to use actual wage tables, as the
+data-derived curves can reveal latent progress of teachers towards
+further certification, an aspect which is commonly observed in salary
+tables but rarely included in teacher-level data.
 
 \TAG{END_INTRO}
 
@@ -446,10 +457,14 @@ then eliminate teachers with missing information on their subsequent
 school or district and teachers with instability in their recorded
 ethnicity, as well as teachers not categorized as white, black, or
 Hispanic, eliminating a further 0.2\% of all employees\footnote{Wisconsin
-  teachers are predominantly white (96\%).}. Finally, we drop teachers'
-multiple positions by keeping only the highest-intensity position for
-each teacher, as measured by full-time equivalency, resulting in a final
-count of 282,797 teacher-year observations.
+  teachers are predominantly white (96\%). As noted in the Appendix, we
+  also use the panel data to correct noise found in recorded ethnicity
+  and gender over time for some teachers. In the final sample, 427 and
+  345 teachers had their ethnicity and gender (respectively) adjusted.}.
+Finally, we drop teachers' multiple positions by keeping only the
+highest-intensity position for each teacher, as measured by full-time
+equivalency, resulting in a final count of 282,797 teacher-year
+observations.
 
 The data used for the incorporation of counterfactual salary
 calculations is largely the same, but with a few noteworthy differences.
@@ -729,15 +744,16 @@ Perhaps more telling is the goodness of fit in minimally small
 districts. Four such examples are featured in Figure
 \ref{fig:small_fit}. These four districts just barely satisfy the sample
 restriction that at least 20 teachers be present in both the BA and MA
-pay track (Melrose-Mindoro and Shell Lake have exactly 20 in each); for
-this reason, rather than plot the empirical median, we simply present
-the full distribution of wage and experience in these districts. Here
-again the COBS fit captures the essence of the wage-tenure curve even in
-these sparsely-staffed districts. While one can imagine Shell Lake or
-Waterford Union's actual contract schedule to feature the sort of
-late-career leveling that we have seen elsewhere, the power to identify
-and separate such features distinctly from those captured is strongly
-limited by the lack of data.
+pay track (each has fewer than 42 teachers, and only in a single year);
+for this reason, rather than plot the empirical median, we simply
+present the full distribution of wage, experience, and certification in
+these districts. Here again the COBS fit captures the essence of the
+wage-tenure curve even in these sparsely-staffed districts. Both
+Montello and Manawa evince the importance of the non-negativity
+constraint on extrapolated values of the Master's premium -- given the
+absence of teachers so certified prior to the fifth year of experience,
+some supplementary discipline is necessary to prevent the tail of this
+curve from dipping below that for the Bachelor's lane.
 
 \begin{figure}[htbp]
 \centering
@@ -811,7 +827,9 @@ degree of progress towards further certification), and of being closer
 to the ``true'' schedules that teachers use to make mobility decisions
 (since it is likely that teachers are able to anticipate extra income
 from holding multiple roles and factor this into their assessment of a
-wage offer).
+wage offer). Lastly, the COBS routine is computationally attractive --
+embarassingly parallelizable and implemented very efficiently, the whole
+routine runs in a few minutes.
 
 \section{Results}\label{results}
 
@@ -979,9 +997,9 @@ of younger teachers as compared to all teachers.
  & \multicolumn{3}{c}{Men by Experience Class} & \multicolumn{3}{c}{Women by Experience Class} & \multirow{2}{*}{\parbox{0.1\linewidth}{All Teachers 0-9 Years}}\\ \cline{2-4} \cline{5-7}
  & 1-3 years & 4-6 years & 7-11 years & 1-3 years & 4-6 years & 7-11 years &  \\ 
   \hline
-Base year salary (log) & -0.001 & 0.015 & 0.036 & -0.001 & 0.022 & 0.010 & 0.008 \\ 
+Base year salary (log) & -0.001 & 0.015 & 0.036 & 0.001 & 0.022 & 0.010 & 0.009 \\ 
    & (0.009) & (0.011) & (0.015) & (0.005) & (0.007) & (0.010) & (0.003) \\ 
-  Adjusted salary (log) & 0.011 & 0.003 & 0.024 & 0.000 & 0.014 & 0.015 & 0.007 \\ 
+  Adjusted salary\textsuperscript{a} (log) & 0.011 & 0.003 & 0.024 & 0.002 & 0.014 & 0.015 & 0.008 \\ 
    & (0.007) & (0.009) & (0.012) & (0.004) & (0.006) & (0.008) & (0.003) \\ 
   Percent proficient & 4.2\% & 3.0\% & 2.5\% & 6.3\% & 5.7\% & 5.3\% & 5.4\% \\ 
    & (0.7\%) & (0.8\%) & (1.0\%) & (0.4\%) & (0.5\%) & (0.6\%) & (0.2\%) \\ 
@@ -992,6 +1010,7 @@ Base year salary (log) & -0.001 & 0.015 & 0.036 & -0.001 & 0.022 & 0.010 & 0.008
   Percent subsidized lunch & -7.4\% & -3.7\% & -4.4\% & -9.5\% & -7.0\% & -7.6\% & -7.9\% \\ 
    & (1.1\%) & (1.4\%) & (1.7\%) & (0.6\%) & (0.9\%) & (1.0\%) & (0.4\%) \\ 
    \hline
+\multicolumn{8}{c}{\parbox{.85\linewidth}{\scriptsize{Note: a. Adjusted salary is the residual of log salary by district and experience level on 12 regional indicators, three urbanicity indicators, and the district percentage proficient on the WKCE exam, black, Hispanic, and low income.}}}\\
 \end{tabular}
 \caption{Average Change in Salary and District Student Characteristics (and Standard Deviations) for Teachers Changing Districts, by Gender and Experience} 
 \label{tbl:change_by_ge}
@@ -1000,7 +1019,7 @@ Base year salary (log) & -0.001 & 0.015 & 0.036 & -0.001 & 0.022 & 0.010 & 0.008
 Table \ref{tbl:change_by_ge} replicates Table 3 of HKR, and confirms its
 most important insights. Raw salary differentials predict teacher
 mobility, but the average pay differential is not on average very large
--- only about \$300, or 1.7\% higher than the counterfactually expected
+-- only about \$325, or 1.7\% higher than the counterfactually expected
 wage that would have obtained had the district-switching teacher
 remained in their current district. This premium increases with age for
 both male and female teachers.
@@ -1044,7 +1063,7 @@ independent correlation with salary levels.
 
 Unlike HKR, we find the demographic-independent wage differentials to be
 no more important than the uncontrolled raw wages, with the predicted
-wage improvement amounting to 0.7\%. In further contrast to HKR, we find
+wage improvement amounting to 0.8\%. In further contrast to HKR, we find
 a positive relationship between experience and residual wage
 differentials, with mid-career district switchers experiencing roughly
 1.4\% higher wages upon arrival to their new employer, by contrast to
@@ -1136,10 +1155,10 @@ young male teachers does weaken the latter explanation.
  & & & & \\ \cline{2-5}
  & Large Urban to Suburban & Suburban to Suburban & Large Urban to Suburban & Suburban to Suburban \\
   \hline
-Base year salary (log) & -0.065 & 0.018 & --- & --- \\ 
-   & (0.015) & (0.007) &  &  \\ 
-  Adjusted salary (log) & -0.013 & 0.011 & --- & --- \\ 
-   & (0.010) & (0.006) &  &  \\ 
+Base year salary (log) & -0.056 & 0.018 & --- & --- \\ 
+   & (0.012) & (0.007) &  &  \\ 
+  Adjusted salary (log) & -0.004 & 0.011 & --- & --- \\ 
+   & (0.005) & (0.006) &  &  \\ 
 Average Student Characteristics & & & & \\
   \quad Percent proficient & 37.9\% & 0.9\% & 35.1\% & 0.1\% \\ 
    & (0.6\%) & (0.4\%) & (1.2\%) & (0.6\%) \\ 
@@ -1397,30 +1416,30 @@ patterns for black and Hispanic teachers are hard to distinguish).
  & \multicolumn{4}{c}{Teacher Experience} \\ \cline{2-6}
  & 1-3 years & 4-6 years & 7-11 years & 12-30 years & >30 years \\
 \hline
-First year base salary (log)                & $0.01$       & $-0.13^{***}$ & $-0.05^{**}$ & $0.00$       & $-0.17^{**}$ \\
-                                            & $(0.03)$     & $(0.04)$      & $(0.02)$     & $(0.01)$     & $(0.07)$     \\
-First year base salary (log) * female       & $-0.07^{*}$  & $0.09^{**}$   & $0.03$       & $-0.02$      & $0.13^{*}$   \\
-                                            & $(0.03)$     & $(0.03)$      & $(0.02)$     & $(0.01)$     & $(0.06)$     \\
-Campus average student characteristics      &              &               &              &              &              \\
-\quad Percent proficient                    & $-0.12$      & $-0.04$       & $-0.10^{*}$  & $0.01$       & $-0.09$      \\
-                                            & $(0.08)$     & $(0.06)$      & $(0.04)$     & $(0.02)$     & $(0.10)$     \\
-\quad Percent eligible for subsidized lunch & $-0.07$      & $-0.05$       & $-0.03$      & $-0.02$      & $-0.21^{*}$  \\
-                                            & $(0.08)$     & $(0.06)$      & $(0.04)$     & $(0.02)$     & $(0.11)$     \\
-\quad Percent Black                         & $0.29$       & $0.46$        & $0.54^{**}$  & $0.03$       & $0.38$       \\
-                                            & $(0.28)$     & $(0.26)$      & $(0.18)$     & $(0.10)$     & $(0.48)$     \\
-\quad Percent Hispanic                      & $0.04$       & $0.04$        & $-0.23^{*}$  & $-0.07$      & $0.13$       \\
-                                            & $(0.18)$     & $(0.15)$      & $(0.09)$     & $(0.05)$     & $(0.25)$     \\
-Interactions                                &              &               &              &              &              \\
-\quad Black * percent Black                 & $-0.19^{*}$  & $-0.15^{*}$   & $-0.06$      & $-0.04$      & $-0.17$      \\
-                                            & $(0.08)$     & $(0.07)$      & $(0.05)$     & $(0.04)$     & $(0.12)$     \\
-\quad Hispanic * percent Black              & $-0.17^{**}$ & $-0.18^{***}$ & $-0.12^{*}$  & $-0.11^{**}$ & $-0.09$      \\
-                                            & $(0.06)$     & $(0.05)$      & $(0.05)$     & $(0.04)$     & $(0.33)$     \\
-\quad Black * percent Hispanic              & $0.06$       & $-0.15$       & $0.02$       & $0.09$       & $-0.73$      \\
-                                            & $(0.26)$     & $(0.25)$      & $(0.15)$     & $(0.11)$     & $(0.48)$     \\
-\quad Hispanic * percent Hispanic           & $0.14$       & $-0.04$       & $-0.12$      & $0.26$       & $0.26$       \\
-                                            & $(0.28)$     & $(0.23)$      & $(0.21)$     & $(0.20)$     & $(1.10)$     \\
+First year base salary (log)                & $-0.06$      & $-0.12^{***}$ & $-0.11^{***}$ & $-0.01$      & $-0.33^{***}$ \\
+                                            & $(0.04)$     & $(0.04)$      & $(0.03)$      & $(0.02)$     & $(0.08)$      \\
+First year base salary (log) * female       & $-0.08^{*}$  & $0.08^{*}$    & $0.04$        & $-0.02$      & $0.13$        \\
+                                            & $(0.04)$     & $(0.03)$      & $(0.02)$      & $(0.01)$     & $(0.07)$      \\
+Campus average student characteristics      &              &               &               &              &               \\
+\quad Percent proficient                    & $-0.10$      & $-0.04$       & $-0.09^{*}$   & $0.02$       & $-0.06$       \\
+                                            & $(0.08)$     & $(0.06)$      & $(0.04)$      & $(0.02)$     & $(0.10)$      \\
+\quad Percent eligible for subsidized lunch & $-0.07$      & $-0.05$       & $-0.03$       & $-0.02$      & $-0.22^{*}$   \\
+                                            & $(0.08)$     & $(0.06)$      & $(0.04)$      & $(0.02)$     & $(0.11)$      \\
+\quad Percent Black                         & $0.35$       & $0.47$        & $0.56^{**}$   & $0.03$       & $0.40$        \\
+                                            & $(0.28)$     & $(0.26)$      & $(0.18)$      & $(0.10)$     & $(0.48)$      \\
+\quad Percent Hispanic                      & $0.13$       & $0.05$        & $-0.18$       & $-0.05$      & $0.25$        \\
+                                            & $(0.18)$     & $(0.15)$      & $(0.09)$      & $(0.06)$     & $(0.26)$      \\
+Interactions                                &              &               &               &              &               \\
+\quad Black * percent Black                 & $-0.19^{*}$  & $-0.15^{*}$   & $-0.06$       & $-0.04$      & $-0.19$       \\
+                                            & $(0.08)$     & $(0.08)$      & $(0.05)$      & $(0.04)$     & $(0.12)$      \\
+\quad Hispanic * percent Black              & $-0.16^{**}$ & $-0.18^{***}$ & $-0.13^{*}$   & $-0.12^{**}$ & $-0.09$       \\
+                                            & $(0.06)$     & $(0.05)$      & $(0.05)$      & $(0.04)$     & $(0.33)$      \\
+\quad Black * percent Hispanic              & $0.03$       & $-0.14$       & $0.02$        & $0.10$       & $-0.69$       \\
+                                            & $(0.26)$     & $(0.25)$      & $(0.15)$      & $(0.11)$     & $(0.49)$      \\
+\quad Hispanic * percent Hispanic           & $0.10$       & $-0.02$       & $-0.09$       & $0.29$       & $0.24$        \\
+                                            & $(0.29)$     & $(0.23)$      & $(0.21)$      & $(0.20)$     & $(1.10)$      \\
 \hline
-Observations                                & 33,108        & 30,244         & 43,509        & 98,753        & 15,217        \\
+Observations                                & 32,995        & 30,172         & 43,348         & 98,423        & 15,190         \\
 \hline
 \multicolumn{6}{l}{\scriptsize{$^{***}p<0.001$, $^{**}p<0.01$, $^*p<0.05$}}
 \end{tabular}
@@ -1521,6 +1540,32 @@ to remain in high-minority districts. Subsidized lunch eligibility's
 strong effect observed in the combined specification is found here to be
 concentrated more among those leaving teaching than those changing
 districts.
+
+\section{Appendix: Longitudinal Teacher Panel from Unlinked
+Cross-Sectional
+Cuts}\label{appendix-longitudinal-teacher-panel-from-unlinked-cross-sectional-cuts}
+
+DPI WISEstaff data does not include a longitudinal identifier for
+teachers, so we resorted to an alternative approach to matching teachers
+from year to year. The essence of this algorithm relies on the inclusion
+of three fields in the DPI data -- \texttt{first\_name},
+\texttt{last\_name}, and \texttt{birth\_year}. By matching teacher using
+these identifiers, it is possible to construct with high accuracy a
+panel of teachers from simple teacher cross-sections\footnote{The code
+  for this process was done using R and especially helped by the
+  \texttt{data.table} package (Dowle and Srinivasan
+  \protect\hyperlink{ref-dowle}{2017}). The code to reproduce this
+  entire project can be found at
+  \url{https://github.com/MichaelChirico/wisconsin_teachers}. The script
+  for the algorithm is \texttt{teacher\_match\_and\_clean.R}. The
+  \texttt{README} file gives steps for full reproduction, including
+  retrieving the raw data.}.
+
+\subsection{Step 0: Pre-Processing}\label{step-0-pre-processing}
+
+\subsection{Steps 1-22: Matching}\label{steps-1-22-matching}
+
+\subsection{Step 23: Post-Processing}\label{step-23-post-processing}
 
 \section{Conclusion}\label{conclusion}
 
@@ -1628,6 +1673,10 @@ Springer-Verlag New York.
 Dolton, Peter, and Wilbert Van der Klaauw. 1999. ``The Turnover of
 Teachers: A Competing Risks Explanation.'' \emph{Review of Economics and
 Statistics} 81 (3). MIT Press: 543--50.
+
+\hypertarget{ref-dowle}{}
+Dowle, Matt, and Arun Srinivasan. 2017. \emph{Data.table: Extension of
+`Data.frame`}. \url{http://r-datatable.com}.
 
 \hypertarget{ref-engel}{}
 Engel, Mimi, Brian A Jacob, and F Chris Curran. 2014. ``New Evidence on

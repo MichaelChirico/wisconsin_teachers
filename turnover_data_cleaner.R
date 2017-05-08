@@ -25,13 +25,15 @@ wds = c(data = '/media/data_drive/wisconsin/')
 incl_cols = c('year', 'cesa', 'district_fill', 'school_fill', 'salary',
               'teacher_id', 'highest_degree', 'total_exp_floor', 'fringe',
               'full_time_equiv', 'gender', 'ethnicity_main', 'quit_next',
+              'ethnicity_flag', 'gender_flag',
               #only needed for data cleaning
               'position_code', 'area', 'district_work_type', 
               'months_employed', 'days_of_contract', 'category')
 colClasses = with(
   fread(wds['data'] %+% 
           'wisconsin_teacher_data_full_colClass.csv', header = FALSE),
-  setNames(V2[V1 %in% incl_cols], V1[V1 %in% incl_cols]))
+  #nm evaluated first, so assign idx in the second argument
+  setNames(V2[idx], V1[idx <- V1 %in% incl_cols]))
 
 data_path = wds['data'] %+% "wisconsin_teacher_data_full.csv"
 teachers = 

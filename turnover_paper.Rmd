@@ -32,7 +32,8 @@ pn = function(x) format(x, big.mark = ',')
 
 ```{r read_interpolate, cache = TRUE, include = FALSE}
 #for intermediate debugging to skip interpolation step
-# payscales = fread(wds['data'] %+% "wisconsin_salary_scales_imputed.csv")
+# payscales = fread(wds['data'] %+% "wisconsin_salary_scales_imputed.csv",
+#                   colClasses = list(character = 'district'))
 ```
 
 ```{r kenosha_drop}
@@ -120,7 +121,7 @@ Specific to the exercise at hand, with data reliability and precision in mind, w
 
 The data used for the incorporation of counterfactual salary calculations is largely the same, but with a few noteworthy differences. First, as noted in Footnote \ref{ftn:pos_code}, the main turnover data eliminated some teachers who transitioned in and out of being categorized as a full-time teacher due to the muddling effects thereof on defining turnover. This concern not being relevant to constructing the salary schedules, it is not imposed for this data. Next, because all regular teachers are covered by the same collective bargaining agreement, the salary imputation data is less restrictive with respect to the subject codes excluded from the data. This data also ignores instability in recorded gender and ethnicity within a teacher. Finally, the salary data loses observations that are present in the turnover data based on a series of cuts which are either required for COBS to function, or else substantially increase the reliability of its output. The most noteworthy/far-reaching of these numerical restrictions is to eliminate any teachers working in districts where there are not at least 20 total teachers in each degree track. While ultimately arbitrary, this number is reasonable to limit the potential effect of an individual teacher given the function to be fit to 30 levels of experience with minimal functional form restrictions. The other numerical flags require both the BA & MA track to be represented at a district, for at least 7 distinct levels of experience to be represented within a degree track, and for at least 5 unique values of the two measures of pay (salary and fringe benefits) to be available in each degree track; all teachers at districts failing at least one of these tests is dropped.
 
-The sum total of all of these restrictions leaves us with an analysis sample of `r pn(nrow(teachers_ps))` teacher-year observations to be used to estimate pay scales, made up of `r pn(n_teachers)` individual teachers in `r teachers_ps[ , uniqueN(district_fill)]` districts over `r teachers_ps[ , uniqueN(year)]` years. In total, there is sufficient data to fit `r pn(uniqueN(teachers_ps, by = c('year', 'district_fill', 'highest_degree')))` $y_t(\tau, c, d)$ curves, an average of roughly `r round(nrow(teachers_ps)/uniqueN(teachers_ps, by = c('year', 'district_fill', 'highest_degree')), -2)` observations per curve. Ultimately around `r  teachers[ , round(100*mean(is.na(schedule_lsalary)))]`% of teachers have missing salary information[^na_salary], mostly in rural districts or other districts with only one or two schools and a small number of students. 
+The sum total of all of these restrictions leaves us with an analysis sample of `r pn(nrow(teachers_ps))` teacher-year observations to be used to estimate pay scales, made up of `r pn(n_teachers)` individual teachers in `r teachers_ps[ , uniqueN(district)]` districts over `r teachers_ps[ , uniqueN(year)]` years. In total, there is sufficient data to fit `r pn(uniqueN(teachers_ps, by = c('year', 'district', 'highest_degree')))` $y_t(\tau, c, d)$ curves, an average of roughly `r round(nrow(teachers_ps)/uniqueN(teachers_ps, by = c('year', 'district', 'highest_degree')), -2)` observations per curve. Ultimately around `r  teachers[ , round(100*mean(is.na(schedule_lsalary)))]`% of teachers have missing salary information[^na_salary], mostly in rural districts or other districts with only one or two schools and a small number of students. 
 
 [^na_salary]: HKR include like-minded restrictions, but combine teachers of different certification within an experience level, despite the major importance of this factor to teacher pay.
 
@@ -155,7 +156,7 @@ Our implementation was also aided by the imposition of weak concavity on the $y(
 [^mincer_experience]: See, e.g., @heckman.
 
 ```{r milwaukee, fig.cap = '\\label{fig:mwk}Pay in Milwaukee, 2003-2006'}
-mwk = teachers_ps[district_fill == 3619]
+mwk = teachers_ps[district == '3619']
 par(mfrow = c(2, 2),
     mar = c(0.1, 0.1, 0.6, 0.1),
     oma = c(5.1, 5.1, 4.1, 2.1))
@@ -211,8 +212,8 @@ Returning to the motivating example illustrated in Figure \ref{fig:mwk}, we turn
 X = mwk[ , .(med_ba = median(salary[highest_degree == 4]),
              med_ma = median(salary[highest_degree == 5])),
          keyby = .(year, tenure = total_exp_floor)
-         ][dcast(payscales[district_fill == 3619], 
-                 year + district_fill + tenure ~ highest_degree,
+         ][dcast(payscales[district == '3619'], 
+                 year + district + tenure ~ highest_degree,
                  value.var = 'wage'),
              on = c('year', 'tenure')]
 setnames(X, c('4', '5'), c('wage_ba', 'wage_ma'))
@@ -254,19 +255,19 @@ dists = c(`Minocqua J1 School District (2003)` = '3640',
           `Auburndale School District (2007)` = '0203',
           `Montello School District (2009)` = '3689',
           `Manawa School District (2009)` = '3276')
-ymx = 1.05*max(payscales[district_fill %in% dists & 
+ymx = 1.05*max(payscales[district %chin% dists & 
                            highest_degree == 5L, wage],
-               teachers_ps[district_fill %in% dists, salary])
+               teachers_ps[district %chin% dists, salary])
 #don't have to condition on year -- all only show up once
 for (ii in 1:4) {
   dst = dists[ii]
-  payscales[district_fill == dst, {
+  payscales[district == dst, {
     idx = highest_degree == 4L
     matplot(tenure[idx], cbind(wage[idx], wage[!idx]),
             col = c('blue', 'red'), lty = 1L, type = 'l',
             axes = FALSE, ylim = c(0, ymx))
   }]
-  teachers_ps[district_fill == dst,
+  teachers_ps[district == dst,
               points(total_exp_floor, salary, col = 
                        ifelse(highest_degree == 4L, 'blue', 'red'))]
   mtext(names(dists)[ii], side = 3L, cex = .6, line = 0)
@@ -300,20 +301,20 @@ monona_ba = true_sched[idx]
 #now remove
 true_sched = true_sched[!idx]
 #for easier merging, rename & cast as string
-true_sched[ , district_fill := sprintf('%04d', district)]
+true_sched[ , district := sprintf('%04d', district)]
 true_sched[ , highest_degree := 4L + (certification == 'MA')]
-dyr_com = unique(true_sched[ , .(district_fill, district_name, year)])
+dyr_com = unique(true_sched[ , .(district, district_name, year)])
 
 par(mfrow = c(1L, 3L), 
     mar = c(.1, .1, .6, .1), 
     oma = c(5.1, 5.1, 4.1, 2.1))
-ymx = max(true_sched[dyr_com, wage, on = c('district_fill', 'year')],
-          payscales[dyr_com, wage, on = c('district_fill', 'year')])
+ymx = max(true_sched[dyr_com, wage, on = c('district', 'year')],
+          payscales[dyr_com, wage, on = c('district', 'year')])
 parm = list(x = list(),
             y = list(las = 1L))
 for(ii in seq_len(nrow(dyr_com))) {
   this_dist = dyr_com[ii]
-  is_monona = this_dist[ , unique(district_fill)] == '3675'
+  is_monona = this_dist[ , unique(district)] == '3675'
   if (is_monona) {
     monona_ba[ , dcast(.SD, district_name + year + tenure ~ 
                          certification, value.var = 'wage')
@@ -331,16 +332,16 @@ for(ii in seq_len(nrow(dyr_com))) {
             type = 'l', col = c('blue', 'red'), lwd = 2L, 
             add = is_monona, ylim = c(0, 1.05*ymx), 
             axes = FALSE, cex.main = .8)
-    }, on = c('district_fill', 'year')]
+    }, on = c('district', 'year')]
   payscales[this_dist, {
     idx = highest_degree == 4L
     lines(tenure[idx], wage[idx], col = 'blue', lwd = 2L)
     lines(tenure[!idx], wage[!idx], col = 'red', lwd = 2L)
-  }, on = c('district_fill', 'year')]
+  }, on = c('district', 'year')]
   teachers[this_dist, {
     points(total_exp_floor, salary, 
            col = ifelse(highest_degree == 4, 'blue', 'red'))
-  }, on = c('district_fill', 'year')]
+  }, on = c('district', 'year')]
   if (ii == 1L) mtext('Salary', side = 2, line = 4)
   mtext('Tenure', side = 1, line = 3)
   mtext(this_dist[ , sprintf('%s, %d', district_name, year)],
@@ -351,7 +352,7 @@ for(ii in seq_len(nrow(dyr_com))) {
 title('Data-derived Tenure-Wage Curves vs. True Schedules', 
       outer = TRUE, cex.main = 1.5)
 err = payscales[true_sched, x.wage - i.wage,
-                on = c('district_fill', 'year', 'highest_degree', 'tenure')]
+                on = c('district', 'year', 'highest_degree', 'tenure')]
 mean_abs_dev = mean(abs(err))
 median_dev = median(err)
 ```
@@ -445,7 +446,7 @@ mid_quits = quit_rates[total_exp_floor %between% c(10, 20), mean(V1)]
 # closures[ , year := as.integer(gsub('^([0-9]{4}).*', '\\1', sch_year)) + 1L]
 # 
 # teachers[closures, exogenous_switch := TRUE,
-#          on = c('year', district_fill = 'district', school_fill = 'school')]
+#          on = c('year', 'district', 'school')]
 ```
 
 Table \ref{tbl:move_by_exp} replicates Table 1 of @hanushek (HKR)[^cite_pkg], and as HKR found in Texas, most turnover in Wisconsin is happening within districts and out of the profession. In Wisconsin, the fraction of teachers transitioning among districts is vanishingly small after a "burn-in" period of roughly 6 years -- only `r round(100*teachers[total_exp_floor >= 7, mean(move_district_next)], 1)`% of such teachers do so (compared with `r round((4.5*75284 + 2.5*165873 + 0.7*6978)/(75284+165873+6978), 1)`% for the comparable group in HKR), but is still relatively higher among the youngest teachers -- roughly twice as high for the "probationary" teachers (1-3 years' experience) as for teachers with 7-11 years' experience in both states.
@@ -532,13 +533,13 @@ suburban_new_hires = teachers[urbanicity_s == 'Suburban',
 mwk_net = 
   teachers[(move_district_next),
            sum(district_next == '3619') - 
-             sum(district_fill == '3619')]
+             sum(district == '3619')]
 #Madison, Elmbrook, Waukesha, Waunakee, Oconomowoc
 attractive = c('3269', '0714', '6174', '6181', '4060')
 attr_net = 
     teachers[(move_district_next),
-           sum(district_next %in% attractive) - 
-             sum(district_fill %in% attractive)]
+           sum(district_next %chin% attractive) - 
+             sum(district %chin% attractive)]
 # Re: Hanushek comment "Urban teachers equally likely as suburban teachers
 #   to remain in the same school", consult:
 # teachers[grep('Urban', urbanicity_s), mean(stay_next & !move_within_next)]
@@ -552,9 +553,9 @@ attr_net =
 #   teachers[(move_district_next & !grepl('^[79]', district_next)), 
 #            .(arrivals = .N), keyby = district_next]
 # dep = 
-#   teachers[(move_district_next), .(exits = .N), by = district_fill]
+#   teachers[(move_district_next), .(exits = .N), by = district]
 # 
-# arrdep = merge(arr, dep, by.x = 'district_next', by.y = 'district_fill', all = TRUE)
+# arrdep = merge(arr, dep, by.x = 'district_next', by.y = 'district', all = TRUE)
 #       
 # arrdep[is.na(arrivals), arrivals := 0]
 # arrdep[is.na(exits), exits := 0]
@@ -586,7 +587,6 @@ Returning to Table \ref{tbl:move_by_exp}, we see that, as in HKR, the "stickiest
 # - subset to years with scale scores available, use this instead
 #   Use aggregated distribution? Possible to construct
 #     population moments from school-level data?
-# - real wages?
 # - explore _why_ differential wages become more important with experience;
 #    : ignoring certification? breaking down results by
 #      certification shows the patterns consistent, but _could_ in
@@ -710,22 +710,22 @@ cat(tbl, sep = '\n')
 # tids = teachers[ , unique(teacher_id)]
 # boot_dist = rbindlist(lapply(integer(5000), function(...) {
 #   DT = teachers[.(sample(tids, replace = TRUE))]
-#   DS = payscales[district_fill %in% DT[ , unique(district_fill)]])
+#   DS = payscales[district %in% DT[ , unique(district)]])
 #   DS[ , lwage_resid := {
 #     resid(lm(log(wage) ~ cesa + urbanicity + pct_prof + 
 #                pct_black + pct_hisp + pct_frl))
 #   }, by = .(highest_degree, tenure)]
 #   DT[DS, schedule_lsalary_resid := i.lwage_resid,
-#      on = c('year', 'district_fill', 
+#      on = c('year', 'district', 
 #             total_exp_floor = 'tenure', 'highest_degree')]
 #   DT[order(year), schedule_lsalary_resid_next := 
 #        shift(schedule_lsalary_resid, n = 1L, type = 'lead'), 
 #      by = teacher_id]
-#   DT[DS[ , .(year = year - 1L, district_fill, 
+#   DT[DS[ , .(year = year - 1L, district, 
 #              tenure = tenure - 1L, highest_degree, 
 #              lwage, lwage_pred, lwage_resid)], 
 #      schedule_lsalary_resid_next_cf := i.lwage_resid,
-#      on = c('year', 'district_fill', 
+#      on = c('year', 'district', 
 #             total_exp_floor = 'tenure', 'highest_degree')]
 #   DT[move_district_next & total_exp_floor <= 10,
 #      mean(schedule_lsalary_resid_next - schedule_lsalary_resid_next_cf,
@@ -1029,7 +1029,6 @@ The other results of HKR are confirmed in even more dramatic fashion. There is s
 This phenomenon is reflected further in the suburban-to-suburban moves, which reflect little change in the ethnic/racial makeup of student bodies, since a dramatic shift would demonstrate very strong influence of this factor. We also find evidence of selection into economically better-off districts among suburban switchers, but the magnitude of this difference is attenuated with respect to that reported by HKR. We do not find patterns of selection on student performance as strongly as was found in HKR. This may be a reflection of the crudeness of the proficiency measure as compared to the more variable raw scale score measures used by HKR. Lastly, we confirm the finding of HKR that there does not appear to be evidence that teachers are able to select into the more desirable schools within their target districts -- The differences in campus-level characteristics are almost identical to the differences in district-level characteristics. This is likely a reflection of supply-side constraints, as the choicest appointments in a district may be awarded to long-serving serving teachers (promotion from within), as well as suburban districts perhaps having only a small number of schools at which to teach a given grade level/subject.
 
 ```{r table_5_change_by_eth, results = 'asis'}
-# - do black teachers _start_ at lower-quality schools?
 T5D = 
   teachers[move_district_next & total_exp_floor <= 10 & 
              ethnicity_main %in% c('Black', 'Hispanic'), {
@@ -1080,6 +1079,18 @@ T5[ , (cols) := lapply(.SD, function(x) {
 T5[type == 's', var := '']
 T5[ , type := NULL]
 
+invisible(
+  teachers[ , .(eth = ethnicity_main[1L], prof = pct_prof_d[1L],
+                frl = pct_frl_d[1L]), by = teacher_id
+            ][ , {
+              blk = eth == 'Black'
+              wht = eth == 'White'
+              med_init_prof_black <<- median(prof[blk], na.rm = TRUE)
+              med_init_prof_white <<- median(prof[wht], na.rm = TRUE)
+              med_init_frl_black <<- median(frl[blk], na.rm = TRUE)
+              med_init_frl_white <<- median(frl[wht], na.rm = TRUE)}]
+)
+
 tbl = capture.output(print(xtable(
   T5, caption = paste('Average Change in District and Campus Student',
                       'Characteristics (and Standard Deviations)',
@@ -1102,7 +1113,7 @@ tbl = c(tbl[1L:(idx - 1L)],
 cat(tbl, sep = '\n')
 ```
 
-HKR examine the state of Texas, which features substantially more ethnic heterogeneity than does Wisconsin. As a result, they are better-equipped to identify heterogeneity in preferences by teacher ethnicity. Wisconsin, however, only has `r teachers[ethnicity_main %in% c('Black', 'Hispanic'), pn(uniqueN(teacher_id))]` of its `r teachers[ , pn(uniqueN(teacher_id))]` teachers non-white, so our results are underpowered relative to HKR. Table \ref{tbl:change_by_eth} presents these results, which parallel HKR Table 5. Given how few observations we have of black or Hispanic teachers switching districts, we eschew any temptation to interpret these results. Only black switchers within districts provide enough records to interpret meaningfully; in Wisconsin, we find (in contrast to white within-district switchers) black teachers tend to migrate to economically better-off and higher-performing schools (white teachers only tend to select on the latter characteristic). 
+HKR examine the state of Texas, which features substantially more ethnic heterogeneity than does Wisconsin. As a result, they are better-equipped to identify heterogeneity in preferences by teacher ethnicity. Wisconsin, however, only has `r teachers[ethnicity_main %in% c('Black', 'Hispanic'), pn(uniqueN(teacher_id))]` of its `r teachers[ , pn(uniqueN(teacher_id))]` teachers non-white, so our results are underpowered relative to HKR. Table \ref{tbl:change_by_eth} presents these results, which parallel HKR Table 5. Given how few observations we have of black or Hispanic teachers switching districts, we eschew any temptation to interpret these results. Only black switchers within districts provide enough records to interpret meaningfully; in Wisconsin, we find (in contrast to white within-district switchers) black teachers tend to migrate to economically better-off and higher-performing schools (white teachers only tend to select on the latter characteristic). This could simply be a reflection of differences in initial district choice by black vis-à-vis white teachers -- the median proficiency at a black teacher's first district is `r to.pct(med_init_prof_black, 0)`% compared to `r to.pct(med_init_prof_white, 0)`% for white teachers (`r to.pct(med_init_frl_black, 0)`% and `r to.pct(med_init_frl_white, 0)`% for reduced lunch eligibility, respectively).
 
 ```{r table_6_change_by_quartile, results = 'asis'}
 #** TO DO **
@@ -1279,7 +1290,7 @@ reg_l =
                                  pct_prof_d + pct_frl_d + 
                                  ethnicity_main*pct_black_d + 
                                  ethnicity_main*pct_hisp_d + factor(year) + 
-                                 factor(district_fill) + total_exp_floor + 
+                                 factor(district) + total_exp_floor + 
                                  I(total_exp_floor^2) +
                                  n_students_d + class_size_d)])
 
@@ -1419,17 +1430,69 @@ The upside is that this paper is far from settling the debate about welfare-maxi
 
 # Appendix: Longitudinal Teacher Panel from Unlinked Cross-Sectional Cuts
 
-DPI WISEstaff data does not include a longitudinal identifier for teachers, so we resorted to an alternative approach to matching teachers from year to year. The essence of this algorithm relies on the inclusion of three fields in the DPI data -- `first_name`, `last_name`, and `birth_year`. By matching teacher using these identifiers, it is possible to construct with high accuracy a panel of teachers from simple teacher cross-sections[^find_code].
+DPI WISEstaff data does not include a longitudinal identifier for teachers, so we resorted to an alternative approach to matching teachers from year to year. The essence of this algorithm relies on the inclusion of four fields in the DPI data -- `first_name`, `last_name`, `nee` (former last name) and `birth_year`. By matching teacher using these identifiers, it is possible to construct with high accuracy a panel of teachers from simple teacher cross-sections[^find_code].
 
 [^find_code]: The code for this process was done using R and especially helped by the `data.table` package [@dowle]. The code to reproduce this entire project can be found at https://github.com/MichaelChirico/wisconsin_teachers. The script for the algorithm is `teacher_match_and_clean.R`. The `README` file gives steps for full reproduction, including retrieving the raw data.
 
 ## Step 0: Pre-Processing
 
-Prior to beginning the matching process, a number of steps are taken to improve the quality of the raw data. The first is to incorporate as many of the errata mentioned in @data_errata as possible. All name variables are then converted to lower case, after which we extract maiden names (identified as the part of the `last_name` field that appears in between parentheses or surrounding a hyphen or forward slash. A search was done of the data for irregular characters (punctuation or numbers) which allowed
+Prior to beginning the matching process, a number of steps are taken to improve the quality of the raw data. The first is to incorporate as many of the errata mentioned in @dpi_errata as possible. All name variables are then converted to lower case, after which we extract maiden names (identified for those missing a DPI-supplied entry in `nee` as the part of the `last_name` field that appears in between parentheses or surrounding a hyphen or forward slash). Generally, it appears the maiden name comes in the data _before_ the hyphen, but we create the `nee2` field to identify potential matches to the post-hyphen name as well. A search was done of the data for irregular characters (punctuation or numbers) which allowed several obvious typos to be resolved (e.g., `l0is a dewey` was easy to resolve as being `lois a dewey`), and this is implemented next.
 
-## Steps 1-22: Matching
+Next, we create a "clean" version of the name fields which strips away all whitespace, initials (lone letters), and punctuation. At this stage, all observations which identically match another in the same year from the viewpoint of the algorithm -- namely, those that match exactly another observation on the cleaned first and last names and year of birth -- are removed from the data since it would be impossible to tell such teachers apart. A more ambitious treatment would attempt to use other cues found in the duplicated records (ethnicity, subject/position cues, etc.) to separate such teachers, but the marginal cost of doing so was found to exceed the potential benefit considerably for the exercise at hand (recall that only `r to.pct(1 - total_matchable/total_observations, 1L)`% of total observations are lost in this fashion). Finally, teachers in the first year of data (1994-95) are assigned an ID starting from 1 using the within-year identifier provided by DPI. 
 
-## Step 23: Post-Processing
+## Steps 1-21: Matching
+
+The algorithm proceeds by iterating over years of the data. In each year $Y$, matches are found serially by progressively adjusting the criteria for considering two observations to be from the same teacher as follows:
+
+ 1. Match anyone who stayed in the same school -- i.e., match any teacher found in a year $Y'<Y$ with the same `first_name`, `last_name`, and `birth_year` at the same  `district` and `school`.
+ 2. Find within-district switchers -- those who match on all but the `school` field from Step 1.
+ 3. Find out-of-district switchers -- those who match on all but the `district` field from Step 2.
+ 4. Find teachers that appear to have been married, but have not moved -- their `nee` field in $Y$ is matched to the `last_name` fields in $Y'<Y$, but otherwise the fields from Step 1 are all matched. We create a flag for teachers matched in this fashion called `married`.
+ 5. Repeat Step 2 for those who appear to have married.
+ 6. Repeat Step 3 for those who appear to have married.
+ 7-9. Repeat Steps 4-6 using the `nee2` field instead of `nee`.
+ 10-18. Repeat Steps 1-9 using the "cleaned" version of the first name field that had non-alphabetic characters removed, `first_name_clean`. We create a flag for teachers matched in this fashion called `mismatch_inits`.
+ 19. Match individuals in the same school assigned to the same position (identified in `position_code`) but with different years of birth to overcome potential noise in year of birth (most commonly, the year of birth is missing in some years). We create a flag for teachers matched in this fashion called `mismatch_yob`.
+ 20. Match individuals in the same _district_ assigned to the same position but with different years of birth. We do not extend this logic to find district switchers since the potential for erroneous match assignment in such a case is too great, and we neglect to extend the algorithm to use other cues from the data to facilitate matching in such cases.
+ 21. Assign new IDs to all teachers in $Y$ not matched in the first 20 steps, incrementing from the highest ID recorded thus far.
+ 
+ To help ensure we are matching to the most important observation of each teacher, matching is always done to a teacher's highest-FTE observation within a year (particularly important for Steps 19-20). Further, it is sometimes the case that a given tuple of search keys matches more than one teacher in the prior data; if so, these rows are simply ignored for that step and such a teacher will go unmatched unless they are uniquely pinned down in a subsequent step.
+
+```{r match_step, fig.cap = '\\label{fig:step}Frequency of Matching by Step'}
+par(mar = c(5.1, 5.6, 4.1, 2.1))
+plot(NULL, main = '# Teachers Matched by Step',
+     xaxt = 'n', xlab = 'Step', yaxt = 'n', ylab = '', 
+     xlim = range(as.integer(names(step_table))), ylim = c(0, 7))
+rect(18.5, par('usr')[3L], par('usr')[2L], 
+     par('usr')[4L], col = 'cadetblue1')
+lines(log10(step_table), 
+      col = ifelse(names(step_table) %in% c(4:9, 13:18), 'red', 'black'))
+inits_tbl = step_table[names(step_table) %in% 10:18]
+lines(log10(inits_tbl), lwd = 5L,
+      col = ifelse(names(inits_tbl) %in% 13:18, 'red', 'black'))
+axis(side = 1L, at = as.integer(names(step_table)), cex.axis = .7)
+axis(side = 2L, at = 0:7, las = 1L,
+     labels = prettyNum(10^(0:7), big.mark = ',', scientific = FALSE))
+mtext(side = 2L, '# Matched', line = 4)
+legend('topright', c('Married', 'Mismatched Initials',
+                     'Mismatched Year of Birth'),
+       col = c('red', 'black', 'cadetblue1'), lwd = c(2L, 5L, NA),
+       pch = c(NA, NA, 15L), bty = 'n')
+```
+
+Figure \ref{fig:step} Shows that teachers are most commonly matched in the first three steps, meaning data fidelity issues are not _per se_ devastating. The real benefits of the algorithm are in the subsequent steps, as a result of which an additional `r pn(sum(step_table[!names(step_table) %in% 0:3]))` teachers are matched than would have been if only the original first and last name fields as found in the raw data were used. 
+
+## Step 22: Post-Processing
+
+The panels implied by the matched IDs created by the algorithm still have a substantial amount of data quality issues which we can only address once teachers' multiple observations are associated, mainly having to do with instability in certain observable characteristics which should be constant over time. First, we cascade forward maiden names (if a teacher has non-missing `nee` in a period $Y$ and it becomes missing in $Y'>Y$, we replace it in $Y'$ with its value in $Y$); the same is done for the certification field, `highest_degree` (just as a teacher cannot erase marriage from their past, so can they not make a degree disappear).
+
+Next, we correct instability in the `ethnicity` (and `gender`) fields when possible according to three steps: 1) it is sometimes missing, in which case we simply overwrite it with the other values found for that teacher; 2) at least 70% of a teacher's observations use the same ethnicity (or gender); or 3) there are at least five people that share a last name with an ethnicity-ambiguous teacher, at least 70% of whom have one ethnicity (or gender), the idea being that names like Xu or Gutierrez are strongly associated with a particular ethnicity. This type of correction is uncommon enough not to warrant an appeal to a more sophisticated approach commonly found in natural language processing applications.
+
+Lastly, we synergize the year of birth field for those matched in Steps 19 or 20 by assigning the one that appears most frequently for each teacher; in the case of ties, we use a regression-to-the-mean-type logic and assign the year which brings the teacher closer to the median age observed in the data. More data-driven approaches (conditioning the target median on the teacher's employer, position, year in the data, etc.) were again eschewed for expediency.
+
+## Validity Check: `file_number`
+
+Starting in the 2011-12 release, the DPI data begins to consistently record a field called `file_number` for teachers which generally acts as a time-consistent ID [from verbiage gleaned from @dpi_errata, it appears this corresponds to a teaching license number]. We looked for instances of multiple file numbers and are content that the algorithm is performing well -- only 78 teacher IDs were found to be associated with more than one `file_number`, with almost all of them having been matched on Steps 1 - 3 (what should be the highest-accuracy steps). Given a number of apparent transcription mistakes (i.e., `file_number` differing by one digit in some years) and that the `file_number` does appear to change on occasion, even these 78 could be an overstatement of the number of incorrectly matched individuals. 
 
 \TAG{END_BODY}
 

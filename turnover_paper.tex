@@ -83,7 +83,7 @@
   \postauthor{\par}
   \predate{\centering\large\emph}
   \postdate{\par}
-  \date{May 07, 2017}
+  \date{May 08, 2017}
 
 \usepackage{theapa}
 \usepackage{array}
@@ -399,33 +399,34 @@ annual Salary, Position \& Demographic reports through the WISEstaff
 data collection system. These reports represent ``a point-in-time
 collection of all staff members in public schools as of the 3rd Friday
 of September\ldots{}'' (Public Instruction
-\protect\hyperlink{ref-dpi}{2017}), and will serve as the primary source
-of data on teachers in this paper. Data are available at the
-position-teacher level cross-sectionally, with each entry corresponding
-to one of possibly several positions/assignments held by each school
-district employee\footnote{Many teachers (and other district employees)
-  serve in multiple roles within a school/district, for example as a
-  coach, part-time program aide, or department head. Each of these is
-  filed as a separate observation in the DPI system.}. Identifiers in
-each file permit unique identification of an employee within a given
-year, but this identifier does not follow teachers between
-years\footnote{From AY2011-12, a field called the File Number appears to
-  allow longitudinal tracking of teachers. We use this in part to
-  validate the matching algorithm; see the Appendix.}. To overcome this
-substantial hurdle to identifying teacher mobility, data are first fed
-through the matching algorithm described in further detail in the
-appendix. Essentially, we are aided by the availability of various
-imperfect identifiers which are more stable over time, most crucially
-teachers' first and last names and year of birth. By building on these
-covariates and incorporating some limited fuzzy matching techniques, we
-construct a panel of teachers spanning the 1994-95 academic year (AY)
-through AY2015-16\footnote{For brevity, we herein refer to academic
-  years by the spring year, e.g., AY2003-04 will be simply 2004.}
-consisting of 3,588,614 teacher-position-year observations. The matching
-algorithm necessitates elimination of 26,304 (0.7\%) observations on
-account of belonging to teachers who could not be uniquely identified in
-a given year of data due to exact overlap of their first name, last
-name, and birth year fields with another teacher in the data.
+\protect\hyperlink{ref-dpi}{2017}\protect\hyperlink{ref-dpi}{b}), and
+will serve as the primary source of data on teachers in this paper. Data
+are available at the position-teacher level cross-sectionally, with each
+entry corresponding to one of possibly several positions/assignments
+held by each school district employee\footnote{Many teachers (and other
+  district employees) serve in multiple roles within a school/district,
+  for example as a coach, part-time program aide, or department head.
+  Each of these is filed as a separate observation in the DPI system.}.
+Identifiers in each file permit unique identification of an employee
+within a given year, but this identifier does not follow teachers
+between years\footnote{From AY2011-12, a field called the File Number
+  appears to allow longitudinal tracking of teachers. We use this in
+  part to validate the matching algorithm; see the Appendix.}. To
+overcome this substantial hurdle to identifying teacher mobility, data
+are first fed through the matching algorithm described in further detail
+in the appendix. Essentially, we are aided by the availability of
+various imperfect identifiers which are more stable over time, most
+crucially teachers' first and last names and year of birth. By building
+on these covariates and incorporating some limited fuzzy matching
+techniques, we construct a panel of teachers spanning the 1994-95
+academic year (AY) through AY2015-16\footnote{For brevity, we herein
+  refer to academic years by the spring year, e.g., AY2003-04 will be
+  simply 2004.} consisting of 3,588,614 teacher-position-year
+observations. The matching algorithm necessitates elimination of 26,304
+(0.7\%) observations on account of belonging to teachers who could not
+be uniquely identified in a given year of data due to exact overlap of
+their first name, last name, and birth year fields with another teacher
+in the data.
 
 Specific to the exercise at hand, with data reliability and precision in
 mind, we make the following series of further restrictions on the data.
@@ -1010,7 +1011,7 @@ Base year salary (log) & -0.001 & 0.015 & 0.036 & 0.001 & 0.022 & 0.010 & 0.009 
   Percent subsidized lunch & -7.4\% & -3.7\% & -4.4\% & -9.5\% & -7.0\% & -7.6\% & -7.9\% \\ 
    & (1.1\%) & (1.4\%) & (1.7\%) & (0.6\%) & (0.9\%) & (1.0\%) & (0.4\%) \\ 
    \hline
-\multicolumn{8}{c}{\parbox{.85\linewidth}{\scriptsize{Note: a. Adjusted salary is the residual of log salary by district and experience level on 12 regional indicators, three urbanicity indicators, and the district percentage proficient on the WKCE exam, black, Hispanic, and low income.}}}\\
+\multicolumn{8}{c}{\parbox{0.85\linewidth}{\scriptsize{Note: a. Adjusted salary is the residual of log salary by district and experience level on 12 regional indicators, three urbanicity indicators, and the district percentage proficient on the WKCE exam, black, Hispanic, and low income.}}}\\
 \end{tabular}
 \caption{Average Change in Salary and District Student Characteristics (and Standard Deviations) for Teachers Changing Districts, by Gender and Experience} 
 \label{tbl:change_by_ge}
@@ -1254,7 +1255,11 @@ results. Only black switchers within districts provide enough records to
 interpret meaningfully; in Wisconsin, we find (in contrast to white
 within-district switchers) black teachers tend to migrate to
 economically better-off and higher-performing schools (white teachers
-only tend to select on the latter characteristic).
+only tend to select on the latter characteristic). This could simply be
+a reflection of differences in initial district choice by black
+vis-à-vis white teachers -- the median proficiency at a black teacher's
+first district is 36\% compared to 64\% for white teachers (71\% and
+22\% for reduced lunch eligibility, respectively).
 
 \begin{table}[htbp]
 \centering
@@ -1416,30 +1421,30 @@ patterns for black and Hispanic teachers are hard to distinguish).
  & \multicolumn{4}{c}{Teacher Experience} \\ \cline{2-6}
  & 1-3 years & 4-6 years & 7-11 years & 12-30 years & >30 years \\
 \hline
-First year base salary (log)                & $-0.06$      & $-0.12^{***}$ & $-0.11^{***}$ & $-0.01$      & $-0.33^{***}$ \\
-                                            & $(0.04)$     & $(0.04)$      & $(0.03)$      & $(0.02)$     & $(0.08)$      \\
-First year base salary (log) * female       & $-0.08^{*}$  & $0.08^{*}$    & $0.04$        & $-0.02$      & $0.13$        \\
-                                            & $(0.04)$     & $(0.03)$      & $(0.02)$      & $(0.01)$     & $(0.07)$      \\
-Campus average student characteristics      &              &               &               &              &               \\
-\quad Percent proficient                    & $-0.10$      & $-0.04$       & $-0.09^{*}$   & $0.02$       & $-0.06$       \\
-                                            & $(0.08)$     & $(0.06)$      & $(0.04)$      & $(0.02)$     & $(0.10)$      \\
-\quad Percent eligible for subsidized lunch & $-0.07$      & $-0.05$       & $-0.03$       & $-0.02$      & $-0.22^{*}$   \\
-                                            & $(0.08)$     & $(0.06)$      & $(0.04)$      & $(0.02)$     & $(0.11)$      \\
-\quad Percent Black                         & $0.35$       & $0.47$        & $0.56^{**}$   & $0.03$       & $0.40$        \\
-                                            & $(0.28)$     & $(0.26)$      & $(0.18)$      & $(0.10)$     & $(0.48)$      \\
-\quad Percent Hispanic                      & $0.13$       & $0.05$        & $-0.18$       & $-0.05$      & $0.25$        \\
-                                            & $(0.18)$     & $(0.15)$      & $(0.09)$      & $(0.06)$     & $(0.26)$      \\
-Interactions                                &              &               &               &              &               \\
-\quad Black * percent Black                 & $-0.19^{*}$  & $-0.15^{*}$   & $-0.06$       & $-0.04$      & $-0.19$       \\
-                                            & $(0.08)$     & $(0.08)$      & $(0.05)$      & $(0.04)$     & $(0.12)$      \\
-\quad Hispanic * percent Black              & $-0.16^{**}$ & $-0.18^{***}$ & $-0.13^{*}$   & $-0.12^{**}$ & $-0.09$       \\
-                                            & $(0.06)$     & $(0.05)$      & $(0.05)$      & $(0.04)$     & $(0.33)$      \\
-\quad Black * percent Hispanic              & $0.03$       & $-0.14$       & $0.02$        & $0.10$       & $-0.69$       \\
-                                            & $(0.26)$     & $(0.25)$      & $(0.15)$      & $(0.11)$     & $(0.49)$      \\
-\quad Hispanic * percent Hispanic           & $0.10$       & $-0.02$       & $-0.09$       & $0.29$       & $0.24$        \\
-                                            & $(0.29)$     & $(0.23)$      & $(0.21)$      & $(0.20)$     & $(1.10)$      \\
+First year base salary (log)                & $0.01$       & $-0.13^{***}$ & $-0.05^{**}$ & $0.00$       & $-0.17^{**}$ \\
+                                            & $(0.03)$     & $(0.04)$      & $(0.02)$     & $(0.01)$     & $(0.07)$     \\
+First year base salary (log) * female       & $-0.07^{*}$  & $0.09^{**}$   & $0.03$       & $-0.02$      & $0.13^{*}$   \\
+                                            & $(0.03)$     & $(0.03)$      & $(0.02)$     & $(0.01)$     & $(0.06)$     \\
+Campus average student characteristics      &              &               &              &              &              \\
+\quad Percent proficient                    & $-0.12$      & $-0.04$       & $-0.10^{*}$  & $0.01$       & $-0.09$      \\
+                                            & $(0.08)$     & $(0.06)$      & $(0.04)$     & $(0.02)$     & $(0.10)$     \\
+\quad Percent eligible for subsidized lunch & $-0.07$      & $-0.05$       & $-0.03$      & $-0.02$      & $-0.21^{*}$  \\
+                                            & $(0.08)$     & $(0.06)$      & $(0.04)$     & $(0.02)$     & $(0.11)$     \\
+\quad Percent Black                         & $0.29$       & $0.46$        & $0.54^{**}$  & $0.03$       & $0.38$       \\
+                                            & $(0.28)$     & $(0.26)$      & $(0.18)$     & $(0.10)$     & $(0.48)$     \\
+\quad Percent Hispanic                      & $0.04$       & $0.04$        & $-0.23^{*}$  & $-0.07$      & $0.13$       \\
+                                            & $(0.18)$     & $(0.15)$      & $(0.09)$     & $(0.05)$     & $(0.25)$     \\
+Interactions                                &              &               &              &              &              \\
+\quad Black * percent Black                 & $-0.19^{*}$  & $-0.15^{*}$   & $-0.06$      & $-0.04$      & $-0.17$      \\
+                                            & $(0.08)$     & $(0.07)$      & $(0.05)$     & $(0.04)$     & $(0.12)$     \\
+\quad Hispanic * percent Black              & $-0.17^{**}$ & $-0.18^{***}$ & $-0.12^{*}$  & $-0.11^{**}$ & $-0.09$      \\
+                                            & $(0.06)$     & $(0.05)$      & $(0.05)$     & $(0.04)$     & $(0.33)$     \\
+\quad Black * percent Hispanic              & $0.06$       & $-0.15$       & $0.02$       & $0.09$       & $-0.73$      \\
+                                            & $(0.26)$     & $(0.25)$      & $(0.15)$     & $(0.11)$     & $(0.48)$     \\
+\quad Hispanic * percent Hispanic           & $0.14$       & $-0.04$       & $-0.12$      & $0.26$       & $0.26$       \\
+                                            & $(0.28)$     & $(0.23)$      & $(0.21)$     & $(0.20)$     & $(1.10)$     \\
 \hline
-Observations                                & 32,995        & 30,172         & 43,348         & 98,423        & 15,190         \\
+Observations                                & 33,108        & 30,244         & 43,509        & 98,753        & 15,217        \\
 \hline
 \multicolumn{6}{l}{\scriptsize{$^{***}p<0.001$, $^{**}p<0.01$, $^*p<0.05$}}
 \end{tabular}
@@ -1541,32 +1546,6 @@ strong effect observed in the combined specification is found here to be
 concentrated more among those leaving teaching than those changing
 districts.
 
-\section{Appendix: Longitudinal Teacher Panel from Unlinked
-Cross-Sectional
-Cuts}\label{appendix-longitudinal-teacher-panel-from-unlinked-cross-sectional-cuts}
-
-DPI WISEstaff data does not include a longitudinal identifier for
-teachers, so we resorted to an alternative approach to matching teachers
-from year to year. The essence of this algorithm relies on the inclusion
-of three fields in the DPI data -- \texttt{first\_name},
-\texttt{last\_name}, and \texttt{birth\_year}. By matching teacher using
-these identifiers, it is possible to construct with high accuracy a
-panel of teachers from simple teacher cross-sections\footnote{The code
-  for this process was done using R and especially helped by the
-  \texttt{data.table} package (Dowle and Srinivasan
-  \protect\hyperlink{ref-dowle}{2017}). The code to reproduce this
-  entire project can be found at
-  \url{https://github.com/MichaelChirico/wisconsin_teachers}. The script
-  for the algorithm is \texttt{teacher\_match\_and\_clean.R}. The
-  \texttt{README} file gives steps for full reproduction, including
-  retrieving the raw data.}.
-
-\subsection{Step 0: Pre-Processing}\label{step-0-pre-processing}
-
-\subsection{Steps 1-22: Matching}\label{steps-1-22-matching}
-
-\subsection{Step 23: Post-Processing}\label{step-23-post-processing}
-
 \section{Conclusion}\label{conclusion}
 
 That salary incentives appear to play such a limited role in driving
@@ -1605,6 +1584,186 @@ whether \emph{high-quality} teachers have patterns of mobility which
 resemble that of the teaching population as a whole, or whether
 heterogeneity in their preferences can be used to devise appropriate
 policies.
+
+\section{Appendix: Longitudinal Teacher Panel from Unlinked
+Cross-Sectional
+Cuts}\label{appendix-longitudinal-teacher-panel-from-unlinked-cross-sectional-cuts}
+
+DPI WISEstaff data does not include a longitudinal identifier for
+teachers, so we resorted to an alternative approach to matching teachers
+from year to year. The essence of this algorithm relies on the inclusion
+of four fields in the DPI data -- \texttt{first\_name},
+\texttt{last\_name}, \texttt{nee} (former last name) and
+\texttt{birth\_year}. By matching teacher using these identifiers, it is
+possible to construct with high accuracy a panel of teachers from simple
+teacher cross-sections\footnote{The code for this process was done using
+  R and especially helped by the \texttt{data.table} package (Dowle and
+  Srinivasan \protect\hyperlink{ref-dowle}{2017}). The code to reproduce
+  this entire project can be found at
+  \url{https://github.com/MichaelChirico/wisconsin_teachers}. The script
+  for the algorithm is \texttt{teacher\_match\_and\_clean.R}. The
+  \texttt{README} file gives steps for full reproduction, including
+  retrieving the raw data.}.
+
+\subsection{Step 0: Pre-Processing}\label{step-0-pre-processing}
+
+Prior to beginning the matching process, a number of steps are taken to
+improve the quality of the raw data. The first is to incorporate as many
+of the errata mentioned in Public Instruction
+(\protect\hyperlink{ref-dpi_errata}{2017}\protect\hyperlink{ref-dpi_errata}{a})
+as possible. All name variables are then converted to lower case, after
+which we extract maiden names (identified for those missing a
+DPI-supplied entry in \texttt{nee} as the part of the
+\texttt{last\_name} field that appears in between parentheses or
+surrounding a hyphen or forward slash). Generally, it appears the maiden
+name comes in the data \emph{before} the hyphen, but we create the
+\texttt{nee2} field to identify potential matches to the post-hyphen
+name as well. A search was done of the data for irregular characters
+(punctuation or numbers) which allowed several obvious typos to be
+resolved (e.g., \texttt{l0is\ a\ dewey} was easy to resolve as being
+\texttt{lois\ a\ dewey}), and this is implemented next.
+
+Next, we create a ``clean'' version of the name fields which strips away
+all whitespace, initials (lone letters), and punctuation. At this stage,
+all observations which identically match another in the same year from
+the viewpoint of the algorithm -- namely, those that match exactly
+another observation on the cleaned first and last names and year of
+birth -- are removed from the data since it would be impossible to tell
+such teachers apart. A more ambitious treatment would attempt to use
+other cues found in the duplicated records (ethnicity, subject/position
+cues, etc.) to separate such teachers, but the marginal cost of doing so
+was found to exceed the potential benefit considerably for the exercise
+at hand (recall that only 0.7\% of total observations are lost in this
+fashion). Finally, teachers in the first year of data (1994-95) are
+assigned an ID starting from 1 using the within-year identifier provided
+by DPI.
+
+\subsection{Steps 1-21: Matching}\label{steps-1-21-matching}
+
+The algorithm proceeds by iterating over years of the data. In each year
+\(Y\), matches are found serially by progressively adjusting the
+criteria for considering two observations to be from the same teacher as
+follows:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Match anyone who stayed in the same school -- i.e., match any teacher
+  found in a year \(Y'<Y\) with the same \texttt{first\_name},
+  \texttt{last\_name}, and \texttt{birth\_year} at the same
+  \texttt{district} and \texttt{school}.
+\item
+  Find within-district switchers -- those who match on all but the
+  \texttt{school} field from Step 1.
+\item
+  Find out-of-district switchers -- those who match on all but the
+  \texttt{district} field from Step 2.
+\item
+  Find teachers that appear to have been married, but have not moved --
+  their \texttt{nee} field in \(Y\) is matched to the
+  \texttt{last\_name} fields in \(Y'<Y\), but otherwise the fields from
+  Step 1 are all matched. We create a flag for teachers matched in this
+  fashion called \texttt{married}.
+\item
+  Repeat Step 2 for those who appear to have married.
+\item
+  Repeat Step 3 for those who appear to have married. 7-9. Repeat Steps
+  4-6 using the \texttt{nee2} field instead of \texttt{nee}. 10-18.
+  Repeat Steps 1-9 using the ``cleaned'' version of the first name field
+  that had non-alphabetic characters removed,
+  \texttt{first\_name\_clean}. We create a flag for teachers matched in
+  this fashion called \texttt{mismatch\_inits}.
+\item
+  Match individuals in the same school assigned to the same position
+  (identified in \texttt{position\_code}) but with different years of
+  birth to overcome potential noise in year of birth (most commonly, the
+  year of birth is missing in some years). We create a flag for teachers
+  matched in this fashion called \texttt{mismatch\_yob}.
+\item
+  Match individuals in the same \emph{district} assigned to the same
+  position but with different years of birth. We do not extend this
+  logic to find district switchers since the potential for erroneous
+  match assignment in such a case is too great, and we neglect to extend
+  the algorithm to use other cues from the data to facilitate matching
+  in such cases.
+\item
+  Assign new IDs to all teachers in \(Y\) not matched in the first 20
+  steps, incrementing from the highest ID recorded thus far.
+\end{enumerate}
+
+To help ensure we are matching to the most important observation of each
+teacher, matching is always done to a teacher's highest-FTE observation
+within a year (particularly important for Steps 19-20). Further, it is
+sometimes the case that a given tuple of search keys matches more than
+one teacher in the prior data; if so, these rows are simply ignored for
+that step and such a teacher will go unmatched unless they are uniquely
+pinned down in a subsequent step.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics{figures/match_step-1.pdf}
+\caption{\label{fig:step}Frequency of Matching by Step}
+\end{figure}
+
+Figure \ref{fig:step} Shows that teachers are most commonly matched in
+the first three steps, meaning data fidelity issues are not \emph{per
+se} devastating. The real benefits of the algorithm are in the
+subsequent steps, as a result of which an additional 33,538 teachers are
+matched than would have been if only the original first and last name
+fields as found in the raw data were used.
+
+\subsection{Step 22: Post-Processing}\label{step-22-post-processing}
+
+The panels implied by the matched IDs created by the algorithm still
+have a substantial amount of data quality issues which we can only
+address once teachers' multiple observations are associated, mainly
+having to do with instability in certain observable characteristics
+which should be constant over time. First, we cascade forward maiden
+names (if a teacher has non-missing \texttt{nee} in a period \(Y\) and
+it becomes missing in \(Y'>Y\), we replace it in \(Y'\) with its value
+in \(Y\)); the same is done for the certification field,
+\texttt{highest\_degree} (just as a teacher cannot erase marriage from
+their past, so can they not make a degree disappear).
+
+Next, we correct instability in the \texttt{ethnicity} (and
+\texttt{gender}) fields when possible according to three steps: 1) it is
+sometimes missing, in which case we simply overwrite it with the other
+values found for that teacher; 2) at least 70\% of a teacher's
+observations use the same ethnicity (or gender); or 3) there are at
+least five people that share a last name with an ethnicity-ambiguous
+teacher, at least 70\% of whom have one ethnicity (or gender), the idea
+being that names like Xu or Gutierrez are strongly associated with a
+particular ethnicity. This type of correction is uncommon enough not to
+warrant an appeal to a more sophisticated approach commonly found in
+natural language processing applications.
+
+Lastly, we synergize the year of birth field for those matched in Steps
+19 or 20 by assigning the one that appears most frequently for each
+teacher; in the case of ties, we use a regression-to-the-mean-type logic
+and assign the year which brings the teacher closer to the median age
+observed in the data. More data-driven approaches (conditioning the
+target median on the teacher's employer, position, year in the data,
+etc.) were again eschewed for expediency.
+
+\subsection{\texorpdfstring{Validity Check:
+\texttt{file\_number}}{Validity Check: file\_number}}\label{validity-check-file_number}
+
+Starting in the 2011-12 release, the DPI data begins to consistently
+record a field called \texttt{file\_number} for teachers which generally
+acts as a time-consistent ID (from verbiage gleaned from Public
+Instruction
+\protect\hyperlink{ref-dpi_errata}{2017}\protect\hyperlink{ref-dpi_errata}{a},
+it appears this corresponds to a teaching license number). We looked for
+instances of multiple file numbers and are content that the algorithm is
+performing well -- only 78 teacher IDs were found to be associated with
+more than one \texttt{file\_number}, with almost all of them having been
+matched on Steps 1 - 3 (what should be the highest-accuracy steps).
+Given a number of apparent transcription mistakes (i.e.,
+\texttt{file\_number} differing by one digit in some years) and that the
+\texttt{file\_number} does appear to change on occasion, even these 78
+could be an overstatement of the number of incorrectly matched
+individuals.
 
 \TAG{END_BODY}
 
@@ -1662,7 +1821,7 @@ The Mlogit Package.'' \emph{R Package Version 0.2-2}.
 \url{http://cran.r-project.org/web/packages/mlogit/vignettes/mlogit.pdf}.
 
 \hypertarget{ref-dahl}{}
-Dahl, David B. 2009. ``Xtable: Export Tables to Latex or Html.'' \emph{R
+Dahl, David B. 2009. ``Xtable: Export Tables to LaTeX or HTML.'' \emph{R
 Package Version 1.8.2}, 1--5.
 
 \hypertarget{ref-deboor}{}
@@ -1790,9 +1949,14 @@ Ng, Pin, and Martin Maechler. 2007. ``A Fast and Efficient
 Implementation of Qualitatively Constrained Quantile Smoothing
 Splines.'' \emph{Statistical Modelling} 7 (4). SAGE: 315--28.
 
+\hypertarget{ref-dpi_errata}{}
+Public Instruction, Wisconsin Department of. 2017a. ``Data Errata - Data
+Changes After Dpi Publication.''
+\url{https://dpi.wi.gov/cst/data-collections/data-errata}.
+
 \hypertarget{ref-dpi}{}
-Public Instruction, Wisconsin Department of. 2017. ``School Staff:
-Salary, Position \& Demographic Reports.''
+---------. 2017b. ``School Staff: Salary, Position \& Demographic
+Reports.''
 \url{https://dpi.wi.gov/cst/data-collections/staff/published-data}.
 
 \hypertarget{ref-r}{}

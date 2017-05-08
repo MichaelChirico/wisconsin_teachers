@@ -14,7 +14,6 @@ library(sp)
 library(rgeos)
 library(cobs)
 library(parallel)
-library(quantmod)
 `%+%` = funchir::`%+%` #stupid ggplot2
 
 wds = c(data = '/media/data_drive/wisconsin/')
@@ -22,10 +21,11 @@ wds = c(data = '/media/data_drive/wisconsin/')
 ###############################################################################
 #                              Main Teacher File                              #
 ###############################################################################
-incl_cols = c('year', 'cesa', 'district_fill', 'school_fill', 'salary',
+incl_cols = c('year', 'cesa', 'district', 'school', 'salary',
               'teacher_id', 'highest_degree', 'total_exp_floor', 'fringe',
               'full_time_equiv', 'gender', 'ethnicity_main', 'quit_next',
-              'ethnicity_flag', 'gender_flag',
+              'ethnicity_flag', 'gender_flag', 'married', 'step',
+              'mismatch_inits', 'mismatch_yob',
               #only needed for data cleaning
               'position_code', 'area', 'district_work_type', 
               'months_employed', 'days_of_contract', 'category')
@@ -38,12 +38,12 @@ colClasses = with(
 data_path = wds['data'] %+% "wisconsin_teacher_data_full.csv"
 teachers = 
   fread(data_path, select = incl_cols, colClasses = colClasses,
-        key = 'teacher_id,year,district_fill,school_fill')
+        key = 'teacher_id,year,district,school')
 
 incl_yrs = setNames(nm = 2000:2010)
 incl_rng = range(incl_yrs)
 N_full = teachers[year %between% incl_rng, uniqueN(teacher_id)]
-
+step_table = teachers[ , table(step)]
 #eliminate multiple positions for a teacher by choosing the
 #  one with the highest intensity (highest FTE)
 teachers = 
@@ -107,17 +107,17 @@ teachers_ps = teachers_ps[position_code == '53']
 #     ultimately coming back full-time at the same
 #     district appear to "switch" to the same district,
 teachers[ , district_next :=
-            shift(district_fill, 1L, type = 'lead'), by = teacher_id]
+            shift(district, 1L, type = 'lead'), by = teacher_id]
 teachers[ , move_district_next := 
             #if school_next is missing, it's the last observation
             #  (i.e., quit_next is TRUE)
-            !(district_fill == district_next | is.na(district_next))]
+            !(district == district_next | is.na(district_next))]
 teachers[ , school_next :=
-            shift(school_fill, 1L, type = 'lead'), by = teacher_id]
+            shift(school, 1L, type = 'lead'), by = teacher_id]
 teachers[ , move_school_next := 
             #move district implies move school
             move_district_next |
-            !(school_fill == school_next | is.na(school_next))]
+            !(school == school_next | is.na(school_next))]
 
 #reset district switch indicator for exogenous switchers:
 #  see dpi.wi.gov/sites/default/files/imce/sms/doc/rg_sdnamechanges.doc
@@ -129,7 +129,7 @@ teachers[ , move_school_next :=
 #  3) Trevor Grade School District (5061) and
 #     Wilmot Grade School District (5075)  merge from 2006-07 to form
 #     Trevor-Wilmot Consolidated School District (5780)
-teachers[year == 2009 & district_fill %in% c('2205', '4242') & 
+teachers[year == 2009 & district %chin% c('2205', '4242') & 
            district_next == '1071', 
          #can do better than automatically assuming teachers don't
          #  move schools (some do, it seems), but there's no clear
@@ -137,11 +137,11 @@ teachers[year == 2009 & district_fill %in% c('2205', '4242') &
          #  etc., so still a lot of exogenous school switching
          paste0('move_', c('school', 'district'), '_next') := FALSE]
 
-teachers[year == 2010 & district_fill %in% c('6410', '1078') & 
+teachers[year == 2010 & district %chin% c('6410', '1078') & 
            district_next == '1080',
          paste0('move_', c('school', 'district'), '_next') := FALSE]
 
-teachers[year == 2006 & district_fill %in% c('5061', '5075') & 
+teachers[year == 2006 & district %chin% c('5061', '5075') & 
            district_next == '5780',
          paste0('move_', c('school', 'district'), '_next') := FALSE]
 
@@ -173,16 +173,16 @@ teachers_ps = teachers_ps[substring(area, 2L, 2L) %in% 2:7 | area == '0050']
 teachers = teachers[highest_degree %in% 4L:5L]
 teachers_ps = teachers_ps[highest_degree %in% 4L:5L]
 
-#district_fill: 7xxx and 9xxx are positions at a CESA
+#district: 7xxx and 9xxx are positions at a CESA
 #  or at an otherwise exceptional school (mental institution, etc.)
-teachers = teachers[!grepl('^[79]', district_fill)]
-teachers_ps = teachers_ps[!grepl('^[79]', district_fill)]
+teachers = teachers[!grepl('^[79]', district)]
+teachers_ps = teachers_ps[!grepl('^[79]', district)]
 
-#school_fill: should be assigned to an actual school
+#school: should be assigned to an actual school
 #  09xx are district-wide/multiple-school appointments
 #  ** only occurred through 2003-04 **
-teachers = teachers[nzchar(school_fill) & !grepl('^09', school_fill)]
-teachers_ps = teachers_ps[nzchar(school_fill) & !grepl('^09', school_fill)]
+teachers = teachers[nzchar(school) & !grepl('^09', school)]
+teachers_ps = teachers_ps[nzchar(school) & !grepl('^09', school)]
 
 #35 years seems a reasonable enough cap (need to be >30 to match HKR)
 #Restrict focus to total experience (rounded down) between 1 & 35;
@@ -248,8 +248,8 @@ pct_white = teachers[ , round(100*mean(ethnicity_main == 'White'))]
 teachers_ps = teachers_ps[salary + fringe >= 10000]
 
 #Now, eliminate schools with insufficient coverage
-yrdsdg = c("year", "district_fill", "highest_degree")
-yrds = c('year', 'district_fill')
+yrdsdg = c("year", "district", "highest_degree")
+yrds = c('year', 'district')
 setkeyv(teachers_ps, yrdsdg)
 setindexv(teachers_ps, yrds)
           
@@ -280,7 +280,7 @@ teachers_ps =
 #Discard variables not necessary for interpolation
 n_teachers = teachers_ps[ , uniqueN(teacher_id)]
 teachers_ps = 
-  teachers_ps[, .(year, district_fill, highest_degree, 
+  teachers_ps[, .(year, district, highest_degree, 
                 total_exp_floor, salary, fringe)]
 
 #some additional derived variables we'll use for the main data
@@ -300,7 +300,7 @@ levels(teachers$exp_split) =
 ###############################################################################
 #                               Salary Covariates                             #
 ###############################################################################
-setindex(teachers_ps, year, district_fill)
+setindex(teachers_ps, year, district)
 
 #fast prediction - to cut out predict.cobs overhead
 fpr = function(cb) with(cb, cobs:::.splValue(2, knots, coef, zs))
@@ -402,46 +402,40 @@ payscales = rbindlist(mclapply(incl_yrs, function(yr) {
     .(tenure = zs, wage_ba = wage_ba, fringe_ba = fringe_ba, 
       wage_ma = wage_ma, fringe_ma = fringe_ma)}, 
     #note: this approach leads year to be assigned as a character
-    by = district_fill]}), idcol = 'year')
+    by = district]}), idcol = 'year')
 stopCluster(cl)
 
 payscales[ , year := as.integer(year)]
 
-#post-fit clean-up: real-dollar wages
-#provide deflated wage data
-#note that data values are recorded at the end
-#  of September in each academic year, so,
-#  since I index AY by spring year, we use the
-#  'prior' year's CPI in October as the base
-#Also perpetual reminder: YYstaff.txt is the data for
-#  the (YY-1)-YY academic year
-oct1s = as.Date(paste0(incl_yrs - 1L, '-10-01'))
-oct_cpi = suppressWarnings(
-  getSymbols("CPIAUCSL", src = "FRED", auto.assign = FALSE)[oct1s]
-)
-inflation_index = 
-  data.table(year = incl_yrs,
-             #coredata returns the "column" as a matrix, so drop it
-             index = drop(coredata(oct_cpi))/oct_cpi[[length(oct_cpi)]])
-payscales[inflation_index,
-          `:=`(wage_ba_real = wage_ba/i.index,
-               wage_ma_real = wage_ma/i.index,
-               fringe_ba_real = fringe_ba/i.index,
-               fringe_ma_real = fringe_ma/i.index),
-          on = "year"]
+# #for robustness to total pay and to discounted future pay
+# #Given a stream of income in periods 1,...,T
+# #  return the discounted sum of future income
+# #  from t to T on for each period t
+# discounted_earnings = function(x, r = .05){
+#   TT = length(x)
+#   (upper.tri(matrix(1L, TT, TT), diag = TRUE) *
+#     (1/(1+r)) ^ matrix(rep(0L:TT, TT),
+#                        nrow = TT+1L, byrow = TRUE)[-(TT+1L), ]) %*% x
+# }
+# payscales[ , paste0('total_pay_', c('ba', 'ma')) :=
+#              .(wage_ba + fringe_ba, wage_ma + fringe_ma)]
+# payscales[ , paste0('total_pay_future_', c('ba', 'ma')) :=
+#              .(discounted_earnings(total_pay_ba),
+#                discounted_earnings(total_pay_ma)),
+#            by = .(year, district)]
 
 #intermediate output to facilitate debugging
 fwrite(payscales, wds['data'] %+% "wisconsin_salary_scales_imputed.csv")
 
-payscales = melt(payscales, id.vars = c('year', 'district_fill', 'tenure'),
+payscales = melt(payscales, id.vars = c('year', 'district', 'tenure'),
                  measure.vars = patterns('^wage_[bm]a$'),
                  variable.name = 'highest_degree', value.name = 'wage')
 payscales[ , highest_degree := 4L + (highest_degree == 'wage_ma')]
 payscales[ , lwage := log(wage)]
 
 #confirmed: 1-1 mapping b/w district & cesa (even across years)
-payscales[unique(teachers[ , .(district_fill, cesa)]), 
-          cesa := i.cesa, on = 'district_fill']
+payscales[unique(teachers[ , .(district, cesa)]), 
+          cesa := i.cesa, on = 'district']
 
 #now add controls to generate residual/unexplained wages
 districts = fread(wds['data'] %+% 'district_demographics.csv',
@@ -451,8 +445,7 @@ districts = fread(wds['data'] %+% 'district_demographics.csv',
 dist_cols = setdiff(names(districts), c('district', 'year'))
 
 payscales[ , (dist_cols) :=
-             districts[.SD, ..dist_cols, 
-                       on = c('year', district = 'district_fill')]]
+             districts[.SD, ..dist_cols, on = c('year', 'district')]]
 
 pr = c('_pred', '_resid')
 payscales[ , paste0('lwage', pr) := {
@@ -462,13 +455,13 @@ payscales[ , paste0('lwage', pr) := {
 }, by = .(year, highest_degree, tenure)]
 
 teachers[payscales[, log(wage[highest_degree == 4L & tenure == 1L]),
-                   by = .(district_fill, year)], 
-         schedule_lbase_ba_salary := i.V1, on = c('year', 'district_fill')]
+                   by = .(district, year)], 
+         schedule_lbase_ba_salary := i.V1, on = c('year', 'district')]
 
 #what was the scheduled wage for this teacher, 
 #  as determined by the year, their district, seniority & certification?
 teachers[payscales, schedule_lsalary := i.lwage,
-         on = c('year', 'district_fill', 
+         on = c('year', 'district', 
                 total_exp_floor = 'tenure', 'highest_degree')]
 #what is the scheduled wage in the subsequent year
 teachers[order(year), schedule_lsalary_next := 
@@ -477,7 +470,7 @@ teachers[order(year), schedule_lsalary_next :=
 #what is the unexplained part of their scheduled wage?
 teachers[payscales, paste0('schedule_lsalary', pr) := 
            .(i.lwage_pred, i.lwage_resid),
-         on = c('year', 'district_fill', 
+         on = c('year', 'district', 
                 total_exp_floor = 'tenure', 'highest_degree')]
 teachers[order(year), paste0('schedule_lsalary', pr, '_next') := 
            .(shift(schedule_lsalary_pred, n = 1L, type = 'lead'),
@@ -491,7 +484,7 @@ teachers[ , total_exp_floor_next :=
 teachers[payscales, 
          paste0('schedule_lsalary', c('', pr), '_next_cf') := 
            .(i.lwage, i.lwage_pred, i.lwage_resid),
-         on = c(year_next = 'year', 'district_fill', 
+         on = c(year_next = 'year', 'district', 
                 total_exp_floor_next = 'tenure', 'highest_degree')]
 
 ###############################################################################
@@ -501,10 +494,10 @@ teachers[ , paste0(dist_cols, '_next_d') :=
             districts[.SD, ..dist_cols, 
                       on = c('year', district = 'district_next')]]
 districts[payscales[ , mean(lwage_resid, na.rm = TRUE), 
-                     by = .(district_fill, year)], 
-          lwage_resid_avg := i.V1, on = c(district = 'district_fill', 'year')]
-districts[teachers[ , .N, by = .(district_fill, year)],
-          n_teachers := i.N, on = c(district = 'district_fill', 'year')]
+                     by = .(district, year)], 
+          lwage_resid_avg := i.V1, on = c('district', 'year')]
+districts[teachers[ , .N, by = .(district, year)],
+          n_teachers := i.N, on = c('district', 'year')]
 
 q_var = c('lwage_resid_avg', 'pct_prof', 'pct_frl', 
           'pct_black', 'pct_hisp')
@@ -516,11 +509,10 @@ districts[ , paste0(q_var, '_q') := lapply(.SD, function(x) {
 }), .SDcols = q_var]
 
 teachers[ , paste0(dist_cols, '_d') :=
-            districts[.SD, ..dist_cols,
-                      on = c('year', district = 'district_fill')]]
+            districts[.SD, ..dist_cols, on = c('year', 'district')]]
 teachers[ , paste0(q_var, '_q') := 
             districts[.SD, paste0(q_var, '_q'), with = FALSE,
-                      on = c('year', district = 'district_fill')]]
+                      on = c('year', 'district')]]
 
 ###############################################################################
 #                            School-Level Covariates                          #
@@ -539,7 +531,7 @@ teachers[schools,
          `:=`(pct_prof_s = i.pct_prof, pct_hisp_s = i.pct_hisp, 
               pct_black_s = i.pct_black, pct_frl_s = i.pct_frl,
               urbanicity_s = i.urbanicity), 
-         on = c('year', district_fill = 'district', school_fill = 'school')]
+         on = c('year', 'district', 'school')]
 
 teachers[schools, 
          `:=`(pct_prof_next_s = i.pct_prof, pct_hisp_next_s = i.pct_hisp, 
@@ -590,7 +582,7 @@ dist_DT[ , distance := distance/5280]
 
 #join to teacher data
 teachers[dist_DT, distance_moved := i.distance,
-         on = c(district_fill = 'district_from',
-                school_fill = 'school_from',
+         on = c(district = 'district_from',
+                school = 'school_from',
                 district_next = 'district_to',
                 school_next = 'school_to')]

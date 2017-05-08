@@ -734,7 +734,8 @@ setindexv(full_data, c("first_name2", "nee2_clean", "birth_year", "district"))
 setindexv(full_data, c("first_name2", "nee2_clean", "birth_year"))
 #Used in Step 19
 setindexv(full_data,
-          c("first_name_clean", "last_name_clean", "district", "school"))
+          c("first_name_clean", "last_name_clean", "district", 
+            "school", "position_code"))
 #Used in Step 20
 setindexv(full_data,
           c("first_name_clean", "last_name_clean", "district", "position_code"))
@@ -856,8 +857,10 @@ system.time({
            c("first_name2", "nee2_clean", "birth_year"),
            married = TRUE, mismatch_inits = TRUE, step = 18L)
     #19) YOB noise: match anyone who stayed in the same school
-    #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | SCHOOL ID
-    get_id(yy, c("first_name_clean", "last_name_clean", "district", "school"),
+    #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | 
+    #                         AGENCY | SCHOOL ID | POSITION CODE
+    get_id(yy, c("first_name_clean", "last_name_clean", "district",
+                 "school", "position_code"),
            mismatch_yob = TRUE, step = 19L)
     #20) YOB noise: within-district switchers (at the same position)
     #MATCH ON: FIRST NAME | LAST NAME | BIRTH YEAR | AGENCY | POSITION CODE
@@ -899,7 +902,7 @@ full_data[!nzchar(nee_clean), nee_clean := NA]
 full_data[ , (mns) := lapply(.SD, na.locf, na.rm = FALSE),
            by = teacher_id, .SDcols = mns]; rm(mns)
 
-#Correct ethnicity code for teachers with noisy assignment in two cases:
+#Correct ethnicity code for teachers with noisy assignment in three cases:
 ## 1: Ethnicity plain missing (==" ") for subset of observations
 ##      -Here, just replace missing by LOCF
 full_data[ethnicity == " ", ethnicity := NA]

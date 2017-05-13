@@ -1,3 +1,4 @@
+#!/usr/bin/env Rscript
 #Wisconsin Teacher Project
 #Raw Teacher Data Check
 #Michael Chirico

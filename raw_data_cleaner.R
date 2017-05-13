@@ -6,9 +6,7 @@
 
 rm(list = ls(all = TRUE))
 gc()
-raw_data_f = "/media/data_drive/wisconsin/teacher_raw_data/"
-wds = c(data = paste0(raw_data_f, 'data_files'),
-        key = paste0(raw_data_f, "fwf_keys/"))
+wd.data = '/media/data_drive/wisconsin/teacher_raw_data/data_files'
 
 library(funchir)
 #for scraping URLs
@@ -38,7 +36,7 @@ sapply(data_urls,
        function(uu){
          tmp <- tempfile()
          download.file(uu, tmp)
-         unzip(tmp, exdir = wds["data"])
+         unzip(tmp, exdir = wd.data)
          unlink(tmp)})
 
 #Remove pesky NUL characters
@@ -48,7 +46,7 @@ sapply(data_urls,
 #   probably is supposed to
 #   correspond to a _single_ space)
 txt_fls = 
-  list.files(wds['data'], full.names = TRUE,
+  list.files(wd.data, full.names = TRUE,
              # (?i) -- case-insensitive
              pattern = "(?i)(txt|dat)")
 for (fl in txt_fls){
@@ -85,8 +83,7 @@ rm(fl)
 #  stripped of trailing white space, so simply
 #  augment these with enough blanks to make each file
 #  flush on its edges.
-keys = fread(paste0(raw_data_f, 'fwf_keys.csv'), key = 'year',
-             colClasses = c('character', 'character', 'integer', 'character'))
+keys = fread('fwf_keys.csv', colClasses = list(character = 'year'))
 for (fl in txt_fls){
   fl_yr = gsub('[^0-9]', '', fl)
   header_yr = grepl("14|13", fl)
@@ -130,7 +127,7 @@ for (fl in txt_fls){
 }
 
 #Lastly, convert all excel files to .csv
-for (fl in list.files(wds['data'], pattern = '\\.xls', full.names = TRUE)) {
+for (fl in list.files(wd.data, pattern = '\\.xls', full.names = TRUE)) {
   #which sheet has the data?
   sheet = grep('Staff', excel_sheets(fl), fixed = TRUE, value = TRUE)
   fl_yr = gsub('.*AllStaff[0-9]{2}([0-9]{2}).*', '\\1', fl)
@@ -138,6 +135,5 @@ for (fl in list.files(wds['data'], pattern = '\\.xls', full.names = TRUE)) {
   vtype = c('skip', rep('text', length(vname) - 1L))
   DT = setDT(read_excel(fl, sheet = sheet, skip = 4L,
                         col_names = vname, col_types = vtype))
-  fwrite(DT, file = paste0(wds['data'], '/', fl_yr, 'staff.csv'),
-         sep = '\t')
+  fwrite(DT, file = paste0(wd.data, '/', fl_yr, 'staff.csv'), sep = '\t')
 }

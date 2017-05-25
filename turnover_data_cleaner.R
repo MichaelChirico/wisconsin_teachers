@@ -433,13 +433,14 @@ payscales = melt(payscales, id.vars = c('year', 'district', 'tenure'),
 payscales[ , highest_degree := 4L + (highest_degree == 'wage_ma')]
 payscales[ , lwage := log(wage)]
 
-#confirmed: 1-1 mapping b/w district & cesa (even across years)
-payscales[unique(teachers[ , .(district, cesa)]), 
-          cesa := i.cesa, on = 'district']
-
 #now add controls to generate residual/unexplained wages
 districts = fread(wds['data'] %+% 'district_demographics.csv',
                   colClasses = list(character = 'district'), na.strings = '')
+#merge in CESA
+#confirmed: 1-1 mapping b/w district & cesa (even across years)
+districts[unique(teachers[ , .(district, cesa)]),
+          cesa := i.cesa, on = 'district']
+
 #robustness check: force stability of urbanicity definition over time
 #districts[order(year), urbanicity := urbanicity[.N], by = district]
 dist_cols = setdiff(names(districts), c('district', 'year'))
@@ -586,3 +587,22 @@ teachers[dist_DT, distance_moved := i.distance,
                 school = 'school_from',
                 district_next = 'district_to',
                 school_next = 'school_to')]
+
+local_payscales = 
+  dist_DT[district_to != district_from & distance<50, 
+          payscales[.(unique(district_to)),
+                    .(local_wage = max(wage)), 
+                    keyby = .(year, highest_degree, tenure),
+                    on = 'district', nomatch = 0L], 
+          keyby = .(district = district_from)]
+
+teachers[local_payscales, local_wage := i.local_wage, 
+         on = c('district', 'year', 'highest_degree', 
+                total_exp_floor = 'tenure')]
+
+teachers[ , local_wage_next := 
+            shift(local_wage, type = 'lead'), by = teacher_id]
+teachers[local_payscales, local_wage_next_cf := i.local_wage,
+         on = c('district', year_next = 'year', 'highest_degree',
+                total_exp_floor_next = 'tenure')]
+teachers[ , relative_wage := exp(schedule_lsalary_next_cf)/local_wage_next_cf]

@@ -1317,7 +1317,7 @@ We also find fairly strong patterns in quitting associated with subsidized lunch
 
 ## Regression Results
 
-```{r table_7_reg_lpm, results = 'asis'}
+```{r table_7_reg_lpm, results = 'asis', cache = TRUE}
 #** TO DO **
 # - don't use first-year base salary (HKR didn't
 #   because they only estimated schedule for
@@ -1479,6 +1479,69 @@ cat(tbl[grep('[^ &\\]', tbl)], sep = '\n')
 To account in a rudimentary way for district-specific hiring policies, HKR move on to their Table 8 which repeats Table 7 (our Table \ref{tbl:reg_lpm}) with district fixed effects. HKR note that the patterns in responsiveness to wages are the same, though attenuated; that coefficients involving student ethnicity are qualitatively unaffected; and that schools with high achievement continue to exhibit lower propensities for turnover. Our results, presented in Table \ref{tbl:reg_lpm_fe}, are similar in that they closely resemble the results without fixed effects, but with noted attenuation and weaker precision.
 
 The most notable difference relative to Table \ref{tbl:reg_lpm} is the general weakening of results regarding the importance of student characteristics for white teachers. While partially attributable to a decline in precision, this adjustment suggests much of the discovered correlation between student characteristics and exit probability for white teachers can be chalked up to district-to-district heterogeneity in preferences or hiring policies.
+
+### Local Wage Ratio
+
+```{r table_8_relative, results = 'asis', cache = TRUE}
+reg_l = 
+  lapply(split(teachers, f = teachers$exp_split, sorted = TRUE),
+         function(DT) DT[ , lm(leave_next ~
+                                 relative_wage*gender + 
+                                 pct_prof_d + pct_frl_d + 
+                                 ethnicity_main*pct_black_d + 
+                                 ethnicity_main*pct_hisp_d + factor(year) + 
+                                 factor(district) + total_exp_floor + 
+                                 I(total_exp_floor^2) +
+                                 n_students_d + class_size_d)])
+
+#some districts are dropped by lm
+#  (insufficient variation given low frequency of moves & other covariates)
+coefn = setNames(nm = Reduce(union, lapply(reg_l, function(x) names(coef(x)))))
+coefn[seq_len(length(coefn))] = 'x'
+idx = match(c('relative_wage', 'relative_wage:genderF',
+              'pct_prof_d', 'pct_frl_d', 'pct_black_d', 'pct_hisp_d',
+              paste0('ethnicity_main', 
+                     c('Black', 'Black', 'Hispanic', 'Hispanic'), ':pct_',
+                     c('black', 'hisp', 'black', 'hisp'), '_d')), names(coefn))
+coefn[idx] = 
+  c('Local Relative Wage', 'Local Relative Wage * female',
+    'Percent proficient', 'Percent eligible for subsidized lunch',
+    'Percent Black', 'Percent Hispanic', 'Black * percent Black',
+    'Black * percent Hispanic', 'Hispanic * percent Black',
+    'Hispanic * percent Hispanic')
+reg_l = lapply(reg_l, function(x) {
+  names(x$coefficients) = coefn[names(coef(x))]; x})
+SEs = lapply(reg_l, vcovHC, 'HC1')
+pvals = lapply(seq_along(reg_l), function(ii)
+  coeftest(reg_l[[ii]], SEs[[ii]])[ , 'Pr(>|t|)']) 
+tbl = capture.output(texreg(
+  reg_l, omit.coef = '^x', label = 'tbl:reg_lpm_fe_rel', 
+  caption = paste('Estimated Effects of Relative Local Wage and Student',
+                  'Demographic Characteristics on the Probability that',
+                  'Teachers Leave School Districts with District Fixed,',
+                  'by Experience (linear probability models; Huber-White',
+                  'standard errors in parentheses)'),
+  groups = list('Campus average student characteristics' = 3:6,
+                'Interactions' = 7:10), override.pvalues = pvals,
+  reorder.coef = c(1, 6, 2:5, 7:10), override.se = lapply(SEs, se_vcov),
+  include.rsquared = FALSE, include.adjrs = FALSE, 
+  include.rmse = FALSE, sideways = TRUE, use.packages = FALSE))
+
+idx = grep('years', tbl)
+tbl = c(tbl[1L:(idx - 1L)],
+        ' & \\multicolumn{4}{c}{Teacher Experience} \\\\ \\cline{2-6}',
+        tbl[idx:length(tbl)])
+idx = grep('^Num.*obs', tbl)
+#print-formatting 1k+ numbers
+tbl[idx] = gsub('(\\d{1,3})(?=\\d{3}+(?!\\d))', '\\1,', tbl[idx], perl = TRUE)
+tbl[idx] = gsub('Num. obs.   ', 'Observations', tbl[idx], fixed = TRUE)
+#exclude the extra blank rows introduced by texreg's group option
+cat(tbl[grep('[^ &\\]', tbl)], sep = '\n')
+```
+
+Perhaps a better measure of the influence of a teacher's wage on their propensity to move is their potential gains from changing to nearby districts. Table \ref{tbl:reg_lpm_fe_rel} presents results of a specification paralleling that in Table \ref{tbl:reg_lpm_fe}, save for the replacement of the initial Bachelor's salary as a predictor with a measure of a teacher's local relative wage. Specifically, the local relative wage is defined as the ratio of a teacher's next scheduled wage to the wage ceiling at districts within 50 miles of their current district (excluding their own) The wage ceiling is calculated as the maximum wage at the teacher's subsequent level of experience and certification in such districts. If this measure exceeds one, a teacher is getting paid more for their current qualifications than is possible locally; otherwise, they stand to gain in pay from switching to at least one school locally. This relative local wage measure is an even poorer predictor of teacher churn than are local wage levels. Table \ref{tbl:reg_lpm_fe_rel} bolsters evidence that student characteristics are more important than wage differentials for teachers considering changing districts[^rel_population].
+
+[^rel_population]: Some of the other coefficients in Table \ref{tbl:reg_lpm_fe_rel} have changed somewhat substantially relative to those found in Table \ref{tbl:reg_lpm_fe}. This is largely attributable to a different subpopulation of teachers included in the results, as evidenced by the change in sample size between the two tables. This reflects differential missingness of the wage measures. The wage coefficients are qualitatively robust to selecting a fixed population to estimate the models for the two tables.
 
 ```{r table_9, results = 'asis', cache = TRUE}
 ##** TO DO**

@@ -1,4 +1,4 @@
-This repository provides reproduction code for the paper Teacher Turnover in Wisconsin, which can be downloaded [here](https://github.com/MichaelChirico/wisconsin_teachers/blob/master/turnover_paper.pdf). The paper was compiled with [`rmarkdown`](http://rmarkdown.rstudio.com/http://rmarkdown.rstudio.com/) through [`knitr`](https://yihui.name/knitr/); the `.Rmd` document for the paper is [this one](https://raw.githubusercontent.com/MichaelChirico/wisconsin_teachers/master/turnover_paper.Rmd). 
+This repository provides reproduction code for the paper Teacher Turnover in Wisconsin, which can be downloaded [here](https://github.com/MichaelChirico/wisconsin_teachers/blob/master/turnover_paper.pdf). The paper was compiled with [`rmarkdown`](http://rmarkdown.rstudio.com/) through [`knitr`](https://yihui.name/knitr/); the `.Rmd` document for the paper is [this one](https://raw.githubusercontent.com/MichaelChirico/wisconsin_teachers/master/turnover_paper.Rmd). 
 
 # Raw Data
 
